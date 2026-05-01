@@ -32,6 +32,9 @@ import { bold, table, link } from 'md-pen'
 
 ### Links and Images
 
+> [!NOTE]
+> `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
+
 ```ts
 link('https://x.com')                          // <https://x.com>
 link('https://x.com', 'click')                  // [click](https://x.com)

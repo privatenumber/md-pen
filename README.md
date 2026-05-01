@@ -76,6 +76,9 @@ strikethrough('no') // ~~no~~
 
 Markdown by default. Falls back to HTML when options go beyond what markdown supports.
 
+> [!NOTE]
+> `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
+
 ```ts
 link('https://x.com') // <https://x.com>
 link('/docs/guide') // [/docs/guide](/docs/guide)

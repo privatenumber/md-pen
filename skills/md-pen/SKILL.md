@@ -108,6 +108,12 @@ footnoteRef('1')                    // [^1]
 footnote('1', 'Source text')        // [^1]: Source text
 ```
 
+> [!TIP]
+> On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:
+> ```ts
+> details('Summary', '<br>\n\n' + ul(['one', 'two']))
+> ```
+
 ### Niche
 
 ```ts

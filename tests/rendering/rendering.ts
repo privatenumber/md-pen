@@ -69,6 +69,28 @@ describe('rendering: non-trivial output', () => {
 		expect(html).toContain('<ul>');
 		expect(html).toContain('nested');
 	});
+
+	test('details content parses as block markdown', () => {
+		const html = render(details('Click', ul(['one', 'two'])));
+		expect(html).toContain('<ul>');
+		expect(html).toContain('<li>one</li>');
+		expect(html).toContain('<li>two</li>');
+	});
+
+	test('details content parses fenced code block', () => {
+		const html = render(details('Click', codeBlock('const x = 1', 'js')));
+		expect(html).toContain('<pre>');
+		expect(html).toContain('language-js');
+	});
+
+	test('html table cell parses as block markdown', () => {
+		const html = render(table([
+			['Code'],
+			[codeBlock('const x = 1', 'js')],
+		], { html: true }));
+		expect(html).toContain('<pre>');
+		expect(html).toContain('language-js');
+	});
 });
 
 describe('rendering: escaping', () => {

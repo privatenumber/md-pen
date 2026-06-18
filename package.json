@@ -43,7 +43,7 @@
 		"lintroll": "^1.30.1",
 		"manten": "^2.0.0",
 		"pkgroll": "^2.27.0",
-		"skills-npm": "^1.1.1",
+		"skills-npm": "^1.2.0",
 		"typescript": "^6.0.2"
 	}
 }

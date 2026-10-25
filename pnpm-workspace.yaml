@@ -1,0 +1,15 @@
+skills:
+  dirs:
+    - .agents/skills
+
+allowBuilds:
+  esbuild: false
+  unrs-resolver: false
+
+permissions:
+  clean-pkg-json:
+    skills: true
+  lintroll:
+    skills: true
+  manten:
+    skills: true

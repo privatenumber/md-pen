@@ -1,12 +1,13 @@
-// Raw HTML grammar follows commonmark.js 0.31.2, except declarations match cmark-gfm and comrak.
+// Raw HTML grammar uses the ASCII whitespace recognized by commonmark.js 0.31.2.
+// Declarations match cmark-gfm and comrak.
 // https://github.com/commonmark/commonmark.js/blob/0.31.2/lib/common.js#L10-L32
 // https://github.com/commonmark/commonmark.js/blob/0.31.2/lib/inlines.js#L71-L73
 const tagName = /[a-z][a-z0-9-]*/iy;
 const attributeName = /[a-z_:][\w:.-]*/iy;
 // eslint-disable-next-line no-control-regex
 const unquotedValue = /[^"'=<>`\u0000-\u0020]+/y;
-const space = /[ \t\f]*(?:(?:\r\n|\r|\n)[ \t\f]*)?/y;
-const declarationStart = /<![A-Z]+(?=[ \t\n\f\r])/y;
+const space = /[ \t\v\f]*(?:(?:\r\n|\r|\n)[ \t\v\f]*)?/y;
+const declarationStart = /<![A-Z]+(?=[ \t\n\v\f\r])/y;
 // eslint-disable-next-line no-control-regex
 const uriAutolink = /<[a-z][a-z0-9.+-]{1,31}:[^<>\u0000-\u0020]*>/iy;
 const emailAutolink = /<[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*>/iy;

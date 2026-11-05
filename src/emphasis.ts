@@ -11,7 +11,7 @@ const escapeContent = (text: string, delimiter: string) => {
 			index = end - 1;
 			continue;
 		}
-		if (character === delimiter[0] && (delimiter === '*' || index === 0 || index === text.length - 1)) {
+		if (character === delimiter[0] && (delimiter !== '__' || index === 0 || index === text.length - 1)) {
 			result += '\\';
 		}
 		result += character;
@@ -40,7 +40,7 @@ const hasTrailingHardBreak = (text: string, end: number) => {
 };
 
 const canWrapDirectly = (text: string, delimiter: string) => {
-	const boundaryWhitespace = /[\t\n\v\f\r\u2028\u2029\p{Zs}]/u;
+	const boundaryWhitespace = /[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]/u;
 	return !text.includes(delimiter[0]) && !text.endsWith('\\') && !boundaryWhitespace.test(text[0]) && !boundaryWhitespace.test(text.at(-1)!);
 };
 
@@ -51,12 +51,12 @@ const emphasize = (text: string, delimiter: string) => {
 	if (canWrapDirectly(text, delimiter)) {
 		return `${delimiter}${text}${delimiter}`;
 	}
-	const leading = text.match(/^[\t\n\v\f\r\u2028\u2029\p{Zs}]*/u)![0];
+	const leading = text.match(/^[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]*/u)![0];
 	if (leading.length === text.length) {
 		return text;
 	}
 	let end = text.length;
-	while (end > leading.length && /[\t\n\v\f\r\u2028\u2029\p{Zs}]/u.test(text[end - 1])) {
+	while (end > leading.length && /[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]/u.test(text[end - 1])) {
 		end -= 1;
 	}
 	let suffix = text.slice(end);

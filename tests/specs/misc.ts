@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'manten';
+import { render } from '../utils/render.ts';
 import {
 	kbd, sub, sup, mention, emoji, el,
 } from '../../src/misc.ts';
@@ -95,6 +96,17 @@ describe('sup with attributes', () => {
 });
 
 describe('el', () => {
+	test('only self-closes HTML void elements without content', () => {
+		for (const tag of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']) {
+			expect(el(tag)).toBe(`<${tag} />`);
+			expect(el(tag.toUpperCase())).toBe(`<${tag.toUpperCase()} />`);
+		}
+		expect(el('div')).toBe('<div></div>');
+		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
+		expect(el('custom-element')).toBe('<custom-element></custom-element>');
+		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
+	});
+
 	test('void element without attributes', () => {
 		expect(el('br')).toBe('<br />');
 	});

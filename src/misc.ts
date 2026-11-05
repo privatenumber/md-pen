@@ -14,15 +14,19 @@ export const sub = (text: string, options?: HtmlOptions) => htmlTag('sub', text,
 
 export const sup = (text: string, options?: HtmlOptions) => htmlTag('sup', text, options);
 
+const voidElements = new Set([
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr',
+]);
+
 export const el = (
 	tag: string,
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
-	if (content === undefined) {
+	if (content === undefined && voidElements.has(tag.toLowerCase())) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}
-	return `<${tag}${htmlAttributes(attributes)}>${content}</${tag}>`;
+	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;
 };
 
 export const mention = (username: string) => `@${username}`;

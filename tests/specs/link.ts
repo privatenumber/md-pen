@@ -4,6 +4,7 @@ import { link, image } from '../../src/link.ts';
 import { el, kbd, sub } from '../../src/misc.ts';
 import { escape } from '../../src/escape.ts';
 import { code } from '../../src/code.ts';
+import { math } from '../../src/math.ts';
 
 describe('link', () => {
 	test('autolinks http URL without text', () => {
@@ -122,6 +123,31 @@ describe('link', () => {
 		expect(render(link('u', code('a]b[')))).toBe('<p><a href="u"><code>a]b[</code></a></p>');
 		expect(render(link('u', escape('*x*')))).toBe('<p><a href="u">*x*</a></p>');
 		expect(render(link('/x', image('/cat.png', 'cat')))).toBe('<p><a href="/x"><img src="/cat.png" alt="cat" /></a></p>');
+	});
+
+	test('balanced label brackets cannot resolve as reference links', () => {
+		expect(render(`${link('/outer', 'hello [world]')}\n\n[world]: /inner`)).toBe('<p><a href="/outer">hello [world]</a></p>');
+	});
+
+	test('preserves raw HTML attributes and code spans in labels', () => {
+		const label = `${kbd('key', { title: '`' })} ] ${code('x')}`;
+		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><kbd title="`">key</kbd> ] <code>x</code></a></p>');
+		const htmlImage = image('cat.png', 'cat', {
+			title: 'See [details',
+			width: 1,
+		});
+		expect(render(link('/outer', htmlImage))).toContain('title="See [details"');
+	});
+
+	test('preserves inline images with escaped destinations and titles', () => {
+		const nested = image('/cat(1).png', 'cat', { title: 'a(b' });
+		expect(render(link('/outer', nested))).toBe('<p><a href="/outer"><img src="/cat(1).png" alt="cat" title="a(b" /></a></p>');
+		expect(render(`${link('/outer', '![hello [world]](cat.png)')}\n\n[world]: /inner`)).toBe('<p><a href="/outer"><img src="cat.png" alt="hello [world]" /></a></p>');
+	});
+
+	test('keeps bracket math inside the outer link', () => {
+		const result = link('/outer', math('[0,1)'));
+		expect(render(result)).toContain('href="/outer"');
 	});
 
 	test('balances brackets around escaped and unequal backtick runs', () => {

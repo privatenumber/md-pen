@@ -1,6 +1,7 @@
 import {
 	encodeUrlWhitespace, escapeHtml, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
+import { createInlineScanner } from './inline-constructs.ts';
 
 const hasOnlyTitle = (
 	options: Record<string, string | number>,
@@ -14,85 +15,74 @@ const escapeTitle = (title: string) => title
 	.replaceAll('\\', String.raw`\\`)
 	.replaceAll('"', String.raw`\"`);
 
-const indexClosingBackticks = (text: string) => {
-	const nextBacktick = new Map<number, number>();
-	const closingBackticks = new Map<number, number>();
-	for (let index = text.length - 1; index >= 0; index -= 1) {
-		if (text[index] === '`') {
-			const end = index + 1;
-			while (index > 0 && text[index - 1] === '`') {
-				index -= 1;
-			}
-			const length = end - index;
-			const next = nextBacktick.get(length);
-			if (next !== undefined) {
-				closingBackticks.set(index, next + length);
-			}
-			const nextShorter = nextBacktick.get(length - 1);
-			if (length > 1 && nextShorter !== undefined) {
-				closingBackticks.set(index + 1, nextShorter + length - 1);
-			}
-			nextBacktick.set(length, index);
+const imageDestination = /\((?:\\.|[^\s()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
+
+const bracketPairs = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
+	const stack: number[] = [];
+	const pairs = new Map<number, number>();
+	for (let index = 0; index < text.length;) {
+		const end = scanner.protectedEnd(index);
+		if (end !== -1) {
+			index = end;
+			continue;
 		}
+		if (text[index] === '[') {
+			stack.push(index);
+		} else if (text[index] === ']') {
+			const open = stack.pop();
+			if (open !== undefined) {
+				pairs.set(open, index);
+			}
+		}
+		index += 1;
 	}
-	return closingBackticks;
+	return pairs;
 };
 
-const codeSpanRanges = (text: string) => {
-	const closingBackticks = indexClosingBackticks(text);
-	const ranges = new Map<number, number>();
-	for (let index = 0; index < text.length; index += 1) {
-		if (text[index] === '\\' && index + 1 < text.length) {
-			index += 1;
-		} else if (text[index] === '`') {
-			const end = closingBackticks.get(index);
-			if (end === undefined) {
-				while (text[index + 1] === '`') {
-					index += 1;
-				}
-			} else {
-				ranges.set(index, end);
-				index = end - 1;
-			}
-		}
+const imageEnd = (text: string, index: number, pairs: Map<number, number>) => {
+	if (text[index] !== '!' || text[index + 1] !== '[') {
+		return -1;
 	}
-	return ranges;
-};
-
-const unmatchedBrackets = (text: string, codeSpans: Map<number, number>) => {
-	const open: number[] = [];
-	const unmatched = new Set<number>();
-	for (let index = 0; index < text.length; index += 1) {
-		const character = text[index];
-		if (character === '\\' && index + 1 < text.length) {
-			index += 1;
-		} else if (codeSpans.has(index)) {
-			index = codeSpans.get(index)! - 1;
-		} else if (character === '[') {
-			open.push(index);
-		} else if (character === ']') {
-			if (open.length) {
-				open.pop();
-			} else {
-				unmatched.add(index);
-			}
-		}
+	const close = pairs.get(index + 1);
+	if (close === undefined) {
+		return -1;
 	}
-	for (const index of open) {
-		unmatched.add(index);
-	}
-	return unmatched;
+	imageDestination.lastIndex = close + 1;
+	return imageDestination.test(text) ? imageDestination.lastIndex : -1;
 };
 
 const escapeLinkText = (input: string) => {
 	const text = input.replaceAll(/[\r\n]+/g, ' ');
-	const unmatched = unmatchedBrackets(text, codeSpanRanges(text));
+	const scanner = createInlineScanner(text, { angle: true });
+	const pairs = bracketPairs(text, scanner);
+	const imageClosings = new Map<number, number>();
 	let result = '';
-	for (let index = 0; index < text.length; index += 1) {
-		if (unmatched.has(index)) {
+	for (let index = 0; index < text.length;) {
+		const end = scanner.protectedEnd(index);
+		if (end !== -1) {
+			result += text.slice(index, end);
+			index = end;
+			continue;
+		}
+		const endOfImage = imageEnd(text, index, pairs);
+		if (endOfImage !== -1) {
+			imageClosings.set(pairs.get(index + 1)!, endOfImage);
+			result += '![';
+			index += 2;
+			continue;
+		}
+		const endOfDestination = imageClosings.get(index);
+		if (endOfDestination !== undefined) {
+			result += text.slice(index, endOfDestination);
+			index = endOfDestination;
+			continue;
+		}
+		const character = text[index];
+		if (character === '[' || character === ']') {
 			result += '\\';
 		}
-		result += text[index];
+		result += character;
+		index += 1;
 	}
 	let trailingBackslashes = 0;
 	while (text[text.length - trailingBackslashes - 1] === '\\') {

@@ -45,10 +45,27 @@ describe('ul', () => {
 		expect(render(markdown)).toContain('<div>x</div>\n<ul>\n<li>child</li>\n</ul>');
 	});
 
-	test('closed HTML blocks and inline HTML do not add separators', () => {
-		for (const parent of ['<!-- c -->', '<?c?>', '<!DOCTYPE html>', '<![CDATA[c]]>', '<script>c</script>', '<https://example.com>', kbd('Enter'), '<div>\n\nx', 'text\n<custom>', '```\n<div>\n```']) {
+	test('possible HTML blocks get a conservative separator', () => {
+		for (const parent of ['<!-- c -->', '<?c?>', '<!DOCTYPE html>', '<![CDATA[c]]>', '<script>c</script>', kbd('Enter'), '<div>\n\nx', 'text\n<custom>', '```\n<div>\n```']) {
+			const markdown = ul([parent, ['child']]);
+			expect(markdown).toContain('\n\n  - child');
+			expect(render(markdown)).toContain('<ul>\n<li>child</li>\n</ul>');
+		}
+	});
+
+	test('autolinks do not make a tight list loose', () => {
+		for (const parent of ['<https://example.com>', '<a@b.co>']) {
 			const markdown = ul([parent, ['child']]);
 			expect(markdown).not.toContain('\n\n  - child');
+			expect(render(markdown)).toContain('\n<ul>\n<li>child</li>\n</ul>');
+			expect(render(markdown)).not.toContain('<p>');
+		}
+	});
+
+	test('children follow possible HTML blocks after other Markdown blocks', () => {
+		for (const parent of ['\t<div>x</div>', '***\n<br />', '| a |\n| --- |\n| x |\n<br />']) {
+			const markdown = ul([parent, ['child']]);
+			expect(markdown).toContain('\n\n');
 			expect(render(markdown)).toContain('<ul>\n<li>child</li>\n</ul>');
 		}
 	});
@@ -63,8 +80,8 @@ describe('ul', () => {
 
 	test('an unclosed raw HTML comment swallows the nested list', () => {
 		const markdown = ul(['<!-- open', ['child']]);
-		expect(markdown).toBe('- <!-- open\n  - child');
-		expect(render(markdown)).toContain('<!-- open\n- child');
+		expect(markdown).toBe('- <!-- open\n\n  - child');
+		expect(render(markdown)).toContain('<!-- open\n\n- child');
 	});
 
 	test('empty nested arrays do not make a list loose', () => {

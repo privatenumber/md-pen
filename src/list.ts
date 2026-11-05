@@ -1,91 +1,11 @@
 type ListItem = string | ListItem[];
 
-const htmlBlockTags = /^(?:address|article|aside|base|basefont|blockquote|body|caption|center|col|colgroup|dd|details|dialog|dir|div|dl|dt|fieldset|figcaption|figure|footer|form|frame|frameset|h[1-6]|head|header|hr|html|iframe|legend|li|link|main|menu|menuitem|nav|noframes|ol|optgroup|option|p|param|search|section|summary|table|tbody|td|tfoot|th|thead|title|tr|track|ul)(?=[ \t>]|\/>|$)/i;
-const completeHtmlTag = /^<(?:\/[a-z][a-z\d-]*[ \t]*>|[a-z][a-z\d-]*(?:[ \t]+[a-z_:][\w.:-]*(?:[ \t]*=[ \t]*(?:[^ \t"'=<>`]+|'[^']*'|"[^"]*"))?)*[ \t]*\/?>)[ \t]*$/i;
-
-const htmlBlockStart = (content: string, paragraph: boolean): RegExp | 'blank' | undefined => {
-	if (/^<(?:pre|script|style|textarea)(?=[ \t>]|$)/i.test(content)) {
-		return /<\/(?:pre|script|style|textarea)>/i;
-	}
-	if (content.startsWith('<!--')) {
-		return /-->/;
-	}
-	if (content.startsWith('<?')) {
-		return /\?>/;
-	}
-	if (/^<![a-z]/i.test(content)) {
-		return />/;
-	}
-	if (content.startsWith('<![CDATA[')) {
-		return /\]\]>/;
-	}
-	if (content.startsWith('<') && htmlBlockTags.test(content.replace(/^<\/?/, ''))) {
-		return 'blank';
-	}
-	if (!paragraph && completeHtmlTag.test(content)) {
-		return 'blank';
-	}
-	return undefined;
-};
-
-const endsInHtmlBlock = (text: string) => {
-	let end: RegExp | undefined;
-	let blankEndsBlock = false;
-	let paragraph = false;
-	let fence = '';
-
-	for (const line of text.split(/\r\n|\r|\n/)) {
-		if (blankEndsBlock) {
-			if (/^[ \t]*$/.test(line)) {
-				blankEndsBlock = false;
-				paragraph = false;
-			}
-			continue;
-		}
-		if (end) {
-			if (end.test(line)) {
-				end = undefined;
-			}
-			continue;
-		}
-		const content = line.replace(/^ {0,3}/, '');
-		if (fence) {
-			const closing = content.match(/^(`+|~+)[ \t]*$/)?.[1];
-			if (closing && closing[0] === fence[0] && closing.length >= fence.length) {
-				fence = '';
-			}
-			continue;
-		}
-		const opening = content.match(/^(`+|~+)/)?.[1];
-		if (opening && opening.length >= 3 && (opening[0] !== '`' || !content.slice(opening.length).includes('`'))) {
-			fence = opening;
-			paragraph = false;
-			continue;
-		}
-		if (/^[ \t]*$/.test(line)) {
-			paragraph = false;
-			continue;
-		}
-		if (!paragraph && /^(?: {4}|\t)/.test(line)) {
-			continue;
-		}
-		const block = htmlBlockStart(content, paragraph);
-		if (!block) {
-			paragraph = !/^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|(?:=+|-+)[ \t]*$)/.test(line);
-			continue;
-		}
-		if (block === 'blank') {
-			blankEndsBlock = true;
-		} else {
-			end = block;
-		}
-		paragraph = false;
-		if (end?.test(line)) {
-			end = undefined;
-		}
-	}
-	return blankEndsBlock;
-};
+const hasPossibleHtmlBlock = (text: string) => text.split(/\r\n|\r|\n/).some((line) => {
+	const content = line.replace(/^[ \t]*/, '');
+	return /^<[a-z/!?]/i.test(content)
+		&& !/^<[a-z][a-z\d+.-]{1,31}:[^\s<>]*>/i.test(content)
+		&& !/^<[\w.!#$%&'*+/=?^`{|}~-]+@[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?(?:\.[a-z\d](?:[a-z\d-]{0,61}[a-z\d])?)*>/i.test(content);
+});
 
 const indentContinuation = (text: string, continuationIndent: string) => {
 	if (!text.includes('\n') && !text.includes('\r')) {
@@ -139,8 +59,8 @@ const formatList = (
 					const nested = formatList(item, childIndent, ordered);
 					if (nested) {
 						const firstLine = firstLeaf(item)!.split(/\r\n|\r|\n/, 1)[0];
-						// HTML blocks need a blank line to end; empty items cannot interrupt paragraphs.
-						if (!hasChildren && (endsInHtmlBlock(parentItem) || (!emptyItem && /^[ \t]*$/.test(firstLine)))) {
+						// Blank-line-terminated HTML blocks and empty child items need a separator.
+						if (!hasChildren && (hasPossibleHtmlBlock(parentItem) || (!emptyItem && /^[ \t]*$/.test(firstLine)))) {
 							lines.push('');
 						}
 						lines.push(nested);

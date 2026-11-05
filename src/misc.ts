@@ -14,8 +14,8 @@ export const sub = (text: string, options?: HtmlOptions) => htmlTag('sub', text,
 
 export const sup = (text: string, options?: HtmlOptions) => htmlTag('sup', text, options);
 
-const voidElements = new Set([
-	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr',
+const selfClosingElements = new Set([
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr', 'svg', 'math',
 ]);
 
 export const el = (
@@ -23,7 +23,7 @@ export const el = (
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
-	if (content === undefined && voidElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
+	if (content === undefined && selfClosingElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}
 	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;

@@ -141,7 +141,7 @@ el('img', { src: 'cat.png', alt: 'Cat' })   // <img src="cat.png" alt="Cat" />
 el('p', { align: 'center' }, 'centered')    // <p align="center">centered</p>
 ```
 
-Content is raw (not escaped). Without content, HTML void elements use a self-closing tag; other elements use an opening and closing tag.
+Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
 
 ### Escaping
 

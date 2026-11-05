@@ -335,7 +335,7 @@ emoji('rocket') // :rocket:
 
 #### `el(tag, attributes?, content?)`
 
-Generic HTML element builder for tags without a dedicated function. Attribute values are HTML-escaped and attribute names are sanitized against injection. Content is raw (not escaped). Without content, HTML void elements use a self-closing tag; other elements use an opening and closing tag.
+Generic HTML element builder for tags without a dedicated function. Attribute values are HTML-escaped and attribute names are sanitized against injection. Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
 
 ```ts
 el('br') // <br />

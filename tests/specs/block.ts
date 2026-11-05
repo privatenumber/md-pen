@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { hr, details } from '../../src/block.ts';
+import { escape } from '../../src/escape.ts';
+import { codeBlock } from '../../src/code.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
@@ -44,6 +46,21 @@ describe('details', () => {
 			'<details>\n<summary>Summary</summary>\n\nline 1\n\nline 2\n\n</details>',
 		);
 	});
+
+	test('preserves closing tags inside code blocks', () => {
+		const html = render(details('S', codeBlock('</details>', 'html')));
+		expect(html).toContain('<code class="language-html">&lt;/details&gt;\n</code>');
+	});
+
+	test('preserves nested details', () => {
+		const html = render(details('outer', details('inner', 'content')));
+		expect(html).toBe('<details>\n<summary>outer</summary>\n<details>\n<summary>inner</summary>\n<p>content</p>\n</details>\n</details>');
+	});
+
+	test('renders escaped closing tags as text inside details', () => {
+		const html = render(details('S', escape('</details> x')));
+		expect(html).toBe('<details>\n<summary>S</summary>\n<p>&lt;/details&gt; x</p>\n</details>');
+	});
 });
 
 describe('details with attributes', () => {
@@ -72,28 +89,5 @@ describe('details with attributes', () => {
 		expect(details('Summary', 'Content', { id: 'a"b' })).toBe(
 			'<details id="a&quot;b">\n<summary>Summary</summary>\n\nContent\n\n</details>',
 		);
-	});
-});
-
-describe('details content injection', () => {
-	test('</details> in content does not close block early', () => {
-		const html = render(details('sum', '</details>\nout'));
-		expect(html.match(/<details>/g)?.length).toBe(1);
-		expect(html.match(/<\/details>/g)?.length).toBe(1);
-	});
-
-	test('</DETAILS> case-insensitive does not close block early', () => {
-		const html = render(details('sum', '</DETAILS>\nout'));
-		expect(html.match(/<\/details>/gi)?.length).toBe(1);
-	});
-
-	test('</DeTaIlS> mixed case does not close block early', () => {
-		const html = render(details('sum', '</DeTaIlS>\nout'));
-		expect(html.match(/<\/details>/gi)?.length).toBe(1);
-	});
-
-	test('</details > with space does not close block early', () => {
-		const html = render(details('sum', '</details >\nout'));
-		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 	});
 });

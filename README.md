@@ -261,7 +261,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. Summary is HTML-escaped, content supports markdown.
+Collapsible section. The summary is HTML-escaped. Content is raw Markdown/HTML; wrap untrusted text in `escape()`.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')

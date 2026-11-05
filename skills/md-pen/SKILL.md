@@ -148,7 +148,7 @@ Content is raw (not escaped). Without content, self-closing.
 escape('**not bold**')  // \*\*not bold\*\*
 ```
 
-Use `escape()` for untrusted user input. Bold uses `__`, which cannot apply inside a word; use `el('strong', undefined, 'text')` there. Nested italic content ending in `_` may prevent bold from rendering. Emphasis content must stay within one paragraph: blank lines and block-starting lines end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; use `link(url)` without a label for `http://` or `https://` URLs to generate a protected angle-bracket autolink.
+Use `escape()` for untrusted user input. Bold uses `__`, which cannot apply inside a word; use `el('strong', undefined, 'text')` there. Nested italic content ending in `_` may prevent bold from rendering. Emphasis content must stay within one paragraph: blank lines and block-starting lines end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
 
 ```ts
 bold(link('https://x.com', 'text'))  // __[text](https://x.com)__

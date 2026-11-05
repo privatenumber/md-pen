@@ -309,8 +309,12 @@ mathBlock(String.raw`\sum_{i=1}^n x_i`)
 // $$
 ```
 
+Inline math trims boundary whitespace and replaces line breaks with spaces. Display math removes blank and whitespace-only lines. Both return an empty string for whitespace-only input.
+
+Dollar signs in expressions are escaped unless already escaped. Expressions containing dollar signs use GitHub's backtick-delimited inline math or fenced display math to preserve the TeX source. Display math also uses a fence when the expression ends with a backslash. Some Markdown renderers, including comrak, interpret the inline backticks as part of the expression.
+
 > [!NOTE]
-> Inline `math()` cannot render expressions ending with `\` (the backslash escapes the closing `$`). Use `mathBlock()` instead.
+> Inline `math()` cannot preserve expressions ending with `\` because the backslash interferes with the closing `$`. Use `mathBlock()` instead.
 
 #### `mermaid(code)`
 

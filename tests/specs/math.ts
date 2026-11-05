@@ -10,6 +10,22 @@ describe('math', () => {
 	test('passes through LaTeX special characters', () => {
 		expect(math(String.raw`\frac{a}{b}`)).toBe(String.raw`$\frac{a}{b}$`);
 	});
+
+	test('trims boundary whitespace', () => {
+		expect(math(' \n x \t')).toBe('$x$');
+		expect(render(math(' x '))).toBe('<p><span data-math-style="inline">x</span></p>');
+		expect(math(' \n\t ')).toBe('');
+	});
+
+	test('preserves escaped dollars and escapes unescaped dollars', () => {
+		expect(math(String.raw`\sqrt{\$4}`)).toBe('$`\\sqrt{\\$4}`$');
+		expect(math(String.raw`a\\$b`)).toBe('$`a\\\\\\$b`$');
+		expect(math(String.raw`a\\\$b`)).toBe('$`a\\\\\\$b`$');
+	});
+
+	test('uses longer backtick delimiters when needed', () => {
+		expect(math('a`$b')).toBe('$`` a`\\$b ``$');
+	});
 });
 
 describe('math edge cases', () => {
@@ -18,7 +34,7 @@ describe('math edge cases', () => {
 	});
 
 	test('expression with dollar sign is escaped', () => {
-		expect(math('price = $5')).toBe(String.raw`$price = \$5$`);
+		expect(math('price = $5')).toBe('$`price = \\$5`$');
 	});
 });
 
@@ -33,6 +49,19 @@ describe('mathBlock', () => {
 
 	test('empty expression returns empty string', () => {
 		expect(mathBlock('')).toBe('');
+	});
+
+	test('removes whitespace-only lines', () => {
+		expect(mathBlock('\n a\n \t\nb\r\n\t')).toBe('$$\n a\nb\n$$');
+		expect(render(mathBlock('a\n \nb'))).toBe('<p><span data-math-style="display">\na\nb\n</span></p>');
+		expect(mathBlock(' \n\t')).toBe('');
+	});
+
+	test('preserves escaped dollars in fenced display math', () => {
+		expect(mathBlock(String.raw`\sqrt{\$4}`)).toBe('```math\n\\sqrt{\\$4}\n```');
+		expect(mathBlock(String.raw`a\\$b`)).toBe('```math\na\\\\\\$b\n```');
+		expect(mathBlock('a$$b')).toBe('```math\na\\$\\$b\n```');
+		expect(mathBlock('a```$b')).toBe('````math\na```\\$b\n````');
 	});
 });
 
@@ -83,8 +112,11 @@ describe('math backslash', () => {
 	});
 
 	test('mathBlock with trailing backslash renders as display math', () => {
-		const html = render(mathBlock('a\\'));
+		const markdown = mathBlock('a\\');
+		expect(markdown).toBe('```math\na\\\n```');
+		const html = render(markdown);
 		expect(html).toContain('data-math-style="display"');
+		expect(html).toContain('a\\');
 	});
 });
 

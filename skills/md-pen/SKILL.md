@@ -148,7 +148,7 @@ Content is raw (not escaped). Without content, self-closing.
 escape('**not bold**')  // \*\*not bold\*\*
 ```
 
-Use `escape()` for untrusted user input. Bold uses `__` and italic uses `*` — different delimiters that compose without collision:
+Use `escape()` for untrusted user input. It inserts a zero-width space in colon-delimited names in shortcode position even when they are not emoji names; among digit-only names, it guards only `:100:` and `:1234:`. Bold uses `__` and italic uses `*` — different delimiters that compose without collision:
 
 ```ts
 bold(link('https://x.com', 'text'))  // __[text](https://x.com)__

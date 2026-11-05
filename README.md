@@ -351,7 +351,7 @@ el('p', { align: 'center' }, 'centered text')
 
 #### `escape(text)`
 
-Escapes markdown special characters in untrusted input.
+Escapes Markdown syntax in untrusted text, including GitHub mentions, issue references, emoji shortcodes, autolinks, and math. Invisible zero-width spaces prevent GitHub from interpreting mentions, issue references, emoji shortcodes, and dollar signs, and are retained when copying the rendered text. Leading indentation and whitespace before line breaks may be normalized.
 
 ```ts
 escape('**not bold**') // \*\*not bold\*\*

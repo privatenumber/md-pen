@@ -1,11 +1,16 @@
 export const escape = (text: string) => text
-	.replaceAll(/[\\`*_~[\]<>&#\-+]/g, character => `\\${character}`)
-	.replaceAll(/^(\d{1,9})([.)])[ \t]/gm, String.raw`$1\$2 `)
-	.replaceAll(/^(=+)[ \t]*$/gm, match => `\\${match}`)
-	.replaceAll(/^(?:\t[\t ]*|[\t ]{4,})/gm, '   ')
-	.replaceAll(/(?:https?|ftp):/gi, '$&\u200B')
-	.replaceAll('www.', 'www\u200B.')
-	.replaceAll('@', '\u200B@');
+	.replaceAll(/\r\n?/g, '\n')
+	.replaceAll(/:(?=[\w+-]+:)/g, ':\u200B')
+	.replaceAll(/[\\`*_~[\]<>&#\-+$]/g, character => (character === '$' ? '\u200B\\$' : `\\${character}`))
+	.replaceAll(/^[ \t]+/gm, indentation => (indentation.includes('\t') || indentation.length >= 4 ? '   ' : indentation))
+	.replaceAll(/^( {0,3}\d{1,9})([.)])(?=[ \t]|$)/gm, String.raw`$1\$2`)
+	.replaceAll(/^( {0,3})(=+)[ \t]*$/gm, String.raw`$1\$2`)
+	.replaceAll(/[ \t]+/g, (whitespace, offset: number, input: string) => (input[offset + whitespace.length] === '\n' ? ' ' : whitespace))
+	.replaceAll(/(?:https?|ftp):/gi, match => String.raw`${match.slice(0, -1)}\:`)
+	.replaceAll(/www\./gi, match => String.raw`${match.slice(0, -1)}\.`)
+	.replaceAll('@', '@\u200B')
+	.replaceAll(/\\#(?=\d)/g, '$&\u200B')
+	.replaceAll(/GH\\-(?=\d)/gi, '$&\u200B');
 
 const htmlEntityMap: Record<string, string> = {
 	'<': '&lt;',

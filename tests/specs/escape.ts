@@ -52,6 +52,32 @@ describe('escape', () => {
 	test('unicode passes through', () => {
 		expect(escape('hello 世界 🚀')).toBe('hello 世界 🚀');
 	});
+
+	test('renders GitHub references and math as literal text', () => {
+		const input = '@octocat a@example.com #1 GH-1 $x$ $$x$$ $`x`$';
+		const html = render(escape(input));
+		expect(html).toBe('<p>@​octocat a@​example.com #​1 GH-​1 ​$x​$ ​$​$x​$​$ ​$`x`​$</p>');
+	});
+
+	test('prevents GitHub emoji shortcodes from being substituted', () => {
+		expect(render(escape(':smile: :+1:'))).toBe('<p>:​smile: :​+1:</p>');
+	});
+
+	test('renders indented block markers and trailing whitespace literally', () => {
+		for (const input of ['  1. x', '   1) x', '6.\nx', 'x\n  ===', '  # heading', '  - item', '  > quote', '  ```', ' \tcode', 'a  \nb', 'a \t\r\nb']) {
+			const html = render(escape(input));
+			expect(html.startsWith('<p>')).toBe(true);
+			expect(html.endsWith('</p>')).toBe(true);
+			expect(html).not.toContain('<br');
+		}
+	});
+
+	test('disables URL autolinks without invisible characters', () => {
+		const input = 'https://example.com www.example.com HTTP://example.com';
+		const escaped = escape(input);
+		expect(escaped).not.toContain('\u200B');
+		expect(render(escaped)).toBe(`<p>${input}</p>`);
+	});
 });
 
 describe('escapeHtml', () => {
@@ -229,7 +255,7 @@ describe('escape autolinks', () => {
 
 	test('escape uppercase HTTP:// does not render as link on GitHub', () => {
 		// GitHub autolinks HTTP:// and Https:// (case-insensitive)
-		expect(escape('HTTP://example.com')).toContain('\u200B');
-		expect(escape('Https://example.com')).toContain('\u200B');
+		expect(escape('HTTP://example.com')).toBe(String.raw`HTTP\://example.com`);
+		expect(escape('Https://example.com')).toBe(String.raw`Https\://example.com`);
 	});
 });

@@ -208,6 +208,8 @@ Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 Nested arrays become children of the preceding item.
 
+An unclosed raw HTML block such as `<script>` or `<!--` in an item swallows its nested list.
+
 Leading tabs in item text can change nesting when the list is placed inside another container, such as `blockquote()`; use spaces instead.
 
 ```ts

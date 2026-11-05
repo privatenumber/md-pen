@@ -3,6 +3,7 @@ import { render } from '../utils/render.ts';
 import { ul, ol, taskList } from '../../src/list.ts';
 import { bold } from '../../src/emphasis.ts';
 import { details } from '../../src/block.ts';
+import { kbd } from '../../src/misc.ts';
 
 describe('ul', () => {
 	test('basic flat list', () => {
@@ -36,6 +37,34 @@ describe('ul', () => {
 		expect(render(ul(['<div>a</div>', ['b']]))).toBe(html);
 		expect(render(ul([details('summary', 'content'), ['b']]))).toContain('</details>\n<ul>\n<li>b</li>\n</ul>\n</li>');
 		expect(ul(['<div>a</div>', ['b'], [], ['c']])).toBe('- <div>a</div>\n\n  - b\n  - c');
+	});
+
+	test('children follow an HTML block that starts after a paragraph', () => {
+		const markdown = ul([['a\n<div>x</div>'], ['child']]);
+		expect(markdown).toBe('- a\n  <div>x</div>\n\n  - child');
+		expect(render(markdown)).toContain('<div>x</div>\n<ul>\n<li>child</li>\n</ul>');
+	});
+
+	test('closed HTML blocks and inline HTML do not add separators', () => {
+		for (const parent of ['<!-- c -->', '<?c?>', '<!DOCTYPE html>', '<![CDATA[c]]>', '<script>c</script>', '<https://example.com>', kbd('Enter'), '<div>\n\nx', 'text\n<custom>', '```\n<div>\n```']) {
+			const markdown = ul([parent, ['child']]);
+			expect(markdown).not.toContain('\n\n  - child');
+			expect(render(markdown)).toContain('<ul>\n<li>child</li>\n</ul>');
+		}
+	});
+
+	test('complete standalone custom HTML tags need a separator', () => {
+		for (const parent of ['<custom>', '<custom attr="value">', 'a\n\n<custom>', 'a\n---\n<custom>', '    code\n<custom>']) {
+			const markdown = ul([parent, ['child']]);
+			expect(markdown).toContain('\n\n  - child');
+			expect(render(markdown)).toContain('<ul>\n<li>child</li>\n</ul>');
+		}
+	});
+
+	test('an unclosed raw HTML comment swallows the nested list', () => {
+		const markdown = ul(['<!-- open', ['child']]);
+		expect(markdown).toBe('- <!-- open\n  - child');
+		expect(render(markdown)).toContain('<!-- open\n- child');
 	});
 
 	test('empty nested arrays do not make a list loose', () => {
@@ -100,6 +129,12 @@ describe('ol', () => {
 		const markdown = ol(['<div>a</div>', ['b']]);
 		expect(markdown).toBe('1. <div>a</div>\n\n   1. b');
 		expect(render(markdown)).toBe('<ol>\n<li>\n<div>a</div>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>');
+	});
+
+	test('children follow an HTML block that starts after a paragraph', () => {
+		const markdown = ol([['a\n<div>x</div>'], ['child']]);
+		expect(markdown).toBe('1. a\n   <div>x</div>\n\n   1. child');
+		expect(render(markdown)).toContain('<div>x</div>\n<ol>\n<li>child</li>\n</ol>');
 	});
 
 	test('sub-array at index 0 treated as top-level items', () => {

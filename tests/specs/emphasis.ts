@@ -4,6 +4,8 @@ import { code } from '../../src/code.ts';
 import { escape } from '../../src/escape.ts';
 import { link } from '../../src/link.ts';
 import { createInlineScanner } from '../../src/inline-constructs.ts';
+import { footnote, footnoteRef } from '../../src/footnote.ts';
+import { math } from '../../src/math.ts';
 import {
 	bold, italic, strikethrough,
 } from '../../src/emphasis.ts';
@@ -45,11 +47,20 @@ describe('emphasis', () => {
 	test('preserves hard breaks in boundary whitespace', () => {
 		expect(render(`hello${italic('  \nworld')}`)).toBe('<p>hello<br />\n<em>world</em></p>');
 		expect(render(`hello\\${italic('\nworld')}`)).toBe('<p>hello<br />\n<em>world</em></p>');
+		for (const [format, tag] of [[bold, 'strong'], [italic, 'em'], [strikethrough, 'del']] as const) {
+			expect(render(`${format('a\\\n')}b`)).toBe(`<p><${tag}>a</${tag}><br />\nb</p>`);
+			expect(render(`${format('a\\\\\\\r\n')}b`)).toBe(`<p><${tag}>a\\</${tag}><br />\nb</p>`);
+			expect(render(`${format('a\\\\\n')}b`)).toBe(`<p><${tag}>a\\</${tag}>\nb</p>`);
+			expect(format('\\\n')).toBe('\\\n');
+		}
 	});
 
-	test('preserves nested emphasis with delimiter punctuation', () => {
-		expect(render(bold(italic('a_')))).toBe('<p><strong><em>a_</em></strong></p>');
-		expect(render(strikethrough('a~b~c'))).toBe('<p><del>a~b~c</del></p>');
+	test('preserves nested markdown and identifiers', () => {
+		expect(render(bold('a _b_ c'))).toBe('<p><strong>a <em>b</em> c</strong></p>');
+		expect(render(bold('Email a__b@example.com'))).toBe('<p><strong>Email <a href="mailto:a__b@example.com">a__b@example.com</a></strong></p>');
+		expect(render(`${bold(footnoteRef('a__b'))}\n\n${footnote('a__b', 'note')}`)).toContain('<a href="#fn-a__b"');
+		expect(render(bold(math('x_{1}')))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
+		expect(render(strikethrough(math('a ~ b')))).toBe('<p><del><span data-math-style="inline">a ~ b</span></del></p>');
 		expect(bold('snake_case')).toBe('__snake_case__');
 	});
 

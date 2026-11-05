@@ -1,4 +1,4 @@
-// Inline grammar from commonmark.js 0.31.2:
+// Raw HTML grammar follows commonmark.js 0.31.2, except declarations match cmark-gfm and comrak.
 // https://github.com/commonmark/commonmark.js/blob/0.31.2/lib/common.js#L10-L32
 // https://github.com/commonmark/commonmark.js/blob/0.31.2/lib/inlines.js#L71-L73
 const tagName = /[a-z][a-z0-9-]*/iy;

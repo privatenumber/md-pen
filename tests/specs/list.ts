@@ -2,6 +2,7 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { ul, ol, taskList } from '../../src/list.ts';
 import { bold } from '../../src/emphasis.ts';
+import { details } from '../../src/block.ts';
 
 describe('ul', () => {
 	test('basic flat list', () => {
@@ -26,6 +27,15 @@ describe('ul', () => {
 		const markdown = ul([[['a']], ['b', ['c']], 'd']);
 		expect(markdown).toBe('- a\n  - b\n    - c\n- d');
 		expect(render(markdown)).toBe('<ul>\n<li>a\n<ul>\n<li>b\n<ul>\n<li>c</li>\n</ul>\n</li>\n</ul>\n</li>\n<li>d</li>\n</ul>');
+	});
+
+	test('children follow HTML block items', () => {
+		const html = '<ul>\n<li>\n<div>a</div>\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>';
+		expect(ul([['<div>a</div>'], ['b']])).toBe('- <div>a</div>\n\n  - b');
+		expect(render(ul([['<div>a</div>'], ['b']]))).toBe(html);
+		expect(render(ul(['<div>a</div>', ['b']]))).toBe(html);
+		expect(render(ul([details('summary', 'content'), ['b']]))).toContain('</details>\n<ul>\n<li>b</li>\n</ul>\n</li>');
+		expect(ul(['<div>a</div>', ['b'], [], ['c']])).toBe('- <div>a</div>\n\n  - b\n  - c');
 	});
 
 	test('empty nested arrays do not make a list loose', () => {
@@ -84,6 +94,12 @@ describe('ol', () => {
 
 	test('deeply nested list', () => {
 		expect(ol(['a', ['b', ['c']]])).toBe('1. a\n   1. b\n      1. c');
+	});
+
+	test('children follow HTML block items', () => {
+		const markdown = ol(['<div>a</div>', ['b']]);
+		expect(markdown).toBe('1. <div>a</div>\n\n   1. b');
+		expect(render(markdown)).toBe('<ol>\n<li>\n<div>a</div>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>');
 	});
 
 	test('sub-array at index 0 treated as top-level items', () => {

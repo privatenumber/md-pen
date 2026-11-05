@@ -16,6 +16,7 @@ const formatList = (
 	const lines: string[] = [];
 	let itemIndex = 0;
 	let emptyItem = false;
+	let htmlBlock = false;
 	let childIndent = indent;
 	let hasChildren = false;
 
@@ -50,9 +51,9 @@ const formatList = (
 				} else {
 					const nested = formatList(item, childIndent, ordered);
 					if (nested) {
-						// An empty list item cannot interrupt a paragraph in Markdown.
 						const firstLine = firstLeaf(item)!.split(/\r\n|\r|\n/, 1)[0];
-						if (!emptyItem && !hasChildren && /^[ \t]*$/.test(firstLine)) {
+						// HTML blocks need a blank line to end; empty items cannot interrupt paragraphs.
+						if (!hasChildren && (htmlBlock || (!emptyItem && /^[ \t]*$/.test(firstLine)))) {
 							lines.push('');
 						}
 						lines.push(nested);
@@ -67,6 +68,7 @@ const formatList = (
 				lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
 				itemIndex += 1;
 				emptyItem = /^[ \t\r\n]*$/.test(item);
+				htmlBlock = /^[ \t]*<[a-z/!?]/i.test(item);
 				hasChildren = false;
 			}
 		}

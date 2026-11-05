@@ -30,6 +30,20 @@ describe('footnote', () => {
 		const html = render(md);
 		expect(html).toContain('footnote');
 	});
+
+	test('rejects IDs that normalize to empty or contain entity syntax', () => {
+		for (const id of ['\\', '\\\\', 'a&copy;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b']) {
+			expect(footnoteRef(id)).toBe('');
+			expect(footnote(id, 'note')).toBe('');
+		}
+	});
+
+	test('retains supported punctuation, Unicode, and long IDs', () => {
+		for (const id of [String.raw`a\b`, '^', '日本語', 'a&b', 'x'.repeat(1000)]) {
+			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
+			expect(html).toContain('<sup');
+		}
+	});
 });
 
 describe('footnote multiline', () => {

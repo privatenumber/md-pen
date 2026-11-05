@@ -60,6 +60,8 @@ code('a `b` c') // `` a `b` c ``
 bold('important') // __important__
 ```
 
+Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case.
+
 #### `italic(text)`
 
 ```ts
@@ -71,6 +73,8 @@ italic('emphasis') // *emphasis*
 ```ts
 strikethrough('no') // ~~no~~
 ```
+
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and collapse each run of spaces, tabs, or line endings to one space. Content must not contain blank lines.
 
 #### `link(url, text?, options?)`
 

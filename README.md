@@ -386,7 +386,7 @@ ul([
 Each function escapes only what would break its own syntax:
 
 - `table()` escapes `|` in cells, newlines become `<br>`
-- `link()` / `image()` escapes Markdown destination delimiters and character references, and percent-encodes spaces and control characters in URLs
+- `link()` / `image()` escapes Markdown destination delimiters and character references, and percent-encodes spaces and control characters in URLs in both Markdown and HTML output
 - `code()` adjusts backtick delimiter length
 - HTML functions (`kbd`, `sub`, `sup`, `details`) escape `<`, `>`, `&`, `"`
 

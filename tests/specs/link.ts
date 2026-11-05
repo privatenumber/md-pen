@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
-import { kbd, sub } from '../../src/misc.ts';
+import { el, kbd, sub } from '../../src/misc.ts';
 import { escape } from '../../src/escape.ts';
 import { code } from '../../src/code.ts';
 
@@ -77,8 +77,35 @@ describe('link', () => {
 
 	test('uses url as text in HTML fallback when no text', () => {
 		expect(link('https://x.com', undefined, { target: '_blank' })).toBe(
-			String.raw`<a target="_blank" href="https://x.com">https\://x.com</a>`,
+			'<a target="_blank" href="https://x.com">https&#58;//x.com</a>',
 		);
+	});
+
+	test('HTML fallback encodes destination whitespace and prevents blank-line injection', () => {
+		const url = 'https://x.test/\n\n![x](https://attacker.test/i.png)';
+		const html = render(link(url, undefined, { target: '_blank' }));
+		expect(html).toContain('href="https://x.test/%0A%0A![x](https://attacker.test/i.png)"');
+		expect(html).not.toContain('<img');
+	});
+
+	test('HTML fallback display text works inside a raw HTML block', () => {
+		const result = link('https://example.com/a_b', undefined, { target: '_blank' });
+		expect(render(result)).toContain('>https://example.com/a_b</a>');
+		expect(render(el('div', undefined, result))).toContain('>https&#58;//example.com/a&#95;b</a>');
+	});
+
+	test('URL-derived labels do not render dollar-delimited math', () => {
+		const optionsList: Record<string, string>[] = [{ title: 'T' }, { target: '_blank' }];
+		for (const options of optionsList) {
+			const result = link('https://x.test/$5$', undefined, options);
+			for (const markdown of [result, el('div', undefined, result)]) {
+				const html = render(markdown);
+				expect(html).not.toContain('<math');
+				if (markdown === result) {
+					expect(html).toContain('\u200B$5\u200B$');
+				}
+			}
+		}
 	});
 
 	test('URL-derived labels are literal text', () => {
@@ -182,6 +209,13 @@ describe('image', () => {
 
 	test('preserves a leading angle bracket in the destination', () => {
 		expect(render(image('<bad>', 'x'))).toBe('<p><img src="%3Cbad%3E" alt="x" /></p>');
+	});
+
+	test('HTML fallback encodes destination whitespace', () => {
+		const url = 'https://x.test/\n\n![x](https://attacker.test/i.png)';
+		const html = render(image(url, 'x', { width: 1 }));
+		expect(html).toContain('src="https://x.test/%0A%0A![x](https://attacker.test/i.png)"');
+		expect(html.match(/<img /g)?.length).toBe(1);
 	});
 });
 

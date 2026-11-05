@@ -32,6 +32,8 @@ import { bold, table, link } from 'md-pen'
 
 ### Links and Images
 
+Explicit link text and Markdown image alt text accept Markdown; an omitted link text displays the URL as literal text. HTML image alt text is an attribute.
+
 > [!NOTE]
 > `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
 

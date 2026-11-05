@@ -1,5 +1,5 @@
 import {
-	escapeHtml, escapeUrl, hasCharacterReference, htmlAttributes,
+	encodeUrlWhitespace, escapeHtml, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
 
 const hasOnlyTitle = (
@@ -103,7 +103,8 @@ const escapeLinkText = (input: string) => {
 
 const literalLinkText = (text: string) => text
 	.replaceAll(/[\r\n]+/g, ' ')
-	.replaceAll(/[\\`*_~[\]<>&]/g, character => `\\${character}`);
+	.replaceAll(/[\\`*_~[\]<>&]/g, character => `\\${character}`)
+	.replaceAll('$', '\u200B\\$');
 
 const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url)
 	&& !/\.\.|[_-]$/.test(url);
@@ -140,13 +141,14 @@ export const link = (
 
 		const attributes: Record<string, string> = {
 			...options,
-			href,
+			href: encodeUrlWhitespace(href),
 		};
 		// Break email autolinks and mentions in display text.
-		const displayText = text ?? escapeHtml(url)
-			.replaceAll(/([\\`*_~[\]])/g, String.raw`\$1`)
-			.replaceAll(/(https?|ftp):/gi, String.raw`$1\:`)
-			.replaceAll(/www\./gi, String.raw`www\.`)
+		const displayText = text ?? escapeHtml(url.replaceAll(/[\r\n]+/g, ' '))
+			.replaceAll(/[\\`*_~[\]]/g, character => `&#${character.codePointAt(0)};`)
+			.replaceAll(/(https?|ftp):/gi, '$1&#58;')
+			.replaceAll(/www\./gi, 'www&#46;')
+			.replaceAll('$', '\u200B&#36;')
 			.replaceAll('@', '@\u200B');
 		return `<a${htmlAttributes(attributes)}>${displayText}</a>`;
 	}
@@ -175,7 +177,7 @@ export const image = (
 
 		const attributes: Record<string, string | number> = {
 			...options,
-			src: url,
+			src: encodeUrlWhitespace(url),
 			...(alt === undefined ? {} : { alt }),
 		};
 		return `<img${htmlAttributes(attributes)} />`;

@@ -67,13 +67,14 @@ const characterReference = /&(?=(?:#\d{1,7}|#x[\da-f]{1,6}|[a-z][a-z\d]{1,31});)
 
 export const hasCharacterReference = (text: string) => text.search(characterReference) !== -1;
 
-export const escapeUrl = (url: string) => url
+export const encodeUrlWhitespace = (url: string) => url
+	// eslint-disable-next-line no-control-regex
+	.replaceAll(/[\u0000-\u0020]/g, percentEncode);
+
+export const escapeUrl = (url: string) => encodeUrlWhitespace(url
 	.replaceAll('\\', '%5C')
 	.replaceAll('(', String.raw`\(`)
 	.replaceAll(')', String.raw`\)`)
 	.replaceAll('<', String.raw`\<`)
 	.replaceAll('>', String.raw`\>`)
-	.replaceAll(characterReference, '&amp;')
-	.replaceAll(' ', '%20')
-	// eslint-disable-next-line no-control-regex
-	.replaceAll(/[\u0000-\u001F]/g, percentEncode);
+	.replaceAll(characterReference, '&amp;'));

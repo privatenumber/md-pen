@@ -150,6 +150,17 @@ describe('link', () => {
 		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><img src="/a.png" alt="a" title="`" /> <img src="/b.png" alt="b" title="`" /></a></p>');
 	});
 
+	test('preserves nested images with non-breaking spaces in destinations', () => {
+		const html = render(link('/outer', image('/a\u00A0b.png', 'cat')));
+		expect(html).toBe('<p><a href="/outer"><img src="/a%C2%A0b.png" alt="cat" /></a></p>');
+	});
+
+	test('HTML fallback percent-encodes destination backslashes', () => {
+		const url = String.raw`https://x.test/a\b`;
+		expect(render(link(url, 'x', { target: '_blank' }))).toContain('href="https://x.test/a%5Cb"');
+		expect(render(image(url, 'x', { width: 1 }))).toContain('src="https://x.test/a%5Cb"');
+	});
+
 	test('encodes DEL in Markdown and HTML destinations', () => {
 		const url = 'https://x.test/a\u007Fb';
 		expect(render(link(url, 'x'))).toContain('href="https://x.test/a%7Fb"');

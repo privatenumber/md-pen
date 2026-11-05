@@ -15,7 +15,7 @@ const escapeTitle = (title: string) => title
 	.replaceAll('\\', String.raw`\\`)
 	.replaceAll('"', String.raw`\"`);
 
-const imageDestination = /\((?:\\.|[^\s()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
+const imageDestination = /\((?:\\.|[^ \t\r\n()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
 
 const imageSpans = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
 	const stack: {
@@ -123,6 +123,8 @@ const normalizeHref = (url: string) => {
 	return url;
 };
 
+const htmlDestination = (url: string) => encodeUrlWhitespace(url.replaceAll('\\', '%5C'));
+
 export const link = (
 	url: string,
 	text?: string,
@@ -136,7 +138,7 @@ export const link = (
 
 		const attributes: Record<string, string> = {
 			...options,
-			href: encodeUrlWhitespace(href),
+			href: htmlDestination(href),
 		};
 		// Break email autolinks and mentions in display text.
 		const displayText = text ?? escapeHtml(url.replaceAll(/[\r\n]+/g, ' '))
@@ -172,7 +174,7 @@ export const image = (
 
 		const attributes: Record<string, string | number> = {
 			...options,
-			src: encodeUrlWhitespace(url),
+			src: htmlDestination(url),
 			...(alt === undefined ? {} : { alt }),
 		};
 		return `<img${htmlAttributes(attributes)} />`;

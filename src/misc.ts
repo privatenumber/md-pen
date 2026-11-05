@@ -23,7 +23,7 @@ export const el = (
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
-	if (content === undefined && voidElements.has(tag.toLowerCase())) {
+	if (content === undefined && voidElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}
 	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;

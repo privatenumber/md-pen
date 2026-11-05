@@ -104,6 +104,7 @@ describe('el', () => {
 		expect(el('div')).toBe('<div></div>');
 		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
 		expect(el('custom-element')).toBe('<custom-element></custom-element>');
+		expect(el('linK')).toBe('<linK></linK>');
 		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 

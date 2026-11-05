@@ -111,7 +111,7 @@ footnoteRef('1')                    // [^1]
 footnote('1', 'Source text')        // [^1]: Source text
 ```
 
-`details()` escapes the summary and attributes. It neutralizes stray `</details>` tags with an invisible zero-width space, which remains when code is copied. Nested sections are preserved for simple content; otherwise, inner sections may not close. Use `escape()` for untrusted text.
+`details()` escapes the summary and attributes. It neutralizes unpaired `<details` and `</details` tokens with an invisible zero-width space, including in URLs and HTML attributes; the space remains when code is copied. Nested sections are preserved for simple content; otherwise, their tags are neutralized. Literal HTML table tags trigger this fallback; Markdown tables alone do not. Use `escape()` for untrusted text.
 
 > [!TIP]
 > On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:

@@ -1,11 +1,11 @@
 // https://html.spec.whatwg.org/multipage/parsing.html#has-an-element-in-scope
 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-intable
 const unsafeTag = /<\/?(?:applet|caption|html|table|td|th|marquee|object|template|mi|mo|mn|ms|mtext|annotation-xml|foreignobject|desc|title|tbody|thead|tfoot|tr|colgroup|col|select|script|style|textarea|xmp|iframe|noembed|noframes|noscript|plaintext|svg|math)(?=[\s/>])/i;
-const opening = /^ {0,3}<details(?=[ \t>])[^>]*>[ \t]*$/i;
-const closing = /^ {0,3}<\/details>[ \t]*$/i;
+const opening = /^<details(?=[ \t>])[^>]*>[ \t]*$/i;
+const closing = /^<\/details>[ \t]*$/i;
 const summaryStart = /^ {0,3}<summary(?=[ \t>])[^>]*>/i;
 const summaryEnd = /<\/summary>[ \t]*$/i;
-const closer = /<\/details(?=[\s/>])/gi;
+const token = /<\/?details(?=[\s/>]|$)/gi;
 const containerPrefix = / {0,3}(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])[ \t])/y;
 
 // Remove container markers while retaining indentation after the last marker.
@@ -24,6 +24,9 @@ const containerBody = (line: string) => {
 
 const isComplexLine = (line: string, inSummary: boolean) => {
 	const body = containerBody(line);
+	if (/^ {0,3}(?:(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|>)/.test(line)) {
+		return true;
+	}
 	if (/^(?: {4}|\t)/.test(body) || /^ {0,3}(?:```|~~~)/.test(body)) {
 		return true;
 	}
@@ -36,7 +39,7 @@ const isComplexLine = (line: string, inSummary: boolean) => {
 
 type PairState = {
 	preserved: Set<number>;
-	depth: number;
+	openers: number[];
 	htmlBlock: boolean;
 	inSummary: boolean;
 };
@@ -52,12 +55,13 @@ const trackLine = (line: string, index: number, state: PairState) => {
 		state.inSummary = !summaryEnd.test(line);
 		state.htmlBlock = true;
 	} else if (!state.htmlBlock && opening.test(line)) {
-		state.depth += 1;
+		state.openers.push(index);
 		state.htmlBlock = true;
 	} else if (!state.htmlBlock && closing.test(line)) {
-		if (state.depth > 0) {
-			state.depth -= 1;
-			state.preserved.add(index + line.indexOf('<'));
+		const opener = state.openers.pop();
+		if (opener !== undefined) {
+			state.preserved.add(opener);
+			state.preserved.add(index);
 		}
 		state.htmlBlock = true;
 	}
@@ -70,7 +74,7 @@ const balancedClosers = (text: string): Set<number> | null => {
 	}
 	const state: PairState = {
 		preserved: new Set(),
-		depth: 0,
+		openers: [],
 		htmlBlock: false,
 		inSummary: false,
 	};
@@ -87,24 +91,20 @@ const balancedClosers = (text: string): Set<number> | null => {
 };
 
 export const protectDetailsContent = (text: string) => {
-	if (!/<\/details/i.test(text)) {
+	if (!/<\/?details(?=[\s/>]|$)/i.test(text)) {
 		return text;
 	}
 	const preserved = balancedClosers(text);
 	const chunks: string[] = [];
 	let start = 0;
-	closer.lastIndex = 0;
-	for (let match = closer.exec(text); match; match = closer.exec(text)) {
+	token.lastIndex = 0;
+	for (let match = token.exec(text); match; match = token.exec(text)) {
 		if (preserved?.has(match.index)) {
 			continue;
 		}
-		const end = text.indexOf('>', match.index + match[0].length);
-		if (end === -1) {
-			break;
-		}
-		chunks.push(text.slice(start, match.index + 2), '\u200B');
-		start = match.index + 2;
-		closer.lastIndex = end + 1;
+		const insertion = match.index + (match[0][1] === '/' ? 2 : 1);
+		chunks.push(text.slice(start, insertion), '\u200B');
+		start = insertion;
 	}
 	return chunks.join('') + text.slice(start);
 };

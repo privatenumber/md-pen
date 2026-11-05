@@ -70,6 +70,52 @@ describe('details', () => {
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
 	});
 
+	test('preserves nested details containing a Markdown table', () => {
+		const html = render(details('outer', details('inner', '| h |\n| - |\n| x |')));
+		expect(html).toContain('<table>');
+		expect(html.match(/<details>/g)?.length).toBe(2);
+		expect(html.match(/<\/details>/g)?.length).toBe(2);
+	});
+
+	test('neutralizes overlapping and unfinished closing tokens', () => {
+		const overlapping = details('S', 'text </details </details> OUT');
+		expect(overlapping).toContain('text </\u200Bdetails </\u200Bdetails> OUT');
+		expect(render(`${overlapping}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<p>text &lt;/\u200Bdetails &lt;/\u200Bdetails&gt; OUT</p>\n</details>\n<p>AFTER</p>');
+		const unfinished = details('S', '<div>\n</details\n\nOUT');
+		expect(render(`${unfinished}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<div>\n</\u200Bdetails\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
+		expect(details('S', '</details')).toContain('</\u200Bdetails');
+	});
+
+	test('neutralizes a nested opener and closer in a list', () => {
+		const content = '- x\n  <details>\n\n</details>\n\nOUT';
+		const result = details('S', content);
+		expect(result).toContain('<\u200Bdetails>');
+		expect(result).toContain('</\u200Bdetails>');
+		expect(render(`${result}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<ul>\n<li>x\n&lt;\u200Bdetails&gt;</li>\n</ul>\n<p>&lt;/\u200Bdetails&gt;</p>\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
+	});
+
+	test('neutralizes both ends of nested details in fallback mode', () => {
+		const inner = details('inner', codeBlock('const x=1', 'js'));
+		const result = details('outer', inner);
+		expect(result).toContain('<\u200Bdetails>');
+		expect(result).toContain('</\u200Bdetails>');
+		expect(render(`${result}\n\nOUT`)).toBe('<details>\n<summary>outer</summary>\n<p>&lt;\u200Bdetails&gt;</p>\n<summary>inner</summary>\n<pre><code class="language-js">const x=1\n</code></pre>\n<p>&lt;/\u200Bdetails&gt;</p>\n</details>\n<p>OUT</p>');
+	});
+
+	test('neutralizes unpaired opening tokens', () => {
+		expect(details('S', '<details')).toContain('<\u200Bdetails');
+		expect(details('S', '<DETAILS>')).toContain('<\u200BDETAILS>');
+		const inner = details('inner', 'content');
+		const result = details('outer', `${inner}\n\n<details>`);
+		expect(result).toContain(`${inner}\n\n<\u200Bdetails>`);
+	});
+
+	test('neutralizes tokens in URLs, attributes, and escaped text', () => {
+		expect(details('S', '[x](https://example.test/?tag=</details>)')).toContain('</\u200Bdetails>');
+		expect(details('S', '<a title="</details>">x</a>')).toContain('</\u200Bdetails>');
+		expect(details('S', String.raw`\</details>`)).toContain('\\</\u200Bdetails>');
+	});
+
 	test('neutralizes nested closers when content contains code', () => {
 		const inner = details('inner', codeBlock('</details>', 'html'));
 		const result = details('outer', `${inner}\n\nOUT`);

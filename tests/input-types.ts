@@ -15,12 +15,20 @@ export const inputTypes = (rows: readonly { name: string }[]) => {
 	table(rows);
 	table([{ name: 'a' }, { name: 'b' }]);
 	table([{ count: 1 }, { count: null }]);
-	table([['H'], ['x']] as const);
+	const readonlyRows = [['H'], ['x']] as const;
+	table(readonlyRows);
 	table([['H'], ['x']]);
 	table([]);
-	ul(['a', ['b']] as const);
-	ol(['a', ['b']] as const);
-	taskList([[true, 'x']] as const);
+	const readonlyList = ['a', ['b']] as const;
+	const readonlyTasks = [[true, 'x']] as const;
+	ul(readonlyList);
+	ol(readonlyList);
+	taskList(readonlyTasks);
+	const readonlyOptions = {
+		columns: [['name', 'Name']],
+		align: ['left'],
+	} as const;
+	table(rows, readonlyOptions);
 
 	const alertType: AlertType = 'note';
 	const value: CellValue = 1;
@@ -35,6 +43,19 @@ export const inputTypes = (rows: readonly { name: string }[]) => {
 	table([{ name: { nested: 'x' } }]);
 	// @ts-expect-error Object values are not table cells.
 	table([['header'], [{}]]);
+	// @ts-expect-error Rows cannot be null.
+	table([null]);
+	// @ts-expect-error Object rows cannot include null.
+	table([{ name: 'Alice' }, null]);
+	// @ts-expect-error Primitive values are not rows.
+	table([1]);
+	// @ts-expect-error Array rows cannot be mixed with object rows.
+	table([['Name'], { name: 'Alice' }]);
+	// @ts-expect-error Object rows cannot be mixed with array rows.
+	table([{ name: 'Alice' }, ['Name']]);
+	const unknownRows: object[] = [{ value: { nested: 'x' } }];
+	// @ts-expect-error Object rows must have known cell value types.
+	table(unknownRows);
 	// @ts-expect-error List items must be strings or nested lists.
 	ul([1]);
 	// @ts-expect-error Task labels must be strings.

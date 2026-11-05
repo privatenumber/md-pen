@@ -2,11 +2,11 @@ import { escapeTableCell } from './escape.ts';
 
 type TableAlignment = 'left' | 'center' | 'right' | 'none';
 
-export type ColumnEntry = string | [key: string, header: string];
+export type ColumnEntry = string | readonly [key: string, header: string];
 
 export type TableOptions = {
-	align?: TableAlignment[];
-	columns?: ColumnEntry[];
+	align?: readonly TableAlignment[];
+	columns?: readonly ColumnEntry[];
 	html?: boolean;
 };
 
@@ -23,8 +23,8 @@ const resolveRows = <Row extends { [K in keyof Row]: CellValue }>(
 	if (isObjectArray(input)) {
 		const columnEntries = options?.columns
 			?? [...new Set(input.flatMap(item => Object.keys(item)))];
-		const keys = columnEntries.map(entry => (Array.isArray(entry) ? entry[0] : entry));
-		const headers = columnEntries.map(entry => (Array.isArray(entry) ? entry[1] : entry));
+		const keys = columnEntries.map(entry => (Array.isArray(entry) ? entry[0] : entry as string));
+		const headers = columnEntries.map(entry => (Array.isArray(entry) ? entry[1] : entry as string));
 
 		return {
 			rows: [
@@ -136,8 +136,14 @@ const buildHtmlTable = (
 
 // --- Public API ---
 
-export const table = <Row extends { [K in keyof Row]: CellValue }>(
-	input: readonly (readonly CellValue[])[] | readonly Row[],
+type ObjectRow<Row extends object> = Row extends readonly unknown[]
+	? never
+	: keyof Row extends never
+		? Row extends Record<string, CellValue> ? Row : never
+		: Row & { [K in keyof Row]: CellValue };
+
+export const table = <Row extends object>(
+	input: readonly (readonly CellValue[])[] | readonly ObjectRow<Row>[],
 	options?: TableOptions,
 ) => {
 	if (input.length === 0) {

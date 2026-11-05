@@ -142,26 +142,20 @@ const buildHtmlTable = (
 
 // --- Public API ---
 
-type ObjectRow<Row extends object> = Row extends readonly unknown[]
-	? never
-	: keyof Row extends never
-		? Row extends Record<string, CellValue> ? Row : never
-		: Row & { [K in keyof Row]: CellValue };
-
-type TableRows = readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[];
+type TableRows = readonly (readonly CellValue[])[] | readonly Readonly<Record<string, CellValue>>[];
 
 export const table: {
-	<Row extends object>(input: readonly ObjectRow<Row>[], options?: ReadonlyTableOptions): string;
 	(input: TableRows, options?: ReadonlyTableOptions): string;
+	(input: CellValue[][] | Record<string, CellValue>[], options?: TableOptions): string;
 } = (
-	input: readonly (readonly CellValue[])[] | readonly object[],
+	input: TableRows,
 	options?: ReadonlyTableOptions,
 ) => {
 	if (input.length === 0) {
 		return '';
 	}
 
-	const { rows, columnCount } = resolveRows(input as TableRows, options);
+	const { rows, columnCount } = resolveRows(input, options);
 
 	if (columnCount === 0) {
 		return '';

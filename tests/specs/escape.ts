@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'manten';
+import { markdownToHTML } from 'comrak';
 import { render } from '../utils/render.ts';
 import {
 	escape, escapeHtml, escapeTableCell, escapeUrl,
@@ -60,7 +61,22 @@ describe('escape', () => {
 	});
 
 	test('prevents GitHub emoji shortcodes from being substituted', () => {
-		expect(render(escape(':smile: :+1:'))).toBe('<p>:​smile: :​+1:</p>');
+		const options = { extension: { shortcodes: true } };
+		expect(markdownToHTML(':smile:', options)).toBe('<p>😄</p>\n');
+		expect(markdownToHTML(escape(':smile: :+1: :100:'), options)).toBe('<p>:​smile: :​+1: :​100:</p>\n');
+		expect(escape(':invalid:smile: :smile::smile:')).toBe(':​invalid:​smile: :​smile::​smile:');
+	});
+
+	test('does not insert invisible characters into timestamps or URLs', () => {
+		for (const input of ['12:34:56', '12:100:56', 'https://example.com/12:34:56', 'a:smile:b', 'x:+1:']) {
+			expect(escape(input)).not.toContain('\u200B');
+		}
+	});
+
+	test('normalizes trailing whitespace before appended newlines', () => {
+		for (const input of ['a  ', 'a \t', 'a\t']) {
+			expect(render(`${escape(input)}\nb`)).toBe('<p>a\nb</p>');
+		}
 	});
 
 	test('renders indented block markers and trailing whitespace literally', () => {

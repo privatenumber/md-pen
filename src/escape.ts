@@ -38,7 +38,7 @@ export const htmlAttributes = (
 };
 
 export const escapeTableCell = (text: string) => {
-	// Preserve literal backslashes while escaping the pipe for table structure.
+	// Preserve backslashes in ordinary text while escaping pipes for table structure.
 	let result = text.replaceAll(
 		'|',
 		(_match, offset: number) => {

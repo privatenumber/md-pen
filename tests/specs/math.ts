@@ -9,7 +9,8 @@ describe('math', () => {
 	});
 
 	test('passes through LaTeX special characters', () => {
-		expect(math(String.raw`\frac{a}{b}`)).toBe('$`\\frac{a}{b}`$');
+		expect(math(String.raw`\frac{a}{b}`)).toBe(String.raw`$\frac{a}{b}$`);
+		expect(math(String.raw`\alpha + \beta`)).toBe(String.raw`$\alpha + \beta$`);
 	});
 
 	test('trims boundary whitespace', () => {
@@ -30,7 +31,7 @@ describe('math', () => {
 
 	test('protects Markdown syntax and autolinks in inline expressions', () => {
 		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
-		for (const character of ['\\', '_', '*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
+		for (const character of ['_', '*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
 			expect(math(`a${character}b`)).not.toBe(`$a${character}b$`);
 		}
 		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
@@ -55,6 +56,11 @@ describe('math edge cases', () => {
 describe('mathBlock', () => {
 	test('block math', () => {
 		expect(mathBlock('x^2 + y^2 = z^2')).toBe('$$\nx^2 + y^2 = z^2\n$$');
+		expect(mathBlock(String.raw`\frac{a}{b}`)).toBe('$$\n\\frac{a}{b}\n$$');
+		expect(mathBlock(String.raw`\alpha + \beta`)).toBe('$$\n\\alpha + \\beta\n$$');
+		expect(mathBlock(String.raw`\{x\}`)).toBe('```math\n\\{x\\}\n```');
+		expect(mathBlock('x_1')).toBe('```math\nx_1\n```');
+		expect(mathBlock('a\\\nb')).toBe('```math\na\\\nb\n```');
 	});
 
 	test('multiline expression', () => {

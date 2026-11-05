@@ -126,14 +126,14 @@ sub('2')             // <sub>2</sub>
 sup('n')             // <sup>n</sup>
 sub('2', { title: 'subscript' })    // <sub title="subscript">2</sub>
 math('E = mc^2')     // $E = mc^2$
-mathBlock('\\sum')   // ```math\n\\sum\n```
+mathBlock('\\sum')   // $$\n\\sum\n$$
 mathBlock('x^2')     // $$\nx^2\n$$
 mermaid('graph TD')  // ```mermaid\ngraph TD\n```
 mention('octocat')   // @octocat
 emoji('rocket')      // :rocket:
 ```
 
-Math uses dollar delimiters for Markdown-safe expressions and GitHub's backtick-delimited or fenced forms otherwise. GitHub does not render `$$` display math inside task list items.
+Math uses dollar delimiters for Markdown-safe expressions and GitHub's backtick-delimited or fenced forms otherwise. Use `\lt` and `\gt` instead of literal `<` and `>` in inline math on GitHub. GitHub can expand issue references and emoji shortcodes in either inline form. Fenced display math does not render directly after a task-list checkbox on GitHub or comrak; GitHub also does not render `$$` display math there.
 
 ### Generic HTML Element
 

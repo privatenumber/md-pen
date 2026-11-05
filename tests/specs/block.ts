@@ -4,7 +4,13 @@ import { hr, details } from '../../src/block.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
-		expect(hr()).toBe('---');
+		expect(hr()).toBe('***');
+	});
+
+	test('does not turn a preceding paragraph into a setext heading', () => {
+		expect(render(`text\n${hr()}`)).toBe('<p>text</p>\n<hr />');
+		expect(render(`> text\n> ${hr()}`)).toBe('<blockquote>\n<p>text</p>\n<hr />\n</blockquote>');
+		expect(render(`- text\n  ${hr()}`)).toBe('<ul>\n<li>text\n<hr />\n</li>\n</ul>');
 	});
 });
 

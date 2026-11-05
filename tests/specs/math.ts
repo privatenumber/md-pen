@@ -109,6 +109,15 @@ describe('mathBlock', () => {
 		}
 	});
 
+	test('uses fences for table delimiter rows', () => {
+		for (const line of [':---:', ':---', '---:', ':-:', '  :---:  ', '--- | ---', '|---|']) {
+			const expression = `a\n${line}`;
+			const markdown = mathBlock(expression);
+			expect(markdown).toBe(`\`\`\`math\n${expression}\n\`\`\``);
+			expect(render(markdown)).toBe(`<pre><code class="language-math" data-math-style="display">${expression}\n</code></pre>`);
+		}
+	});
+
 	test('simple display math composes in task lists in comrak', () => {
 		const markdown = taskList([[false, mathBlock('x^2')]]);
 		expect(render(markdown)).toContain('data-math-style="display"');

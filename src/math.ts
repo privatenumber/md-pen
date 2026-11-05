@@ -32,7 +32,7 @@ export const mathBlock = (expression: string) => {
 	}
 	const separator = normalized.endsWith('\n') ? '' : '\n';
 	const lines = separator ? normalized : normalized.slice(0, -1);
-	if (!hasMarkdownSyntax(normalized) && !/^(?:[ \t]*$| {0,3}\t| {4}| {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|(?:=+|-+)[ \t]*$))/m.test(lines)) {
+	if (!hasMarkdownSyntax(normalized) && !/^(?:[ \t]*$| {0,3}\t| {4}| {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|(?:=+|:?-+:?)[ \t]*$))/m.test(lines)) {
 		return `$$\n${normalized}${separator}$$`;
 	}
 	const delimiter = backtickDelimiter(normalized, 3);

@@ -153,7 +153,9 @@ table([
 // | Alice | 30 |
 ```
 
-Also accepts an array of objects. Object rows need an index-signature-compatible type (declare rows with a `type`, not an `interface`). Own enumerable string keys become headers; pass `columns` for getters.
+Also accepts an array of objects. An object-literal `type` alias works without an index signature; an `interface` needs a compatible string index signature. Own enumerable string keys, including getters, become headers; pass `columns` for inherited or non-enumerable getters.
+
+The readonly overloads change `typeof ul` and `typeof table`: functions typed as `typeof ul` or `typeof table` must also accept readonly inputs.
 
 ```ts
 table([

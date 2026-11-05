@@ -226,7 +226,7 @@ ol(['first', 'second', ['sub-a'], 'third'])
 #### `hr()`
 
 ```ts
-hr() // ---
+hr() // ___
 ```
 
 ### GFM Extras

@@ -31,17 +31,31 @@ describe('footnote', () => {
 		expect(html).toContain('footnote');
 	});
 
-	test('rejects IDs that normalize to empty or contain entity syntax', () => {
-		for (const id of ['\\', '\\\\', 'a&copy;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b']) {
+	test('rejects IDs that normalize to empty', () => {
+		for (const id of ['\\', '\\\\']) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}
 	});
 
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of [String.raw`a\b`, '^', '日本語', 'a&b', 'x'.repeat(1000)]) {
+		for (const id of [String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', 'x'.repeat(998), '😀'.repeat(998)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
 			expect(html).toContain('<sup');
+		}
+	});
+
+	test('normalizes entity-shaped IDs and escaped punctuation consistently', () => {
+		expect(footnoteRef('a&copy;b')).toBe('[^a-copy;b]');
+		expect(footnoteRef('a&foo;b')).toBe('[^a-foo;b]');
+		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a-b]');
+		expect(footnote('a&foo;b', 'note')).toBe('[^a-foo;b]: note');
+	});
+
+	test('rejects IDs exceeding the 999-character label limit including the caret', () => {
+		for (const id of ['x'.repeat(999), 'x'.repeat(1000), '😀'.repeat(999)]) {
+			expect(footnoteRef(id)).toBe('');
+			expect(footnote(id, 'note')).toBe('');
 		}
 	});
 });
@@ -83,8 +97,8 @@ describe('footnote ID sanitization', () => {
 		expect(footnoteRef('a-b_c')).toBe('[^a-b_c]');
 	});
 
-	test('preserves backslash mid-ID', () => {
-		expect(footnoteRef(String.raw`a\b`)).toBe(String.raw`[^a\b]`);
+	test('removes backslash mid-ID', () => {
+		expect(footnoteRef(String.raw`a\b`)).toBe('[^ab]');
 	});
 
 	test('valid IDs render as footnotes', () => {

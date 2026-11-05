@@ -1,15 +1,5 @@
 import { createInlineScanner } from './inline-constructs.ts';
 
-const isIntrawordUnderscore = (text: string, index: number) => {
-	const previous = text.codePointAt(index - 1) ?? 0;
-	const before = previous >= 0xDC_00 && previous <= 0xDF_FF ? index - 2 : index - 1;
-	const preceding = text.codePointAt(before);
-	const following = text.codePointAt(index + 1);
-	return preceding !== undefined && following !== undefined
-		&& /[\p{L}\p{N}]/u.test(String.fromCodePoint(preceding))
-		&& /[\p{L}\p{N}]/u.test(String.fromCodePoint(following));
-};
-
 const escapeContent = (text: string, delimiter: string) => {
 	const { protectedEnd } = createInlineScanner(text);
 	let result = '';
@@ -21,7 +11,7 @@ const escapeContent = (text: string, delimiter: string) => {
 			index = end - 1;
 			continue;
 		}
-		if (character === delimiter[0] && (delimiter !== '__' || !isIntrawordUnderscore(text, index))) {
+		if (character === delimiter[0] && (delimiter === '*' || index === 0 || index === text.length - 1)) {
 			result += '\\';
 		}
 		result += character;
@@ -38,9 +28,28 @@ const normalizeBoundary = (text: string) => {
 	return text.slice(0, lastLineEnding) + text.slice(lastLineEnding).replaceAll(/[\t\n\f\r ]+/g, ' ');
 };
 
+const hasTrailingHardBreak = (text: string, end: number) => {
+	if (text[end] !== '\n' && text[end] !== '\r') {
+		return false;
+	}
+	let backslashes = 0;
+	while (text[end - backslashes - 1] === '\\') {
+		backslashes += 1;
+	}
+	return backslashes % 2 === 1;
+};
+
+const canWrapDirectly = (text: string, delimiter: string) => {
+	const boundaryWhitespace = /[\t\n\v\f\r\u2028\u2029\p{Zs}]/u;
+	return !text.includes(delimiter[0]) && !text.endsWith('\\') && !boundaryWhitespace.test(text[0]) && !boundaryWhitespace.test(text.at(-1)!);
+};
+
 const emphasize = (text: string, delimiter: string) => {
 	if (!text) {
 		return '';
+	}
+	if (canWrapDirectly(text, delimiter)) {
+		return `${delimiter}${text}${delimiter}`;
 	}
 	const leading = text.match(/^[\t\n\v\f\r\u2028\u2029\p{Zs}]*/u)![0];
 	if (leading.length === text.length) {
@@ -50,10 +59,17 @@ const emphasize = (text: string, delimiter: string) => {
 	while (end > leading.length && /[\t\n\v\f\r\u2028\u2029\p{Zs}]/u.test(text[end - 1])) {
 		end -= 1;
 	}
+	let suffix = text.slice(end);
+	if (hasTrailingHardBreak(text, end)) {
+		end -= 1;
+		suffix = `\\${suffix}`;
+	}
 	const content = text.slice(leading.length, end);
 	const prefix = normalizeBoundary(leading);
-	const suffix = normalizeBoundary(text.slice(end));
-	return `${prefix}${delimiter}${escapeContent(content, delimiter)}${delimiter}${suffix}`;
+	if (!content) {
+		return `${prefix}${normalizeBoundary(suffix)}`;
+	}
+	return `${prefix}${delimiter}${escapeContent(content, delimiter)}${delimiter}${normalizeBoundary(suffix)}`;
 };
 
 export const bold = (text: string) => emphasize(text, '__');

@@ -15,24 +15,46 @@ const formatList = (
 ): string => {
 	const lines: string[] = [];
 	let itemIndex = 0;
+	let emptyItem = false;
 
-	for (let i = 0; i < items.length; i += 1) {
-		const item = items[i];
-		if (Array.isArray(item)) {
-			if (itemIndex === 0) {
-				lines.push(formatList(item, indent, ordered));
-			} else {
-				const markerWidth = ordered ? String(itemIndex).length + 2 : 2;
-				lines.push(formatList(item, indent + markerWidth, ordered));
+	const firstLeaf = (currentItems: ListItem[]): string | undefined => {
+		for (const item of currentItems) {
+			const leaf = Array.isArray(item) ? firstLeaf(item) : item;
+			if (leaf !== undefined) {
+				return leaf;
 			}
-		} else {
-			const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
-			const spaces = ' '.repeat(indent);
-			const continuationIndent = ' '.repeat(indent + prefix.length);
-			lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
-			itemIndex += 1;
 		}
-	}
+		return undefined;
+	};
+
+	const appendItems = (currentItems: ListItem[]) => {
+		for (const item of currentItems) {
+			if (Array.isArray(item)) {
+				if (itemIndex === 0) {
+					appendItems(item);
+				} else {
+					const markerWidth = ordered ? String(itemIndex).length + 2 : 2;
+					const nested = formatList(item, indent + markerWidth, ordered);
+					if (nested) {
+						// An empty list item cannot interrupt a paragraph in Markdown.
+						const firstLine = firstLeaf(item)!.split(/\r\n|\r|\n/, 1)[0];
+						if (!emptyItem && !firstLine.trim()) {
+							lines.push('');
+						}
+						lines.push(nested);
+					}
+				}
+			} else {
+				const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
+				const spaces = ' '.repeat(indent);
+				const continuationIndent = ' '.repeat(indent + prefix.length);
+				lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
+				itemIndex += 1;
+				emptyItem = !item.trim();
+			}
+		}
+	};
+	appendItems(items);
 
 	return lines.join('\n');
 };

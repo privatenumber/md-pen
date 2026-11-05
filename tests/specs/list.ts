@@ -22,6 +22,24 @@ describe('ul', () => {
 		expect(ul([['a', 'b']])).toBe('- a\n- b');
 	});
 
+	test('leading arrays establish the preceding item for nesting', () => {
+		const markdown = ul([[['a']], ['b', ['c']], 'd']);
+		expect(markdown).toBe('- a\n  - b\n    - c\n- d');
+		expect(render(markdown)).toBe('<ul>\n<li>a\n<ul>\n<li>b\n<ul>\n<li>c</li>\n</ul>\n</li>\n</ul>\n</li>\n<li>d</li>\n</ul>');
+	});
+
+	test('empty nested arrays do not make a list loose', () => {
+		const markdown = ul([[], 'a', [], [[]], 'b']);
+		expect(markdown).toBe('- a\n- b');
+		expect(render(markdown)).toBe('<ul>\n<li>a</li>\n<li>b</li>\n</ul>');
+	});
+
+	test('an empty nested item does not become a setext heading', () => {
+		expect(render(ul(['a', ['', ['b']]]))).toBe('<ul>\n<li>\n<p>a</p>\n<ul>\n<li>\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>');
+		expect(render(ul(['', ['', ['b']]]))).toBe('<ul>\n<li>\n<ul>\n<li>\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>\n</li>\n</ul>');
+		expect(render(ul(['\nx', ['', 'b']]))).toContain('<li>\n<p>x</p>\n<ul>\n<li></li>\n<li>b</li>');
+	});
+
 	test('empty array', () => {
 		expect(ul([])).toBe('');
 	});
@@ -46,6 +64,24 @@ describe('ol', () => {
 
 	test('sub-array at index 0 treated as top-level items', () => {
 		expect(ol([['a', 'b']])).toBe('1. a\n2. b');
+	});
+
+	test('leading arrays preserve numbering and the preceding marker width', () => {
+		const markdown = ol([Array.from({ length: 10 }, (_, index) => String(index + 1)), ['child\ncontinued', ['grandchild']], 'last']);
+		expect(markdown).toBe('1. 1\n2. 2\n3. 3\n4. 4\n5. 5\n6. 6\n7. 7\n8. 8\n9. 9\n10. 10\n    1. child\n       continued\n       1. grandchild\n11. last');
+		expect(render(markdown)).toContain('<li>10\n<ol>\n<li>child\ncontinued\n<ol>\n<li>grandchild</li>');
+	});
+
+	test('empty nested arrays do not make a list loose', () => {
+		const markdown = ol([[], 'a', [], [[]], 'b']);
+		expect(markdown).toBe('1. a\n2. b');
+		expect(render(markdown)).toBe('<ol>\n<li>a</li>\n<li>b</li>\n</ol>');
+	});
+
+	test('an empty nested item does not lose its marker', () => {
+		expect(render(ol(['a', ['', ['b']]]))).toBe('<ol>\n<li>\n<p>a</p>\n<ol>\n<li>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>');
+		expect(render(ol(['', ['', ['b']]]))).toBe('<ol>\n<li>\n<ol>\n<li>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>');
+		expect(render(ol(['\nx', ['', 'b']]))).toContain('<li>\n<p>x</p>\n<ol>\n<li></li>\n<li>b</li>');
 	});
 
 	test('nested numbering restarts from 1', () => {

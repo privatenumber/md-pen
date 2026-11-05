@@ -148,7 +148,7 @@ Content is raw (not escaped). Without content, self-closing.
 escape('**not bold**')  // \*\*not bold\*\*
 ```
 
-Use `escape()` for untrusted user input. Bold uses `__` and italic uses `*` — different delimiters that compose without collision:
+Use `escape()` for untrusted user input. Bold uses `__`, which cannot apply inside a word; use `el('strong', undefined, 'text')` there. Emphasis content must not contain blank lines. Bare URLs inside emphasis content may be altered; wrap them with `link()` instead.
 
 ```ts
 bold(link('https://x.com', 'text'))  // __[text](https://x.com)__

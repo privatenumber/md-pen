@@ -153,7 +153,7 @@ table([
 // | Alice | 30 |
 ```
 
-Also accepts an array of objects. An object-literal `type` alias works without an index signature; an `interface` needs a compatible string index signature. Own enumerable string keys, including getters, become headers; pass `columns` for inherited or non-enumerable getters.
+Also accepts an array of objects. An object-literal `type` alias works without an index signature; an `interface` or class needs a compatible string index signature. Own enumerable string keys, including getters, become headers; pass `columns` for inherited or non-enumerable getters (in TypeScript, a class instance still needs that index signature).
 
 List and table inputs accept readonly arrays, including nested arrays and task tuples.
 

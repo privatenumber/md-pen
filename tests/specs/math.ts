@@ -26,16 +26,26 @@ describe('math', () => {
 		expect(math(String.raw`\#`)).toBe('$`\\#`$');
 		expect(math(String.raw`\{`)).toBe('$`\\{`$');
 		expect(math('a\\')).toBe('$`a\\`$');
-		expect(math('a_b')).toBe('$`a_b`$');
+		expect(math('a_b')).toBe('$a_b$');
 	});
 
 	test('protects Markdown syntax and autolinks in inline expressions', () => {
 		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
-		for (const character of ['_', '*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
+		for (const character of ['*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
 			expect(math(`a${character}b`)).not.toBe(`$a${character}b$`);
 		}
 		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
 		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
+	});
+
+	test('keeps intraword underscores in portable math delimiters', () => {
+		for (const expression of ['x_i', 'x_i + y_j', 'a_b_c', 'α_β']) {
+			expect(math(expression)).toBe(`$${expression}$`);
+			expect(render(math(expression))).toBe(`<p><span data-math-style="inline">${expression}</span></p>`);
+		}
+		for (const expression of ['_x', 'x_', 'x_{i}', 'a__b']) {
+			expect(math(expression)).toBe(`$\`${expression}\`$`);
+		}
 	});
 
 	test('uses longer backtick delimiters when needed', () => {
@@ -59,7 +69,8 @@ describe('mathBlock', () => {
 		expect(mathBlock(String.raw`\frac{a}{b}`)).toBe('$$\n\\frac{a}{b}\n$$');
 		expect(mathBlock(String.raw`\alpha + \beta`)).toBe('$$\n\\alpha + \\beta\n$$');
 		expect(mathBlock(String.raw`\{x\}`)).toBe('```math\n\\{x\\}\n```');
-		expect(mathBlock('x_1')).toBe('```math\nx_1\n```');
+		expect(mathBlock('x_1')).toBe('$$\nx_1\n$$');
+		expect(mathBlock('x_{1}')).toBe('```math\nx_{1}\n```');
 		expect(mathBlock('a\\\nb')).toBe('```math\na\\\nb\n```');
 	});
 
@@ -74,7 +85,7 @@ describe('mathBlock', () => {
 
 	test('does not add a blank line after a trailing newline', () => {
 		expect(mathBlock('x\n')).toBe('$$\nx\n$$');
-		expect(mathBlock('x_1\n')).toBe('```math\nx_1\n```');
+		expect(mathBlock('x_{1}\n')).toBe('```math\nx_{1}\n```');
 	});
 
 	test('uses fences for lines that start Markdown blocks', () => {

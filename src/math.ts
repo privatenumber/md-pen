@@ -6,7 +6,8 @@ const backtickDelimiter = (expression: string, minimum: number) => {
 	return '`'.repeat(length);
 };
 
-const hasMarkdownSyntax = (expression: string) => /[_*`[\]<>&~$|!@]/.test(expression)
+const hasMarkdownSyntax = (expression: string) => /[*`[\]<>&~$|!@]/.test(expression)
+	|| /(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u.test(expression)
 	|| /\\(?:[!"#$%&'()*+,./:;<=>?@[\]\\^_`{|}~\n-]|$)/.test(expression)
 	|| /https?:\/\/|ftp:\/\/|www\./i.test(expression);
 

@@ -145,6 +145,20 @@ describe('link', () => {
 		expect(render(`${link('/outer', '![hello [world]](cat.png)')}\n\n[world]: /inner`)).toBe('<p><a href="/outer"><img src="cat.png" alt="hello [world]" /></a></p>');
 	});
 
+	test('preserves consecutive images with backticks in their titles', () => {
+		const label = `${image('/a.png', 'a', { title: '`' })} ${image('/b.png', 'b', { title: '`' })}`;
+		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><img src="/a.png" alt="a" title="`" /> <img src="/b.png" alt="b" title="`" /></a></p>');
+	});
+
+	test('encodes DEL in Markdown and HTML destinations', () => {
+		const url = 'https://x.test/a\u007Fb';
+		expect(render(link(url, 'x'))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(link(url))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(link(url, 'x', { target: '_blank' }))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(image(url, 'x'))).toContain('src="https://x.test/a%7Fb"');
+		expect(render(image(url, 'x', { width: 1 }))).toContain('src="https://x.test/a%7Fb"');
+	});
+
 	test('keeps bracket math inside the outer link', () => {
 		const result = link('/outer', math('[0,1)'));
 		expect(render(result)).toContain('href="/outer"');

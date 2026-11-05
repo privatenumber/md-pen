@@ -69,7 +69,7 @@ export const hasCharacterReference = (text: string) => text.search(characterRefe
 
 export const encodeUrlWhitespace = (url: string) => url
 	// eslint-disable-next-line no-control-regex
-	.replaceAll(/[\u0000-\u0020]/g, percentEncode);
+	.replaceAll(/[\u0000-\u0020\u007F]/g, percentEncode);
 
 export const escapeUrl = (url: string) => encodeUrlWhitespace(url
 	.replaceAll('\\', '%5C')

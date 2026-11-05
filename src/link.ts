@@ -17,45 +17,52 @@ const escapeTitle = (title: string) => title
 
 const imageDestination = /\((?:\\.|[^\s()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
 
-const bracketPairs = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
-	const stack: number[] = [];
-	const pairs = new Map<number, number>();
+const imageSpans = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
+	const stack: {
+		index: number;
+		image: boolean;
+	}[] = [];
+	const openings = new Set<number>();
+	const closings = new Map<number, number>();
+	let previousBang = false;
 	for (let index = 0; index < text.length;) {
 		const end = scanner.protectedEnd(index);
 		if (end !== -1) {
 			index = end;
+			previousBang = false;
 			continue;
 		}
 		if (text[index] === '[') {
-			stack.push(index);
+			stack.push({
+				index,
+				image: previousBang,
+			});
 		} else if (text[index] === ']') {
 			const open = stack.pop();
-			if (open !== undefined) {
-				pairs.set(open, index);
+			if (open?.image) {
+				imageDestination.lastIndex = index + 1;
+				if (imageDestination.test(text)) {
+					openings.add(open.index);
+					closings.set(index, imageDestination.lastIndex);
+					index = imageDestination.lastIndex;
+					previousBang = false;
+					continue;
+				}
 			}
 		}
+		previousBang = text[index] === '!';
 		index += 1;
 	}
-	return pairs;
-};
-
-const imageEnd = (text: string, index: number, pairs: Map<number, number>) => {
-	if (text[index] !== '!' || text[index + 1] !== '[') {
-		return -1;
-	}
-	const close = pairs.get(index + 1);
-	if (close === undefined) {
-		return -1;
-	}
-	imageDestination.lastIndex = close + 1;
-	return imageDestination.test(text) ? imageDestination.lastIndex : -1;
+	return {
+		openings,
+		closings,
+	};
 };
 
 const escapeLinkText = (input: string) => {
 	const text = input.replaceAll(/[\r\n]+/g, ' ');
 	const scanner = createInlineScanner(text, { angle: true });
-	const pairs = bracketPairs(text, scanner);
-	const imageClosings = new Map<number, number>();
+	const images = imageSpans(text, scanner);
 	let result = '';
 	for (let index = 0; index < text.length;) {
 		const end = scanner.protectedEnd(index);
@@ -64,14 +71,12 @@ const escapeLinkText = (input: string) => {
 			index = end;
 			continue;
 		}
-		const endOfImage = imageEnd(text, index, pairs);
-		if (endOfImage !== -1) {
-			imageClosings.set(pairs.get(index + 1)!, endOfImage);
+		if (text[index] === '!' && images.openings.has(index + 1)) {
 			result += '![';
 			index += 2;
 			continue;
 		}
-		const endOfDestination = imageClosings.get(index);
+		const endOfDestination = images.closings.get(index);
 		if (endOfDestination !== undefined) {
 			result += text.slice(index, endOfDestination);
 			index = endOfDestination;
@@ -148,7 +153,7 @@ export const link = (
 	}
 
 	// eslint-disable-next-line no-control-regex
-	if (/^https?:\/\//.test(url) && !/[ \u0000-\u001F<>]/.test(url) && !hasCharacterReference(url)) {
+	if (/^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) {
 		return `<${url}>`;
 	}
 

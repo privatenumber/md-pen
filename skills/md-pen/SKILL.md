@@ -111,6 +111,8 @@ footnoteRef('1')                    // [^1]
 footnote('1', 'Source text')        // [^1]: Source text
 ```
 
+`details()` escapes the summary and attributes and protects content against stray closing tags. Code and nested `details()` sections are preserved when possible; other raw HTML may cause closing tags inside them to be escaped. Use `escape()` for untrusted text.
+
 > [!TIP]
 > On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:
 > ```ts

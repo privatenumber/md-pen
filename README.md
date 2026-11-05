@@ -265,7 +265,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. The summary is HTML-escaped. Content is raw Markdown/HTML; wrap untrusted text in `escape()`.
+Collapsible section. The summary is HTML-escaped. Content supports Markdown; stray closing `</details>` tags are protected, while code and nested `details()` sections are preserved when possible. Other raw HTML may cause closing tags inside code or nested sections to be escaped. Wrap untrusted text in `escape()`.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')
@@ -390,6 +390,6 @@ Each function escapes only what would break its own syntax:
 - `table()` escapes `|` in cells, newlines become `<br>`
 - `link()` / `image()` percent-encodes `(`, `)`, spaces, and control chars in URLs
 - `code()` adjusts backtick delimiter length
-- HTML functions (`kbd`, `sub`, `sup`, `details`) escape `<`, `>`, `&`, `"`
+- HTML functions (`kbd`, `sub`, `sup`) escape `<`, `>`, `&`, `"`; `details` escapes its summary and attributes, and protects its content against early closing
 
 Composition works without double-escaping. Use `escape()` for untrusted user input.

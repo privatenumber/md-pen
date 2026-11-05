@@ -16,6 +16,8 @@ const formatList = (
 	const lines: string[] = [];
 	let itemIndex = 0;
 	let emptyItem = false;
+	let childIndent = indent;
+	let hasChildren = false;
 
 	const firstLeaf = (currentItems: ListItem[]): string | undefined => {
 		for (const item of currentItems) {
@@ -27,30 +29,45 @@ const formatList = (
 		return undefined;
 	};
 
+	const contentIndent = (item: string, markerEnd: number) => {
+		let column = markerEnd + 1;
+		let index = 0;
+		while (item[index] === ' ' || item[index] === '\t') {
+			column += item[index] === '\t' ? 4 - (column % 4) : 1;
+			index += 1;
+		}
+		if (column - markerEnd > 4 || !item[index] || item[index] === '\r' || item[index] === '\n') {
+			return markerEnd + 1;
+		}
+		return column;
+	};
+
 	const appendItems = (currentItems: ListItem[]) => {
 		for (const item of currentItems) {
 			if (Array.isArray(item)) {
 				if (itemIndex === 0) {
 					appendItems(item);
 				} else {
-					const markerWidth = ordered ? String(itemIndex).length + 2 : 2;
-					const nested = formatList(item, indent + markerWidth, ordered);
+					const nested = formatList(item, childIndent, ordered);
 					if (nested) {
 						// An empty list item cannot interrupt a paragraph in Markdown.
 						const firstLine = firstLeaf(item)!.split(/\r\n|\r|\n/, 1)[0];
-						if (!emptyItem && !firstLine.trim()) {
+						if (!emptyItem && !hasChildren && /^[ \t]*$/.test(firstLine)) {
 							lines.push('');
 						}
 						lines.push(nested);
+						hasChildren = true;
 					}
 				}
 			} else {
 				const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
 				const spaces = ' '.repeat(indent);
-				const continuationIndent = ' '.repeat(indent + prefix.length);
+				childIndent = contentIndent(item, indent + prefix.length - 1);
+				const continuationIndent = ' '.repeat(childIndent);
 				lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
 				itemIndex += 1;
-				emptyItem = !item.trim();
+				emptyItem = /^[ \t\r\n]*$/.test(item);
+				hasChildren = false;
 			}
 		}
 	};

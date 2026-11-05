@@ -40,6 +40,25 @@ describe('ul', () => {
 		expect(render(ul(['\nx', ['', 'b']]))).toContain('<li>\n<p>x</p>\n<ul>\n<li></li>\n<li>b</li>');
 	});
 
+	test('children follow the parent content column', () => {
+		expect(ul([[' a\ncontinued'], ['b']])).toBe('-  a\n   continued\n   - b');
+		expect(render(ul([[' a'], ['b']]))).toBe('<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>');
+		expect(ul(['   a', ['b']])).toBe('-    a\n     - b');
+		expect(ul(['\ta', ['b']])).toBe('- \ta\n    - b');
+		expect(render(ul(['    a', ['b']]))).toBe('<ul>\n<li>\n<pre><code>a\n</code></pre>\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>');
+	});
+
+	test('non-breaking spaces are content, not blank lines', () => {
+		expect(ul(['a', ['\u00A0', 'b']])).toBe('- a\n  - \u00A0\n  - b');
+		expect(render(ul(['\u00A0', ['', 'b']]))).toContain('<li>\n<p>\u00A0</p>\n<ul>\n<li></li>\n<li>b</li>');
+	});
+
+	test('an empty item after a child list keeps that list tight', () => {
+		const markdown = ul(['a', ['b'], [], ['', 'c']]);
+		expect(markdown).toBe('- a\n  - b\n  - \n  - c');
+		expect(render(markdown)).toBe('<ul>\n<li>a\n<ul>\n<li>b</li>\n<li></li>\n<li>c</li>\n</ul>\n</li>\n</ul>');
+	});
+
 	test('empty array', () => {
 		expect(ul([])).toBe('');
 	});
@@ -82,6 +101,25 @@ describe('ol', () => {
 		expect(render(ol(['a', ['', ['b']]]))).toBe('<ol>\n<li>\n<p>a</p>\n<ol>\n<li>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>');
 		expect(render(ol(['', ['', ['b']]]))).toBe('<ol>\n<li>\n<ol>\n<li>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>\n</li>\n</ol>');
 		expect(render(ol(['\nx', ['', 'b']]))).toContain('<li>\n<p>x</p>\n<ol>\n<li></li>\n<li>b</li>');
+	});
+
+	test('children follow the content column of item 10', () => {
+		const markdown = ol([Array.from({ length: 9 }, (_, index) => String(index + 1)), ' 10', ['b']]);
+		expect(markdown).toContain('10.  10\n     1. b');
+		expect(render(markdown)).toContain('<li>10\n<ol>\n<li>b</li>\n</ol>\n</li>');
+		expect(ol(['\ta', ['b']])).toBe('1. \ta\n    1. b');
+		expect(render(ol(['    a', ['b']]))).toBe('<ol>\n<li>\n<pre><code>a\n</code></pre>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>');
+	});
+
+	test('non-breaking spaces are content, not blank lines', () => {
+		expect(render(ol(['\u00A0', ['', 'b']]))).toContain('<li>\n<p>\u00A0</p>\n<ol>\n<li></li>\n<li>b</li>');
+		expect(ol(['a', ['\u00A0', 'b']])).toBe('1. a\n   1. \u00A0\n   2. b');
+	});
+
+	test('an empty item after a child list keeps that list tight', () => {
+		const markdown = ol(['a', ['b'], [], ['', 'c']]);
+		expect(markdown).toBe('1. a\n   1. b\n   1. \n   2. c');
+		expect(render(markdown)).toBe('<ol>\n<li>a\n<ol>\n<li>b</li>\n<li></li>\n<li>c</li>\n</ol>\n</li>\n</ol>');
 	});
 
 	test('nested numbering restarts from 1', () => {

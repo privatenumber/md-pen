@@ -304,6 +304,16 @@ describe('table cells with carriage return', () => {
 	test('line endings each produce one break', () => {
 		expect(render(table([['H'], ['a\r\nb\rc\nd']]))).toContain('<td>a<br>b<br>c<br>d</td>');
 	});
+
+	test('backslashes before line endings preserve the rendered text', () => {
+		for (const ending of ['\n', '\r\n', '\r']) {
+			for (let count = 0; count < 6; count += 1) {
+				const text = `a${'\\'.repeat(count)}${ending}b`;
+				const expected = render(text).slice(3, -4).replaceAll('<br />\n', '<br>').replaceAll('\n', '<br>');
+				expect(render(table([['H'], [text]]))).toContain(`<td>${expected}</td>`);
+			}
+		}
+	});
 });
 
 describe('table object keys union', () => {
@@ -353,14 +363,12 @@ describe('table backslash-pipe', () => {
 			expect(render(table([['H'], [escape(text)]]))).toContain(`<td>${text}</td>`);
 		}
 	});
-	test('cell with backslash-pipe preserves full content', () => {
-		const html = render(table([['H'], [String.raw`a\|b`]]));
-		expect(html).toContain('<td>');
-		// Both a and b should be in the cell
-		const tdMatch = html.match(/<td>(.*?)<\/td>/);
-		expect(tdMatch).not.toBeNull();
-		expect(tdMatch![1]).toContain('a');
-		expect(tdMatch![1]).toContain('b');
+	test('backslash runs before a pipe match ordinary Markdown', () => {
+		for (let count = 0; count < 6; count += 1) {
+			const text = `a${'\\'.repeat(count)}|b`;
+			const expected = render(text).slice(3, -4);
+			expect(render(table([['H'], [text]]))).toContain(`<td>${expected}</td>`);
+		}
 	});
 });
 
@@ -397,6 +405,16 @@ describe('table whitespace trimming', () => {
 		expect(render(table([['H'], ['   x   '], ['   ']])))
 			.toContain('<td>\u00A0  x  \u00A0</td>');
 		expect(render(table([['H'], ['   ']]))).toContain('<td>\u00A0 \u00A0</td>');
+	});
+
+	test('backslashes before trailing whitespace remain literal', () => {
+		for (const whitespace of [' ', '\t']) {
+			for (let count = 0; count < 6; count += 1) {
+				const text = `a${'\\'.repeat(count)}${whitespace}`;
+				const expected = render(`${text}b`).slice(3, -4).slice(0, -2);
+				expect(render(table([['H'], [text]]))).toContain(`<td>${expected}\u00A0</td>`);
+			}
+		}
 	});
 });
 

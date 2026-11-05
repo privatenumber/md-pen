@@ -90,7 +90,7 @@ table([['Before', 'After'], [codeBlock('old', 'js'), codeBlock('new', 'js')]], {
 
 Alignment: `'left'`, `'center'`, `'right'`, `'none'`. Ragged rows auto-padded. Pipes in cells escaped.
 
-Markdown-mode pipe escaping can add a backslash inside code spans, math spans, or raw HTML attributes. Use `html: true` to avoid table pipe escaping, but check the target renderer. HTML-mode cells are raw Markdown/HTML; closing tags are not protected and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; whitespace and line breaks are not preserved exactly.
+Markdown-mode pipe escaping may not preserve a backslash before a pipe inside code spans, math spans, or raw HTML attributes. Use `html: true` to avoid table pipe escaping, but check the target renderer. HTML-mode cells are raw Markdown/HTML; closing tags are not protected and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; whitespace and line breaks are not preserved exactly.
 
 ### Lists
 

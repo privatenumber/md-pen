@@ -1,12 +1,14 @@
 const normalizeId = (id: string) => id.trim()
 	.replaceAll(/\s+/g, '-')
-	.replaceAll('\\', '')
-	.replaceAll(/&(?=#(?:x[\da-f]{1,8}|\d{1,8});|[a-z][a-z\d]{1,31};)/gi, '-');
+	.replaceAll('%', '%25')
+	.replaceAll('\\', '%5c')
+	.replaceAll(/&(?=#(?:x[\da-f]{1,8}|\d{1,8});|[a-z][a-z\d]{1,31};)/gi, '%26');
 
 const isValidId = (id: string) => id.length > 0
 	&& !id.includes(']')
 	&& !id.includes('[')
-	&& [...id].length <= 998;
+	&& id.length <= 999
+	&& new TextEncoder().encode(id).length <= 1000;
 
 export const footnoteRef = (id: string) => {
 	const normalized = normalizeId(id);

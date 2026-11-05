@@ -31,31 +31,34 @@ describe('footnote', () => {
 		expect(html).toContain('footnote');
 	});
 
-	test('rejects IDs that normalize to empty', () => {
-		for (const id of ['\\', '\\\\']) {
-			expect(footnoteRef(id)).toBe('');
-			expect(footnote(id, 'note')).toBe('');
-		}
-	});
-
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of [String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', 'x'.repeat(998), '😀'.repeat(998)]) {
+		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', 'x'.repeat(999), '😀'.repeat(250)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
 			expect(html).toContain('<sup');
 		}
 	});
 
 	test('normalizes entity-shaped IDs and escaped punctuation consistently', () => {
-		expect(footnoteRef('a&copy;b')).toBe('[^a-copy;b]');
-		expect(footnoteRef('a&foo;b')).toBe('[^a-foo;b]');
-		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a-b]');
-		expect(footnote('a&foo;b', 'note')).toBe('[^a-foo;b]: note');
+		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy;b]');
+		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo;b]');
+		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
+		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
 	});
 
-	test('rejects IDs exceeding the 999-character label limit including the caret', () => {
-		for (const id of ['x'.repeat(999), 'x'.repeat(1000), '😀'.repeat(999)]) {
+	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
+		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '😀'.repeat(500), '%'.repeat(334)]) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
+		}
+	});
+
+	test('distinct IDs with backslashes and percent escapes remain distinct', () => {
+		const ids = [String.raw`a\b`, 'ab', 'a%5Cb'];
+		const markdown = `${ids.map(id => `text${footnoteRef(id)}`).join(' ')}\n\n${ids.map((id, index) => footnote(id, `note${index}`)).join('\n')}`;
+		const html = render(markdown);
+		expect(html.match(/<sup/g)?.length).toBe(3);
+		for (const index of [0, 1, 2]) {
+			expect(html).toContain(`note${index}`);
 		}
 	});
 });
@@ -89,16 +92,16 @@ describe('footnote ID sanitization', () => {
 		expect(footnoteRef('a\tb')).toBe('[^a-b]');
 	});
 
-	test('strips trailing backslash from ID', () => {
-		expect(footnoteRef('a\\')).toBe('[^a]');
+	test('encodes trailing backslash in ID', () => {
+		expect(footnoteRef('a\\')).toBe('[^a%5c]');
 	});
 
 	test('preserves dashes and underscores', () => {
 		expect(footnoteRef('a-b_c')).toBe('[^a-b_c]');
 	});
 
-	test('removes backslash mid-ID', () => {
-		expect(footnoteRef(String.raw`a\b`)).toBe('[^ab]');
+	test('encodes backslash mid-ID', () => {
+		expect(footnoteRef(String.raw`a\b`)).toBe('[^a%5cb]');
 	});
 
 	test('valid IDs render as footnotes', () => {

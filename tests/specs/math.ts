@@ -31,11 +31,23 @@ describe('math', () => {
 
 	test('protects Markdown syntax and autolinks in inline expressions', () => {
 		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
-		for (const character of ['*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
+		for (const character of ['*', '`', '[', ']', '<', '>', '~', '$', '|', '@']) {
 			expect(math(`a${character}b`)).not.toBe(`$a${character}b$`);
 		}
 		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
 		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
+	});
+
+	test('uses portable delimiters for bare ampersands and factorials', () => {
+		expect(math('a & b')).toBe('$a & b$');
+		expect(math('n!')).toBe('$n!$');
+		expect(render(math('a & b'))).toBe('<p><span data-math-style="inline">a &amp; b</span></p>');
+		for (const entity of ['&amp;', '&#38;', '&#x26;']) {
+			expect(math(`a ${entity} b`)).toBe(`$\`a ${entity} b\`$`);
+		}
+		const matrix = String.raw`\begin{pmatrix}a & b\\ c & d\end{pmatrix}`;
+		expect(math(matrix)).toBe(`$\`${matrix}\`$`);
+		expect(mathBlock(matrix)).toBe(`\`\`\`math\n${matrix}\n\`\`\``);
 	});
 
 	test('keeps intraword underscores in portable math delimiters', () => {
@@ -72,6 +84,9 @@ describe('mathBlock', () => {
 		expect(mathBlock('x_1')).toBe('$$\nx_1\n$$');
 		expect(mathBlock('x_{1}')).toBe('```math\nx_{1}\n```');
 		expect(mathBlock('a\\\nb')).toBe('```math\na\\\nb\n```');
+		expect(mathBlock('a & b')).toBe('$$\na & b\n$$');
+		expect(mathBlock('n!')).toBe('$$\nn!\n$$');
+		expect(mathBlock('a &amp; b')).toBe('```math\na &amp; b\n```');
 	});
 
 	test('multiline expression', () => {

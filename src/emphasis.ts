@@ -1,5 +1,15 @@
 import { createInlineScanner } from './inline-constructs.ts';
 
+const isIntrawordUnderscore = (text: string, index: number) => {
+	const previous = text.codePointAt(index - 1) ?? 0;
+	const before = previous >= 0xDC_00 && previous <= 0xDF_FF ? index - 2 : index - 1;
+	const preceding = text.codePointAt(before);
+	const following = text.codePointAt(index + 1);
+	return preceding !== undefined && following !== undefined
+		&& /[\p{L}\p{N}]/u.test(String.fromCodePoint(preceding))
+		&& /[\p{L}\p{N}]/u.test(String.fromCodePoint(following));
+};
+
 const escapeContent = (text: string, delimiter: string) => {
 	const { protectedEnd } = createInlineScanner(text);
 	let result = '';
@@ -11,7 +21,7 @@ const escapeContent = (text: string, delimiter: string) => {
 			index = end - 1;
 			continue;
 		}
-		if (character === delimiter[0] && (delimiter === '*' || index === 0 || index === text.length - 1)) {
+		if (character === delimiter[0] && (delimiter !== '__' || !isIntrawordUnderscore(text, index))) {
 			result += '\\';
 		}
 		result += character;
@@ -23,21 +33,26 @@ const escapeContent = (text: string, delimiter: string) => {
 	return trailingBackslashes % 2 ? `${result}\\` : result;
 };
 
+const normalizeBoundary = (text: string) => {
+	const lastLineEnding = Math.max(text.lastIndexOf('\r'), text.lastIndexOf('\n')) + 1;
+	return text.slice(0, lastLineEnding) + text.slice(lastLineEnding).replaceAll(/[\t\n\f\r ]+/g, ' ');
+};
+
 const emphasize = (text: string, delimiter: string) => {
 	if (!text) {
 		return '';
 	}
-	const leading = text.match(/^[\t\n\f\r\p{Zs}]*/u)![0];
+	const leading = text.match(/^[\t\n\v\f\r\u2028\u2029\p{Zs}]*/u)![0];
 	if (leading.length === text.length) {
 		return text;
 	}
 	let end = text.length;
-	while (end > leading.length && /[\t\n\f\r\p{Zs}]/u.test(text[end - 1])) {
+	while (end > leading.length && /[\t\n\v\f\r\u2028\u2029\p{Zs}]/u.test(text[end - 1])) {
 		end -= 1;
 	}
 	const content = text.slice(leading.length, end);
-	const prefix = leading.replaceAll(/[\t\n\f\r ]+/g, ' ');
-	const suffix = text.slice(end).replaceAll(/[\t\n\f\r ]+/g, ' ');
+	const prefix = normalizeBoundary(leading);
+	const suffix = normalizeBoundary(text.slice(end));
 	return `${prefix}${delimiter}${escapeContent(content, delimiter)}${delimiter}${suffix}`;
 };
 

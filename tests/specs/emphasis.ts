@@ -42,6 +42,28 @@ describe('emphasis', () => {
 		expect(render(`${bold('a \u00A0 ')}y`)).toBe('<p><strong>a</strong> \u00A0 y</p>');
 	});
 
+	test('preserves hard breaks in boundary whitespace', () => {
+		expect(render(`hello${italic('  \nworld')}`)).toBe('<p>hello<br />\n<em>world</em></p>');
+		expect(render(`hello\\${italic('\nworld')}`)).toBe('<p>hello<br />\n<em>world</em></p>');
+	});
+
+	test('preserves nested emphasis with delimiter punctuation', () => {
+		expect(render(bold(italic('a_')))).toBe('<p><strong><em>a_</em></strong></p>');
+		expect(render(strikethrough('a~b~c'))).toBe('<p><del>a~b~c</del></p>');
+		expect(bold('snake_case')).toBe('__snake_case__');
+	});
+
+	test('handles renderer whitespace around delimiters', () => {
+		for (const character of ['\v', '\u2028', '\u2029']) {
+			expect(italic(`${character}x${character}`)).toBe(`${character}*x*${character}`);
+		}
+		expect(render(italic('<a\ftitle="*">x</a>'))).toBe('<p><em><a\ftitle="*">x</a></em></p>');
+	});
+
+	test('escapes delimiters in malformed declarations', () => {
+		expect(render(italic('<!FOO*hi*>'))).toBe('<p><em>&lt;!FOO*hi*&gt;</em></p>');
+	});
+
 	test('scanner can skip code and escapes without skipping angle constructs', () => {
 		const text = `${String.raw`\]`}\`]\`<a x=">">`;
 		const scan = createInlineScanner(text, { angle: false });
@@ -71,6 +93,7 @@ describe('emphasis', () => {
 		expect(render(strikethrough(code('~x~')))).toBe('<p><del><code>~x~</code></del></p>');
 		expect(render(italic(link('https://example.com', 'a*b')))).toBe('<p><em><a href="https://example.com">a*b</a></em></p>');
 		expect(render(italic(link('https://example.com/a*b')))).toBe('<p><em><a href="https://example.com/a*b">https://example.com/a*b</a></em></p>');
+		expect(render(bold(`see ${link('www.example.com/a_b')}`))).toBe('<p><strong>see <a href="http://www.example.com/a_b">www.example.com/a_b</a></strong></p>');
 		expect(render(italic(link('https://example.com/a*b', 'x', { target: '_blank' })))).toBe('<p><em><a target="_blank" href="https://example.com/a*b">x</a></em></p>');
 		expect(render(strikethrough(bold('x')))).toBe('<p><del><strong>x</strong></del></p>');
 	});

@@ -5,7 +5,8 @@ const tagName = /[a-z][a-z0-9-]*/iy;
 const attributeName = /[a-z_:][\w:.-]*/iy;
 // eslint-disable-next-line no-control-regex
 const unquotedValue = /[^"'=<>`\u0000-\u0020]+/y;
-const space = /[ \t]*(?:(?:\r\n|\r|\n)[ \t]*)?/y;
+const space = /[ \t\f]*(?:(?:\r\n|\r|\n)[ \t\f]*)?/y;
+const declarationStart = /<![A-Z]+(?=[ \t\n\f\r])/y;
 // eslint-disable-next-line no-control-regex
 const uriAutolink = /<[a-z][a-z0-9.+-]{1,31}:[^<>\u0000-\u0020]*>/iy;
 const emailAutolink = /<[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*>/iy;
@@ -113,7 +114,7 @@ const htmlSpecialEnd = (text: string, index: number, last: Map<string, number>) 
 	} else if (text.startsWith('<![CDATA[', index)) {
 		start = index + 9;
 		terminator = ']]>';
-	} else if (text.startsWith('<!', index) && /[a-z]/i.test(text[index + 2] || '')) {
+	} else if (matchEnd(declarationStart, text, index)) {
 		start = index + 2;
 		terminator = '>';
 	} else {

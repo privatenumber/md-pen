@@ -74,7 +74,7 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
-The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and collapse each run of spaces, tabs, or line endings to one space. Content must not contain blank lines.
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must not contain blank lines. Bare URLs inside emphasis content may be altered; wrap them with `link()` instead.
 
 #### `link(url, text?, options?)`
 

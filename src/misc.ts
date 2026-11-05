@@ -11,20 +11,17 @@ const escapeInlineHtml = (input: string) => {
 	for (const character of text) {
 		if (character === '\\') {
 			backslashes += 1;
-			result += character;
 		} else {
 			if ('<>&"'.includes(character)) {
-				if (backslashes % 2) {
-					result = result.slice(0, -1);
-				}
+				result += '\\'.repeat(backslashes - (backslashes % 2));
 				result += escapeHtml(character);
 			} else {
-				result += character;
+				result += '\\'.repeat(backslashes) + character;
 			}
 			backslashes = 0;
 		}
 	}
-	return result;
+	return result + '\\'.repeat(backslashes);
 };
 
 const htmlTag = (

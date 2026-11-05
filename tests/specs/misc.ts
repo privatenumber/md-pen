@@ -43,6 +43,10 @@ describe('kbd', () => {
 		}
 	});
 
+	test('preserves backslash runs around HTML punctuation', () => {
+		expect(kbd(String.raw`\< \\< \\\<`)).toBe(String.raw`<kbd>&lt; \\&lt; \\&lt;</kbd>`);
+	});
+
 	test('escaped HTML cannot become a tag inside an HTML block', () => {
 		for (const helper of [kbd, sub, sup]) {
 			const html = render(el('div', undefined, helper(escape('<img src=x onerror=alert(1) >'))));

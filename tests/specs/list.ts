@@ -2,8 +2,6 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { ul, ol, taskList } from '../../src/list.ts';
 import { bold } from '../../src/emphasis.ts';
-import { blockquote } from '../../src/blockquote.ts';
-import { details } from '../../src/block.ts';
 
 describe('ul', () => {
 	test('basic flat list', () => {
@@ -46,7 +44,7 @@ describe('ul', () => {
 		expect(ul([[' a\ncontinued'], ['b']])).toBe('-  a\n   continued\n   - b');
 		expect(render(ul([[' a'], ['b']]))).toBe('<ul>\n<li>a\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>');
 		expect(ul(['   a', ['b']])).toBe('-    a\n     - b');
-		expect(ul(['\ta', ['b']])).toBe('-   a\n    - b');
+		expect(ul(['\ta', ['b']])).toBe('- \ta\n    - b');
 		expect(render(ul(['    a', ['b']]))).toBe('<ul>\n<li>\n<pre><code>a\n</code></pre>\n<ul>\n<li>b</li>\n</ul>\n</li>\n</ul>');
 	});
 
@@ -63,6 +61,11 @@ describe('ul', () => {
 
 	test('empty array', () => {
 		expect(ul([])).toBe('');
+	});
+
+	test('tabs inside an indented code block are preserved', () => {
+		const markdown = ul(['    \tprint(1)\n    \tprint(2)']);
+		expect(render(markdown)).toBe('<ul>\n<li>\n<pre><code>\tprint(1)\n\tprint(2)\n</code></pre>\n</li>\n</ul>');
 	});
 });
 
@@ -109,7 +112,7 @@ describe('ol', () => {
 		const markdown = ol([Array.from({ length: 9 }, (_, index) => String(index + 1)), ' 10', ['b']]);
 		expect(markdown).toContain('10.  10\n     1. b');
 		expect(render(markdown)).toContain('<li>10\n<ol>\n<li>b</li>\n</ol>\n</li>');
-		expect(ol(['\ta', ['b']])).toBe('1.  a\n    1. b');
+		expect(ol(['\ta', ['b']])).toBe('1. \ta\n    1. b');
 		expect(render(ol(['    a', ['b']]))).toBe('<ol>\n<li>\n<pre><code>a\n</code></pre>\n<ol>\n<li>b</li>\n</ol>\n</li>\n</ol>');
 	});
 
@@ -128,20 +131,6 @@ describe('ol', () => {
 		expect(ol(['a', 'b', ['x', 'y', 'z'], 'c'])).toBe(
 			'1. a\n2. b\n   1. x\n   2. y\n   3. z\n3. c',
 		);
-	});
-
-	test('leading tabs keep children nested inside Markdown containers', () => {
-		const list = ol(['\ta', ['b']]);
-		const nested = '<li>a\n<ol>\n<li>b</li>\n</ol>\n</li>';
-		expect(render(blockquote(list))).toContain(nested);
-		expect(render(ul([list]))).toContain(nested);
-		expect(render(details('summary', list))).toContain(nested);
-	});
-
-	test('leading tabs preserve indented code and nested children', () => {
-		const list = ol(['  \ta', ['b']]);
-		expect(list).toBe('1.      a\n   1. b');
-		expect(render(blockquote(list))).toContain('<pre><code> a\n</code></pre>\n<ol>\n<li>b</li>');
 	});
 });
 

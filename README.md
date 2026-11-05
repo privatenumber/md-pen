@@ -208,6 +208,8 @@ Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 Nested arrays become children of the preceding item.
 
+Leading tabs in item text can change nesting when the list is placed inside another container, such as `blockquote()`; use spaces instead.
+
 ```ts
 ul(['a', 'b', ['nested 1', 'nested 2'], 'c'])
 // - a

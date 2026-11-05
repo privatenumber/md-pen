@@ -62,16 +62,9 @@ const formatList = (
 			} else {
 				const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
 				const spaces = ' '.repeat(indent);
-				const normalized = item.replace(/^[ \t]+/, (whitespace) => {
-					let column = indent + prefix.length;
-					for (const character of whitespace) {
-						column += character === '\t' ? 4 - (column % 4) : 1;
-					}
-					return ' '.repeat(column - indent - prefix.length);
-				});
-				childIndent = contentIndent(normalized, indent + prefix.length - 1);
+				childIndent = contentIndent(item, indent + prefix.length - 1);
 				const continuationIndent = ' '.repeat(childIndent);
-				lines.push(`${spaces}${prefix}${indentContinuation(normalized, continuationIndent)}`);
+				lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
 				itemIndex += 1;
 				emptyItem = /^[ \t\r\n]*$/.test(item);
 				hasChildren = false;

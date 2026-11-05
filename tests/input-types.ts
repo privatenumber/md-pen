@@ -1,6 +1,7 @@
 import {
 	alert, ol, table, taskList, ul,
 	type AlertType, type CellValue, type ColumnEntry, type ListItem, type TableOptions,
+	type ReadonlyListItem, type ReadonlyTableOptions,
 } from '../src/exports.ts';
 
 export const genericRows = <T extends Record<string, string>>(rows: T[]) => table(rows);
@@ -18,14 +19,18 @@ export const inputTypes = (rows: readonly { name: string }[]) => {
 	table([]);
 	const readonlyList = ['a', ['b']] as const;
 	const readonlyTasks = [[true, 'x']] as const;
+	const annotatedList: readonly ReadonlyListItem[] = readonlyList;
 	ul(readonlyList);
 	ol(readonlyList);
+	ul(annotatedList);
 	taskList(readonlyTasks);
 	const readonlyOptions = {
 		columns: [['name', 'Name']],
 		align: ['left'],
 	} as const;
 	table(rows, readonlyOptions);
+	const annotatedOptions: ReadonlyTableOptions = readonlyOptions;
+	table(rows, annotatedOptions);
 
 	const alertType: AlertType = 'note';
 	const value: CellValue = 1;
@@ -35,17 +40,13 @@ export const inputTypes = (rows: readonly { name: string }[]) => {
 	options.columns!.push('name');
 	const columnName: string = Array.isArray(column) ? column[1] : column;
 	const legacyRows: string[][] | Record<string, string>[] = Math.random() ? [['name']] : [{ name: 'a' }];
-	const parameterRows: Parameters<typeof table>[0] = [{ name: 'a' }];
-	const parameterOptions: NonNullable<Parameters<typeof table>[1]> = { align: [] };
-	parameterOptions.align?.push('left');
-	const mutableItems = (items: ListItem[]) => items;
-	const parameterItems: Parameters<typeof ul>[0] = ['a'];
-	mutableItems(parameterItems);
 	table(legacyRows);
-	table(parameterRows);
 	table([[columnName]]);
 	alert(alertType, 'content');
 	ul([item]);
+	ol([item]);
+	const mutableTasks: [boolean, string][] = [[true, 'x']];
+	taskList(mutableTasks);
 	table([[value]], options);
 
 	// @ts-expect-error Object values are not table cells.

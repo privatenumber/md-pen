@@ -12,7 +12,7 @@ export type TableOptions = {
 
 export type CellValue = string | number | boolean | null | undefined;
 
-type ReadonlyTableOptions = {
+export type ReadonlyTableOptions = {
 	align?: readonly TableAlignment[];
 	columns?: readonly (string | readonly [key: string, header: string])[];
 	html?: boolean;
@@ -144,12 +144,9 @@ const buildHtmlTable = (
 
 type TableRows = readonly (readonly CellValue[])[] | readonly Readonly<Record<string, CellValue>>[];
 
-export const table: {
-	(input: TableRows, options?: ReadonlyTableOptions): string;
-	(input: CellValue[][] | Record<string, CellValue>[], options?: TableOptions): string;
-} = (
+export const table = (
 	input: TableRows,
-	options?: ReadonlyTableOptions,
+	options?: TableOptions | ReadonlyTableOptions,
 ) => {
 	if (input.length === 0) {
 		return '';

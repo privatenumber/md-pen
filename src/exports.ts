@@ -7,10 +7,10 @@ export {
 } from './heading.ts';
 export { blockquote, alert, type AlertType } from './blockquote.ts';
 export {
-	ul, ol, taskList, type ListItem,
+	ul, ol, taskList, type ListItem, type ReadonlyListItem,
 } from './list.ts';
 export {
-	table, type TableOptions, type ColumnEntry, type CellValue,
+	table, type TableOptions, type ReadonlyTableOptions, type ColumnEntry, type CellValue,
 } from './table.ts';
 export { hr, details } from './block.ts';
 export { math, mathBlock } from './math.ts';

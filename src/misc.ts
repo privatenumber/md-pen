@@ -2,43 +2,10 @@ import { escapeHtml, htmlAttributes } from './escape.ts';
 
 type HtmlOptions = Record<string, string | number>;
 
-const lineEndingEnd = (text: string, index: number) => {
-	if (text[index] === '\r') {
-		return index + (text[index + 1] === '\n' ? 2 : 1);
-	}
-	return text[index] === '\n' ? index + 1 : index;
-};
-
-const normalizeInlineBlankLines = (text: string) => {
-	let result = '';
-	for (let index = 0; index < text.length;) {
-		const character = text[index];
-		const firstEnd = lineEndingEnd(text, index);
-		if (firstEnd !== index) {
-			let end = firstEnd;
-			while (end < text.length) {
-				let next = end;
-				while (text[next] === ' ' || text[next] === '\t') {
-					next += 1;
-				}
-				const nextEnd = lineEndingEnd(text, next);
-				if (nextEnd === next) {
-					break;
-				}
-				end = nextEnd;
-			}
-			result += end === firstEnd ? text.slice(index, firstEnd) : '\n';
-			index = end;
-			continue;
-		}
-		result += character;
-		index += 1;
-	}
-	return result;
-};
-
 const escapeInlineHtml = (input: string) => {
-	const text = normalizeInlineBlankLines(input);
+	const text = input.replaceAll(/[ \t\r\n]+/g, whitespace => (
+		/[\r\n]/.test(whitespace) ? ' ' : whitespace
+	));
 	let result = '';
 	let backslashes = 0;
 	for (const character of text) {

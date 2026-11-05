@@ -119,7 +119,7 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 ### Niche
 
-`kbd()`, `sub()`, and `sup()` HTML-escape content, but Markdown still parses it; wrap literal text in `escape()`.
+`kbd()`, `sub()`, and `sup()` HTML-escape content, but Markdown still parses it; wrap literal text in `escape()`. Line endings become spaces, including in table cells.
 
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>
@@ -135,6 +135,8 @@ emoji('rocket')      // :rocket:
 ```
 
 ### Generic HTML Element
+
+All HTML helpers drop attribute names outside `[A-Za-z_:][A-Za-z0-9_.:-]*`; for example, `el('span', { '@invalid': 'x' }, 'text')` returns `<span>text</span>`.
 
 ```ts
 el('br')                                    // <br />

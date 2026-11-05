@@ -16,21 +16,22 @@ describe('kbd', () => {
 		expect(kbd('<script>')).toBe('<kbd>&lt;script&gt;</kbd>');
 	});
 
-	test('blank lines in escaped text do not split the paragraph', () => {
-		const input = 'a\n\nb';
+	test('line endings cannot create Markdown blocks', () => {
 		for (const helper of [kbd, sub, sup]) {
-			const html = render(helper(input));
+			const html = render(helper('a\n\n# heading'));
 			expect(html.match(/<p>/g)?.length).toBe(1);
-			expect(html).toContain('a\nb');
+			expect(html).not.toContain('<h1');
+			expect(html).toContain('a # heading');
+			expect(helper('\n a \r\n')).toContain('> a </');
 		}
 	});
 
-	test('preserves Markdown line breaks and code spans', () => {
-		expect(kbd('a\r\nb')).toBe('<kbd>a\r\nb</kbd>');
-		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a\nb</kbd>');
+	test('normalizes line endings in Markdown and table cells', () => {
+		expect(kbd('a\r\nb')).toBe('<kbd>a b</kbd>');
+		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a b</kbd>');
+		expect(kbd(' a  b ')).toBe('<kbd> a  b </kbd>');
 		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
-		expect(render(kbd('a\\\nb'))).toContain('a<br />\nb');
-		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a<br>b</kbd>');
+		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a b</kbd>');
 	});
 
 	test('composes escaped HTML punctuation without double escaping', () => {
@@ -46,6 +47,14 @@ describe('kbd', () => {
 		expect(html).not.toContain('<img');
 		expect(html).not.toContain('<a ');
 		expect(html).toContain('![x](https:\u200B//example.test/i.png)');
+	});
+
+	test('leading newline cannot turn escaped HTML into a raw tag', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(helper(escape('\n<img src=x onerror=alert(1) >')));
+			expect(html).not.toContain('<img');
+			expect(html).toContain('&lt;img src=x onerror=alert(1) &gt;');
+		}
 	});
 });
 

@@ -3,9 +3,7 @@ import { escapeHtml, htmlAttributes } from './escape.ts';
 type HtmlOptions = Record<string, string | number>;
 
 const escapeInlineHtml = (input: string) => {
-	const text = input.replaceAll(/[ \t\r\n]+/g, whitespace => (
-		/[\r\n]/.test(whitespace) ? ' ' : whitespace
-	));
+	const text = input.replaceAll(/\r\n?|\n/g, ' ');
 	let result = '';
 	let backslashes = 0;
 	for (const character of text) {

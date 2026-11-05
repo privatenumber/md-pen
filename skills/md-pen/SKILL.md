@@ -119,7 +119,7 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 ### Niche
 
-`kbd()`, `sub()`, and `sup()` HTML-escape content, but Markdown still parses it; wrap literal text in `escape()`. Line endings become spaces, including in table cells.
+`kbd()`, `sub()`, and `sup()` HTML-escape content, but Markdown still parses it (except inside a raw HTML block, such as `el()` content); wrap literal text in `escape()`. Line endings become spaces, including in table cells.
 
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>

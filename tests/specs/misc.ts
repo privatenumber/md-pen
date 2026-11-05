@@ -21,16 +21,17 @@ describe('kbd', () => {
 			const html = render(helper('a\n\n# heading'));
 			expect(html.match(/<p>/g)?.length).toBe(1);
 			expect(html).not.toContain('<h1');
-			expect(html).toContain('a # heading');
-			expect(helper('\n a \r\n')).toContain('> a </');
+			expect(html).toContain('a  # heading');
+			expect(helper('\n a \r\n')).toContain('>  a  </');
 		}
 	});
 
 	test('normalizes line endings in Markdown and table cells', () => {
 		expect(kbd('a\r\nb')).toBe('<kbd>a b</kbd>');
-		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a b</kbd>');
+		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a  \t b</kbd>');
 		expect(kbd(' a  b ')).toBe('<kbd> a  b </kbd>');
 		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
+		expect(render(kbd('`a  \n  b`'))).toBe('<p><kbd><code>a     b</code></kbd></p>');
 		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a b</kbd>');
 	});
 

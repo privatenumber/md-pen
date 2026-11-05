@@ -17,14 +17,18 @@ describe('math', () => {
 		expect(math(' \n\t ')).toBe('');
 	});
 
-	test('preserves escaped dollars and escapes unescaped dollars', () => {
+	test('preserves dollars and backslashes verbatim', () => {
 		expect(math(String.raw`\sqrt{\$4}`)).toBe('$`\\sqrt{\\$4}`$');
-		expect(math(String.raw`a\\$b`)).toBe('$`a\\\\\\$b`$');
+		expect(math(String.raw`a\\$b`)).toBe('$`a\\\\$b`$');
 		expect(math(String.raw`a\\\$b`)).toBe('$`a\\\\\\$b`$');
+		expect(math(String.raw`\#`)).toBe('$`\\#`$');
+		expect(math(String.raw`\{`)).toBe('$`\\{`$');
+		expect(math('a\\')).toBe('$`a\\`$');
+		expect(math('a_b')).toBe('$a_b$');
 	});
 
 	test('uses longer backtick delimiters when needed', () => {
-		expect(math('a`$b')).toBe('$`` a`\\$b ``$');
+		expect(math('a`$b')).toBe('$`` a`$b ``$');
 	});
 });
 
@@ -33,46 +37,45 @@ describe('math edge cases', () => {
 		expect(math('')).toBe('');
 	});
 
-	test('expression with dollar sign is escaped', () => {
-		expect(math('price = $5')).toBe('$`price = \\$5`$');
+	test('expression with dollar sign is verbatim', () => {
+		expect(math('price = $5')).toBe('$`price = $5`$');
 	});
 });
 
 describe('mathBlock', () => {
 	test('block math', () => {
-		expect(mathBlock('x^2 + y^2 = z^2')).toBe('$$\nx^2 + y^2 = z^2\n$$');
+		expect(mathBlock('x^2 + y^2 = z^2')).toBe('```math\nx^2 + y^2 = z^2\n```');
 	});
 
 	test('multiline expression', () => {
-		expect(mathBlock('a = 1\nb = 2')).toBe('$$\na = 1\nb = 2\n$$');
+		expect(mathBlock('a = 1\nb = 2')).toBe('```math\na = 1\nb = 2\n```');
+		expect(mathBlock('a\r\n \r- b')).toBe('```math\na\n \n- b\n```');
 	});
 
 	test('empty expression returns empty string', () => {
 		expect(mathBlock('')).toBe('');
 	});
 
-	test('removes whitespace-only lines', () => {
-		expect(mathBlock('\n a\n \t\nb\r\n\t')).toBe('$$\n a\nb\n$$');
-		expect(render(mathBlock('a\n \nb'))).toBe('<p><span data-math-style="display">\na\nb\n</span></p>');
-		expect(mathBlock(' \n\t')).toBe('');
+	test('preserves blank lines and block markers inside the fence', () => {
+		const expression = 'a\n \n- b\n> c\n# d\n1. e\n```\n    code';
+		const markdown = mathBlock(expression);
+		expect(markdown).toBe(`\`\`\`\`math\n${expression}\n\`\`\`\``);
+		expect(render(markdown)).toBe('<pre><code class="language-math" data-math-style="display">a\n \n- b\n&gt; c\n# d\n1. e\n```\n    code\n</code></pre>');
+		expect(mathBlock(' \n\t')).toBe('```math\n \n\t\n```');
 	});
 
 	test('preserves escaped dollars in fenced display math', () => {
 		expect(mathBlock(String.raw`\sqrt{\$4}`)).toBe('```math\n\\sqrt{\\$4}\n```');
-		expect(mathBlock(String.raw`a\\$b`)).toBe('```math\na\\\\\\$b\n```');
-		expect(mathBlock('a$$b')).toBe('```math\na\\$\\$b\n```');
-		expect(mathBlock('a```$b')).toBe('````math\na```\\$b\n````');
+		expect(mathBlock(String.raw`a\\$b`)).toBe('```math\na\\\\$b\n```');
+		expect(mathBlock('a$$b')).toBe('```math\na$$b\n```');
+		expect(mathBlock('a```$b')).toBe('````math\na```$b\n````');
+		expect(mathBlock(String.raw`\verb0$0`)).toBe('```math\n\\verb0$0\n```');
 	});
 });
 
 describe('math with dollar signs', () => {
-	test('math with $ stays in single math element', () => {
-		const md = math('price = $5');
-		const html = render(md);
-		// comrak: <span data-math-style="inline">
-		expect(html.match(/data-math-style/g)?.length ?? 0).toBe(1);
-		expect(html).toContain('price =');
-		expect(html).toContain('5');
+	test('inline dollars use GitHub backtick-delimited math', () => {
+		expect(math('price = $5')).toBe('$`price = $5`$');
 	});
 
 	test('mathBlock with $$ does not close early', () => {

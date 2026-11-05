@@ -304,17 +304,17 @@ sub('2', { title: 'subscript' }) // <sub title="subscript">2</sub>
 math('E = mc^2') // $E = mc^2$
 
 mathBlock(String.raw`\sum_{i=1}^n x_i`)
-// $$
+// ```math
 // \sum_{i=1}^n x_i
-// $$
+// ```
 ```
 
-Inline math trims boundary whitespace and replaces line breaks with spaces. Display math removes blank and whitespace-only lines. Both return an empty string for whitespace-only input.
+Inline math trims boundary whitespace and replaces line breaks with spaces. Display math normalizes line endings and preserves blank lines. `math()` returns an empty string for whitespace-only input; `mathBlock()` returns an empty string only for an empty input.
 
-Dollar signs in expressions are escaped unless already escaped. Expressions containing dollar signs use GitHub's backtick-delimited inline math or fenced display math to preserve the TeX source. Display math also uses a fence when the expression ends with a backslash. Some Markdown renderers, including comrak, interpret the inline backticks as part of the expression.
+Expressions containing dollar signs, backslash-escaped ASCII punctuation, or a trailing backslash use GitHub's backtick-delimited inline math. Display math uses a `math` code fence. Both forms pass the expression through without escaping dollar signs. Some Markdown renderers, including comrak, interpret inline backticks as part of the expression or do not recognize the expression as math.
 
 > [!NOTE]
-> Inline `math()` cannot preserve expressions ending with `\` because the backslash interferes with the closing `$`. Use `mathBlock()` instead.
+> GitHub does not recognize inline math ending with `\`, including the backtick-delimited form. Its fenced display math renderer also changes expressions ending with `\` and escapes dollar signs, which can affect expressions such as `\verb0$0`.
 
 #### `mermaid(code)`
 

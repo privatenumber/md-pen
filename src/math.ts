@@ -1,11 +1,3 @@
-const escapeMath = (expression: string) => expression.replaceAll('$', (_match, offset: number) => {
-	let backslashes = 0;
-	while (offset > backslashes && expression[offset - backslashes - 1] === '\\') {
-		backslashes += 1;
-	}
-	return backslashes % 2 === 0 ? String.raw`\$` : '$';
-});
-
 const backtickDelimiter = (expression: string, minimum: number) => {
 	let length = minimum;
 	for (const run of expression.matchAll(/`+/g)) {
@@ -19,25 +11,19 @@ export const math = (expression: string) => {
 	if (singleLine === '') {
 		return '';
 	}
-	const escaped = escapeMath(singleLine);
-	if (singleLine.includes('$')) {
-		const delimiter = backtickDelimiter(escaped, 1);
-		const padding = escaped.includes('`') ? ' ' : '';
-		return `$${delimiter}${padding}${escaped}${padding}${delimiter}$`;
+	if (singleLine.includes('$') || /\\[!"#$%&'()*+,./:;<=>?@[\]\\^_`{|}~-]/.test(singleLine) || singleLine.endsWith('\\')) {
+		const delimiter = backtickDelimiter(singleLine, 1);
+		const padding = singleLine.includes('`') ? ' ' : '';
+		return `$${delimiter}${padding}${singleLine}${padding}${delimiter}$`;
 	}
-	return `$${escaped}$`;
+	return `$${singleLine}$`;
 };
 
 export const mathBlock = (expression: string) => {
 	const normalized = expression.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-	const noBlankLines = normalized.split('\n').filter(line => line.trim()).join('\n');
-	if (noBlankLines === '') {
+	if (normalized === '') {
 		return '';
 	}
-	const escaped = escapeMath(noBlankLines);
-	if (noBlankLines.includes('$') || noBlankLines.endsWith('\\')) {
-		const delimiter = backtickDelimiter(escaped, 3);
-		return `${delimiter}math\n${escaped}\n${delimiter}`;
-	}
-	return `$$\n${escaped}\n$$`;
+	const delimiter = backtickDelimiter(normalized, 3);
+	return `${delimiter}math\n${normalized}\n${delimiter}`;
 };

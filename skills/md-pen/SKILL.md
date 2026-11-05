@@ -126,7 +126,7 @@ sub('2')             // <sub>2</sub>
 sup('n')             // <sup>n</sup>
 sub('2', { title: 'subscript' })    // <sub title="subscript">2</sub>
 math('E = mc^2')     // $E = mc^2$
-mathBlock('\\sum')   // $$\n\\sum\n$$
+mathBlock('\\sum')   // ```math\n\\sum\n```
 mermaid('graph TD')  // ```mermaid\ngraph TD\n```
 mention('octocat')   // @octocat
 emoji('rocket')      // :rocket:

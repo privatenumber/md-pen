@@ -254,6 +254,8 @@ alert('warning', 'Be careful') // eslint-disable-line no-alert
 
 #### `footnoteRef(id)` / `footnote(id, text)`
 
+GitHub footnote backlinks may not navigate correctly for IDs containing uppercase or non-ASCII characters.
+
 ```ts
 footnoteRef('1') // [^1]
 footnote('1', 'Source') // [^1]: Source

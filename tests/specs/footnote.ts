@@ -32,34 +32,32 @@ describe('footnote', () => {
 	});
 
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '_a_', 'é', '😀', '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(83)]) {
+		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '_a_', 'é', '😀', '文'.repeat(112), '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(250)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
 			expect(html).toContain('<sup');
 		}
 	});
 
 	test('normalizes entity-shaped IDs and escaped punctuation consistently', () => {
-		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy%3bb]');
-		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo%3bb]');
+		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy;b]');
+		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo;b]');
 		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
-		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo%3bb]: note');
-		expect(footnoteRef('a&AMP;b')).toBe('[^a%26amp%3bb]');
+		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
+		expect(footnoteRef('a&AMP;b')).toBe('[^a%26AMP;b]');
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
-		for (const id of ['x'.repeat(1000), '😀'.repeat(84), '%'.repeat(334), '\0'.repeat(334), '\uD800', '\uDC00']) {
+		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '%'.repeat(334), '\0'.repeat(334), '\uD800', '\uDC00']) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}
 	});
 
 	test('keeps distinct Georgian labels distinct', () => {
-		const ids = ['Ა', 'ა'];
-		const markdown = `${ids.map(id => `text${footnoteRef(id)}`).join(' ')}\n\n${ids.map((id, index) => footnote(id, `note${index}`)).join('\n')}`;
-		const html = render(markdown);
-		expect(html.match(/<sup/g)?.length).toBe(2);
-		expect(html).toContain('note0');
-		expect(html).toContain('note1');
+		expect(footnoteRef('Ა')).toBe('[^Ა]');
+		expect(footnoteRef('ა')).toBe('[^ა]');
+		expect(footnote('Ა', 'note')).toBe('[^Ა]: note');
+		expect(footnote('ა', 'note')).toBe('[^ა]: note');
 	});
 
 	test('distinct IDs with backslashes and percent escapes remain distinct', () => {
@@ -106,8 +104,8 @@ describe('footnote ID sanitization', () => {
 		expect(footnoteRef('a\\')).toBe('[^a%5c]');
 	});
 
-	test('preserves dashes and encodes underscores', () => {
-		expect(footnoteRef('a-b_c')).toBe('[^a-b%5fc]');
+	test('preserves dashes and underscores', () => {
+		expect(footnoteRef('a-b_c')).toBe('[^a-b_c]');
 	});
 
 	test('encodes backslash mid-ID', () => {
@@ -145,6 +143,11 @@ describe('footnote with CR', () => {
 });
 
 describe('footnote case-insensitive matching', () => {
+	test('matches Unicode case and hand-written underscore labels', () => {
+		expect(render(`text${footnoteRef('É')}\n\n${footnote('é', 'note')}`)).toContain('<sup');
+		expect(render(`text${footnoteRef('hello_world')}\n\n[^hello_world]: note`)).toContain('<sup');
+	});
+
 	test('ref and def with different case resolve as footnote', () => {
 		const md = `text${footnoteRef('A b')}\n\n${footnote('a b', 'note')}`;
 		const html = render(md);

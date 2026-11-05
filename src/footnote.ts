@@ -2,13 +2,12 @@ const normalizeId = (id: string) => {
 	if (!id.isWellFormed()) {
 		return '';
 	}
-	const encoder = new TextEncoder();
 	return id.trim()
 		.replaceAll(/\s+/g, '-')
-		.replaceAll(/[A-Z]/g, character => character.toLowerCase())
-		.replaceAll(/[^a-z\d.-]/gu, character => (
-			[...encoder.encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
-		));
+		.replaceAll(/[%\\`<$[\]\p{Cc}]|&(?=#(?:x[\da-f]{1,8}|\d{1,8});|[a-z][a-z\d]{1,31};)/giu, (character) => {
+			const code = character.codePointAt(0)!;
+			return code > 127 ? character : `%${code.toString(16).padStart(2, '0')}`;
+		});
 };
 
 const isValidId = (id: string) => id.length > 0

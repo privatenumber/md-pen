@@ -119,6 +119,8 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 ### Niche
 
+`kbd()`, `sub()`, and `sup()` HTML-escape content, but Markdown still parses it; wrap literal text in `escape()`.
+
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>
 kbd('Enter', { title: 'Confirm' })  // <kbd title="Confirm">Enter</kbd>

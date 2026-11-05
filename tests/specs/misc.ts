@@ -1,4 +1,7 @@
 import { describe, test, expect } from 'manten';
+import { render } from '../utils/render.ts';
+import { escape } from '../../src/escape.ts';
+import { image, link } from '../../src/link.ts';
 import {
 	kbd, sub, sup, mention, emoji, el,
 } from '../../src/misc.ts';
@@ -10,6 +13,22 @@ describe('kbd', () => {
 
 	test('escapes HTML in key', () => {
 		expect(kbd('<script>')).toBe('<kbd>&lt;script&gt;</kbd>');
+	});
+
+	test('blank lines in escaped text do not split the paragraph', () => {
+		const input = 'a\n\nb';
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(helper(input));
+			expect(html.match(/<p>/g)?.length).toBe(1);
+			expect(html).toContain('a\n\nb');
+		}
+	});
+
+	test('escape protects literal multiline content from Markdown', () => {
+		const html = render(kbd(escape('a\n\n![x](https://example.test/i.png)')));
+		expect(html).not.toContain('<img');
+		expect(html).not.toContain('<a ');
+		expect(html).toContain('![x](https:\u200B//example.test/i.png)');
 	});
 });
 
@@ -120,6 +139,23 @@ describe('el', () => {
 
 	test('escapes HTML in attribute values', () => {
 		expect(el('div', { title: 'a"b' }, 'text')).toBe('<div title="a&quot;b">text</div>');
+	});
+
+	test('blank lines in HTML attributes cannot inject Markdown', () => {
+		const input = 'a\n\n![x](https://attacker.test/i.png)';
+		const samples = [
+			el('span', { title: input }, 'text'),
+			link('x', 'text', {
+				title: input,
+				target: '_blank',
+			}),
+			image('x', input, { width: 1 }),
+		];
+		for (const markdown of samples) {
+			const html = render(markdown);
+			expect(html).not.toContain('src="https://attacker.test/i.png"');
+			expect(html).toContain('a&#10;&#10;![x](https://attacker.test/i.png)');
+		}
 	});
 
 	test('empty attributes treated as no attributes', () => {

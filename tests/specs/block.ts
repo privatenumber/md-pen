@@ -21,6 +21,12 @@ describe('details', () => {
 		);
 	});
 
+	test('blank lines in summary cannot inject Markdown', () => {
+		const html = render(details('a\n\n![x](https://attacker.test/i.png)', 'content'));
+		expect(html).not.toContain('<img');
+		expect(html).toContain('<summary>a&#10;&#10;![x](https://attacker.test/i.png)</summary>');
+	});
+
 	test('passes through markdown in content', () => {
 		expect(details('Summary', '**bold** and `code`')).toBe(
 			'<details>\n<summary>Summary</summary>\n\n**bold** and `code`\n\n</details>',

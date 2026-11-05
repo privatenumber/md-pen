@@ -285,12 +285,16 @@ details('Expanded', 'Visible', { open: '' })
 
 #### `kbd(key, options?)`
 
+Content is HTML-escaped but still parsed as Markdown; wrap literal text in `escape()`.
+
 ```ts
 kbd('Ctrl') // <kbd>Ctrl</kbd>
 kbd('Enter', { title: 'Confirm' }) // <kbd title="Confirm">Enter</kbd>
 ```
 
 #### `sub(text, options?)` / `sup(text, options?)`
+
+Content is HTML-escaped but still parsed as Markdown; wrap literal text in `escape()`.
 
 ```ts
 sub('2') // <sub>2</sub>

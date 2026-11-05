@@ -15,8 +15,8 @@ const htmlEntityMap: Record<string, string> = {
 };
 
 export const escapeHtml = (text: string) => text.replaceAll(
-	/[<>&"]/g,
-	character => htmlEntityMap[character],
+	/[<>&"\r\n]/g,
+	character => htmlEntityMap[character] ?? (character === '\r' ? '&#13;' : '&#10;'),
 );
 
 const sanitizeAttributeName = (name: string) => name.replaceAll(/[\s"'>/=<]/g, '');

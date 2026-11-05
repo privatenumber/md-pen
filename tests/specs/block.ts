@@ -49,7 +49,7 @@ describe('details', () => {
 
 	test('preserves closing tags inside code blocks', () => {
 		const html = render(details('S', codeBlock('</details>', 'html')));
-		expect(html).toContain('<code class="language-html">&lt;/\u200Bdetails&gt;\n</code>');
+		expect(html).toContain('<code class="language-html">&lt;\u200B/details&gt;\n</code>');
 	});
 
 	test('preserves nested details', () => {
@@ -77,29 +77,56 @@ describe('details', () => {
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
 	});
 
+	test('preserves nested details containing a list or blockquote', () => {
+		for (const content of ['- first', '> first']) {
+			const html = render(details('outer', details('inner', content)));
+			expect(html.match(/<details>/g)?.length).toBe(2);
+			expect(html.match(/<\/details>/g)?.length).toBe(2);
+			expect(html).toContain(content.startsWith('-') ? '<li>first</li>' : '<blockquote>');
+		}
+	});
+
+	test('keeps an unfinished closer visible without swallowing the wrapper', () => {
+		const html = render(`${details('S', '<br>\n</details')}\n\nAFTER`);
+		expect(html).toContain('<br>\n<\u200B/details\n</details>\n<p>AFTER</p>');
+		const raw = render(details('S', '<div>\n</details>\nOUT\n</div>'));
+		expect(raw).toContain('<\u200B/details>\nOUT');
+	});
+
+	test('falls back for multiline quoted attributes inside a summary', () => {
+		for (const quote of ['"', "'"]) {
+			const content = `<summary>\n<a title=${quote}\n</summary>\n\n<details>\n${quote}>\n\n</details>\n\nOUT`;
+			const result = details('S', content);
+			expect(result).toContain('<\u200Bdetails>');
+			expect(result).toContain('<\u200B/details>');
+			const html = render(`${result}\n\nAFTER`);
+			expect(html).toContain('<p>OUT</p>\n</details>\n<p>AFTER</p>');
+		}
+	});
+
 	test('neutralizes overlapping and unfinished closing tokens', () => {
 		const overlapping = details('S', 'text </details </details> OUT');
-		expect(overlapping).toContain('text </\u200Bdetails </\u200Bdetails> OUT');
-		expect(render(`${overlapping}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<p>text &lt;/\u200Bdetails &lt;/\u200Bdetails&gt; OUT</p>\n</details>\n<p>AFTER</p>');
+		expect(overlapping).toContain('text <\u200B/details <\u200B/details> OUT');
+		expect(render(`${overlapping}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<p>text &lt;\u200B/details &lt;\u200B/details&gt; OUT</p>\n</details>\n<p>AFTER</p>');
 		const unfinished = details('S', '<div>\n</details\n\nOUT');
-		expect(render(`${unfinished}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<div>\n</\u200Bdetails\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
-		expect(details('S', '</details')).toContain('</\u200Bdetails');
+		expect(render(`${unfinished}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<div>\n<\u200B/details\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
+		expect(details('S', '</details')).toContain('<\u200B/details');
 	});
 
 	test('neutralizes a nested opener and closer in a list', () => {
 		const content = '- x\n  <details>\n\n</details>\n\nOUT';
 		const result = details('S', content);
 		expect(result).toContain('<\u200Bdetails>');
-		expect(result).toContain('</\u200Bdetails>');
-		expect(render(`${result}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<ul>\n<li>x\n&lt;\u200Bdetails&gt;</li>\n</ul>\n<p>&lt;/\u200Bdetails&gt;</p>\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
+		expect(result).toContain('<\u200B/details>');
+		expect(render(`${result}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<ul>\n<li>x\n&lt;\u200Bdetails&gt;</li>\n</ul>\n<p>&lt;\u200B/details&gt;</p>\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
 	});
 
 	test('neutralizes both ends of nested details in fallback mode', () => {
 		const inner = details('inner', codeBlock('const x=1', 'js'));
 		const result = details('outer', inner);
 		expect(result).toContain('<\u200Bdetails>');
-		expect(result).toContain('</\u200Bdetails>');
-		expect(render(`${result}\n\nOUT`)).toBe('<details>\n<summary>outer</summary>\n<p>&lt;\u200Bdetails&gt;</p>\n<summary>inner</summary>\n<pre><code class="language-js">const x=1\n</code></pre>\n<p>&lt;/\u200Bdetails&gt;</p>\n</details>\n<p>OUT</p>');
+		expect(result).toContain('<\u200B/details>');
+		expect(render(`${result}\n\nOUT`)).toBe('<details>\n<summary>outer</summary>\n<p>&lt;\u200Bdetails&gt;</p>\n<summary>inner</summary>\n<pre><code class="language-js">const x=1\n</code></pre>\n<p>&lt;\u200B/details&gt;</p>\n</details>\n<p>OUT</p>');
 	});
 
 	test('neutralizes unpaired opening tokens', () => {
@@ -111,17 +138,17 @@ describe('details', () => {
 	});
 
 	test('neutralizes tokens in URLs, attributes, and escaped text', () => {
-		expect(details('S', '[x](https://example.test/?tag=</details>)')).toContain('</\u200Bdetails>');
-		expect(details('S', '<a title="</details>">x</a>')).toContain('</\u200Bdetails>');
-		expect(details('S', String.raw`\</details>`)).toContain('\\</\u200Bdetails>');
+		expect(details('S', '[x](https://example.test/?tag=</details>)')).toContain('<\u200B/details>');
+		expect(details('S', '<a title="</details>">x</a>')).toContain('<\u200B/details>');
+		expect(details('S', String.raw`\</details>`)).toContain('\\<\u200B/details>');
 	});
 
 	test('neutralizes nested closers when content contains code', () => {
 		const inner = details('inner', codeBlock('</details>', 'html'));
 		const result = details('outer', `${inner}\n\nOUT`);
-		expect(result).toContain('</\u200Bdetails>\n\nOUT');
+		expect(result).toContain('<\u200B/details>\n\nOUT');
 		const html = render(result);
-		expect(html).toContain('&lt;/\u200Bdetails&gt;');
+		expect(html).toContain('&lt;\u200B/details&gt;');
 		expect(html).toContain('<p>OUT</p>\n</details>');
 	});
 
@@ -142,66 +169,66 @@ describe('details', () => {
 
 	test('preserves closing tags in inline and indented code', () => {
 		const html = render(details('S', '`</details>`\n\n    </details>'));
-		expect(html).toContain('<code>&lt;/\u200Bdetails&gt;</code>');
-		expect(html).toContain('<pre><code>&lt;/\u200Bdetails&gt;\n</code></pre>');
+		expect(html).toContain('<code>&lt;\u200B/details&gt;</code>');
+		expect(html).toContain('<pre><code>&lt;\u200B/details&gt;\n</code></pre>');
 	});
 
 	test('protects an extra closer after a nested section', () => {
 		const html = render(details('S', `${details('inner', 'x')}\n\n</details>`));
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
-		expect(html).toContain('&lt;/\u200Bdetails&gt;');
+		expect(html).toContain('&lt;\u200B/details&gt;');
 	});
 
 	test('protects malformed closing tags in fallback mode', () => {
-		expect(details('S', '</details foo>')).toContain('</\u200Bdetails foo>');
-		expect(details('S', '</DeTaIlS / >')).toContain('</\u200BDeTaIlS / >');
+		expect(details('S', '</details foo>')).toContain('<\u200B/details foo>');
+		expect(details('S', '</DeTaIlS / >')).toContain('<\u200B/DeTaIlS / >');
 	});
 
 	test('does not treat backticks across paragraphs as code spans', () => {
-		expect(details('S', '`\n\n</details>\n\n`')).toContain('</\u200Bdetails>');
-		expect(details('S', '`\n- </details>\n`')).toContain('</\u200Bdetails>');
-		expect(details('S', '`\n</details>\n`')).toContain('</\u200Bdetails>');
-		expect(details('S', '`\nx </details>\n---\n`\n\nOUT')).toContain('</\u200Bdetails>');
+		expect(details('S', '`\n\n</details>\n\n`')).toContain('<\u200B/details>');
+		expect(details('S', '`\n- </details>\n`')).toContain('<\u200B/details>');
+		expect(details('S', '`\n</details>\n`')).toContain('<\u200B/details>');
+		expect(details('S', '`\nx </details>\n---\n`\n\nOUT')).toContain('<\u200B/details>');
 	});
 
 	test('does not treat backticks in HTML attributes as code spans', () => {
-		expect(details('S', 'a <span title="`">x</span> </details> `')).toContain('</\u200Bdetails>');
-		expect(details('S', '<summary>`</details>`</summary>\n\nOUT')).toContain('</\u200Bdetails>');
-		expect(details('S', '<summary>x</summary>\n```\n</details>\n```\n\nOUT')).toContain('</\u200Bdetails>');
+		expect(details('S', 'a <span title="`">x</span> </details> `')).toContain('<\u200B/details>');
+		expect(details('S', '<summary>`</details>`</summary>\n\nOUT')).toContain('<\u200B/details>');
+		expect(details('S', '<summary>x</summary>\n```\n</details>\n```\n\nOUT')).toContain('<\u200B/details>');
 	});
 
 	test('treats fences inside HTML blocks as HTML, not code', () => {
 		const content = '<div>\n```\n</details>\n```\n</div>';
-		expect(details('S', content)).toContain('</\u200Bdetails>');
+		expect(details('S', content)).toContain('<\u200B/details>');
 		const code = '<div>\n\n```\n</details>\n```\n</div>';
-		expect(details('S', code)).toContain('</\u200Bdetails>');
+		expect(details('S', code)).toContain('<\u200B/details>');
 	});
 
 	test('preserves fenced code inside a list', () => {
 		const html = render(details('S', '- ```html\n  </details>\n  ```'));
-		expect(html).toContain('<code class="language-html">&lt;/\u200Bdetails&gt;\n</code>');
+		expect(html).toContain('<code class="language-html">&lt;\u200B/details&gt;\n</code>');
 	});
 
 	test('uses fallback for an HTML tag alone on a line', () => {
-		expect(details('S', '<kbd>\n\n```\n</details>\n```')).toContain('</\u200Bdetails>');
+		expect(details('S', '<kbd>\n\n```\n</details>\n```')).toContain('<\u200B/details>');
 	});
 
 	test('protects a closer inside an HTML block in a blockquote', () => {
 		const content = '> <div>\n> ```\n> </details>\n> ```\n> </div>\n\nOUT';
-		expect(details('S', content)).toContain('</\u200Bdetails>');
+		expect(details('S', content)).toContain('<\u200B/details>');
 	});
 
 	test('protects a closer inside an HTML block in a list', () => {
 		const content = '- <div>\n  ```\n  </details>\n  ```\n  </div>\n\nOUT';
-		expect(details('S', content)).toContain('</\u200Bdetails>');
+		expect(details('S', content)).toContain('<\u200B/details>');
 	});
 
 	test('does not count details openers inside a table HTML block', () => {
 		for (const content of ['<table><details></table></details>OUT', '<table>\n<details>\n</table></details>OUT']) {
-			expect(details('S', content)).toContain('</\u200Bdetails>OUT');
+			expect(details('S', content)).toContain('<\u200B/details>OUT');
 		}
 		const content = '<table>\n\n<details>\n\n</table>\n\n</details>\n\nOUT';
-		expect(details('S', content)).toContain('</\u200Bdetails>\n\nOUT');
+		expect(details('S', content)).toContain('<\u200B/details>\n\nOUT');
 	});
 
 	test('renders escaped closing tags as text inside details', () => {

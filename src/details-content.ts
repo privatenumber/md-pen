@@ -1,10 +1,11 @@
 // https://html.spec.whatwg.org/multipage/parsing.html#has-an-element-in-scope
 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-intable
 const unsafeTag = /<\/?(?:applet|caption|html|table|td|th|marquee|object|template|mi|mo|mn|ms|mtext|annotation-xml|foreignobject|desc|title|tbody|thead|tfoot|tr|colgroup|col|select|script|style|textarea|xmp|iframe|noembed|noframes|noscript|plaintext|svg|math)(?=[\s/>])/i;
-const opening = /^<details(?=[ \t>])[^>]*>[ \t]*$/i;
+const opening = /^<details(?:[ \t]+[^\s"'<>/=]+="[^">]*")*[ \t]*>[ \t]*$/i;
 const closing = /^<\/details>[ \t]*$/i;
-const summaryStart = /^ {0,3}<summary(?=[ \t>])[^>]*>/i;
+const summaryStart = /^ {0,3}<summary>/i;
 const summaryEnd = /<\/summary>[ \t]*$/i;
+const summaryCloseLine = /^<\/summary>[ \t]*$/i;
 const token = /<\/?details(?=[\s/>]|$)/gi;
 const containerPrefix = / {0,3}(?:>[ \t]?|(?:[-+*]|\d{1,9}[.)])[ \t])/y;
 
@@ -22,19 +23,24 @@ const containerBody = (line: string) => {
 	return line.slice(offset);
 };
 
+const structuralSummary = (body: string) => {
+	const start = summaryStart.exec(body);
+	if (!start) {
+		return false;
+	}
+	const rest = body.slice(start[0].length);
+	const nextTag = rest.indexOf('<');
+	return nextTag === -1 || summaryCloseLine.test(rest.slice(nextTag));
+};
+
 const isComplexLine = (line: string, inSummary: boolean) => {
 	const body = containerBody(line);
-	if (/^ {0,3}(?:(?:[-+*]|\d{1,9}[.)])(?:[ \t]|$)|>)/.test(line)) {
-		return true;
-	}
 	if (/^(?: {4}|\t)/.test(body) || /^ {0,3}(?:```|~~~)/.test(body)) {
 		return true;
 	}
-	if (inSummary) {
-		return false;
-	}
 	return /^ {0,3}<[a-z/!?]/i.test(body)
-		&& !opening.test(body) && !closing.test(body) && !summaryStart.test(body);
+		&& !opening.test(body) && !closing.test(body)
+		&& !(inSummary && summaryCloseLine.test(body)) && !structuralSummary(body);
 };
 
 type PairState = {
@@ -102,7 +108,7 @@ export const protectDetailsContent = (text: string) => {
 		if (preserved?.has(match.index)) {
 			continue;
 		}
-		const insertion = match.index + (match[0][1] === '/' ? 2 : 1);
+		const insertion = match.index + 1;
 		chunks.push(text.slice(start, insertion), '\u200B');
 		start = insertion;
 	}

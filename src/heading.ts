@@ -3,7 +3,19 @@ export const heading = (
 	level: 1 | 2 | 3 | 4 | 5 | 6 = 1,
 ) => {
 	const singleLine = text.replaceAll(/[\r\n]+/g, ' ');
-	return `${'#'.repeat(level)} ${singleLine.replace(/(#+)\s*$/, String.raw`\$1`)}`;
+	const end = singleLine.trimEnd().length;
+	let hashStart = end;
+	while (hashStart > 0 && singleLine[hashStart - 1] === '#') {
+		hashStart -= 1;
+	}
+	let slashStart = hashStart;
+	while (slashStart > 0 && singleLine[slashStart - 1] === '\\') {
+		slashStart -= 1;
+	}
+	const safeText = hashStart < end && (hashStart - slashStart) % 2 === 0
+		? `${singleLine.slice(0, hashStart)}\\${singleLine.slice(hashStart, end)}`
+		: singleLine;
+	return `${'#'.repeat(level)} ${safeText}`;
 };
 
 export const h1 = (text: string) => heading(text, 1);

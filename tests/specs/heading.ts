@@ -1,5 +1,6 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
+import { escape } from '../../src/escape.ts';
 import {
 	heading, h1, h2, h3, h4, h5, h6,
 } from '../../src/heading.ts';
@@ -35,6 +36,19 @@ describe('heading', () => {
 
 	test('empty text', () => {
 		expect(heading('')).toBe('# ');
+	});
+
+	test('preserves escaped trailing hashes', () => {
+		expect(render(heading(escape('a #')))).toBe('<h1>a #</h1>');
+		expect(render(heading(String.raw`a \###`))).toBe('<h1>a ###</h1>');
+		expect(render(heading(String.raw`a \\#`))).toBe(String.raw`<h1>a \#</h1>`);
+	});
+
+	test('preserves trailing hashes and backslashes in closing-sequence edge cases', () => {
+		expect(render(heading('a#'))).toBe('<h1>a#</h1>');
+		expect(render(heading('#'))).toBe('<h1>#</h1>');
+		expect(render(heading('a\t#'))).toBe('<h1>a\t#</h1>');
+		expect(render(heading('a \\'))).toBe(String.raw`<h1>a \</h1>`);
 	});
 });
 

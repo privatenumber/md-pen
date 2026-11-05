@@ -75,6 +75,7 @@ strikethrough('no') // ~~no~~
 #### `link(url, text?, options?)`
 
 Markdown by default. Falls back to HTML when options go beyond what markdown supports.
+Explicit link text is Markdown, so it can contain output from other helpers. If text is omitted, the URL is displayed as literal text.
 
 > [!NOTE]
 > `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
@@ -93,6 +94,7 @@ link('https://x.com', 'click', { target: '_blank' })
 #### `image(url, alt?, options?)`
 
 Same fallback principle as `link`.
+In Markdown output, alt text is Markdown and can contain output from other helpers. In HTML output, alt text is an HTML attribute.
 
 ```ts
 image('cat.png') // ![](cat.png)
@@ -384,7 +386,7 @@ ul([
 Each function escapes only what would break its own syntax:
 
 - `table()` escapes `|` in cells, newlines become `<br>`
-- `link()` / `image()` percent-encodes `(`, `)`, spaces, and control chars in URLs
+- `link()` / `image()` escapes Markdown destination delimiters and character references, and percent-encodes spaces and control characters in URLs
 - `code()` adjusts backtick delimiter length
 - HTML functions (`kbd`, `sub`, `sup`, `details`) escape `<`, `>`, `&`, `"`
 

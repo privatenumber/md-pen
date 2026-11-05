@@ -2,6 +2,8 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
 import { kbd, sub } from '../../src/misc.ts';
+import { escape } from '../../src/escape.ts';
+import { code } from '../../src/code.ts';
 
 describe('link', () => {
 	test('autolinks http URL without text', () => {
@@ -10,6 +12,7 @@ describe('link', () => {
 
 	test('autolinks http URL with protocol variations', () => {
 		expect(link('http://example.com')).toBe('<http://example.com>');
+		expect(link('https://x.com/?a=1&b=2')).toBe('<https://x.com/?a=1&b=2>');
 	});
 
 	test('uses markdown link for non-http URL without text', () => {
@@ -41,7 +44,7 @@ describe('link', () => {
 
 	test('escapes parentheses in URLs', () => {
 		expect(link('https://en.wikipedia.org/wiki/Foo_(bar)', 'link')).toBe(
-			'[link](https://en.wikipedia.org/wiki/Foo_%28bar%29)',
+			String.raw`[link](https://en.wikipedia.org/wiki/Foo_\(bar\))`,
 		);
 	});
 
@@ -74,8 +77,47 @@ describe('link', () => {
 
 	test('uses url as text in HTML fallback when no text', () => {
 		expect(link('https://x.com', undefined, { target: '_blank' })).toBe(
-			'<a target="_blank" href="https://x.com">https://x.com</a>',
+			String.raw`<a target="_blank" href="https://x.com">https\://x.com</a>`,
 		);
+	});
+
+	test('URL-derived labels are literal text', () => {
+		const url = 'https://x.test/<img src=x onerror=alert(1)>';
+		for (const options of [undefined, { title: 'title' }]) {
+			const html = render(link(url, undefined, options));
+			expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+			expect(html).not.toContain('<img');
+		}
+	});
+
+	test('composes Markdown labels without changing code or escaping', () => {
+		expect(render(link('u', code('a[0]')))).toBe('<p><a href="u"><code>a[0]</code></a></p>');
+		expect(render(link('u', code('a]b[')))).toBe('<p><a href="u"><code>a]b[</code></a></p>');
+		expect(render(link('u', escape('*x*')))).toBe('<p><a href="u">*x*</a></p>');
+		expect(render(link('/x', image('/cat.png', 'cat')))).toBe('<p><a href="/x"><img src="/cat.png" alt="cat" /></a></p>');
+	});
+
+	test('balances brackets around escaped and unequal backtick runs', () => {
+		expect(render(link('u', '\\`[`a]`'))).toBe('<p><a href="u">`[<code>a]</code></a></p>');
+		expect(render(link('u', '``[`]``'))).toBe('<p><a href="u"><code>[`]</code></a></p>');
+		expect(render(link('u', '\\``]`[`'))).toBe('<p><a href="u">`<code>]</code>[`</a></p>');
+	});
+
+	test('preserves entity-like URL text in destinations', () => {
+		for (const reference of ['&#35;', '&copy;', '&amp;']) {
+			const url = `https://x.test/?a=1${reference}z`;
+			const href = url.replaceAll('&', '&amp;');
+			expect(render(link(url, 'x'))).toContain(`href="${href}"`);
+			expect(render(link(url))).toContain(`href="${href}"`);
+		}
+	});
+
+	test('HTML fallback does not create nested autolinks', () => {
+		for (const url of ['https://example.com?a=1&b=2', 'www.example.com']) {
+			const html = render(link(url, undefined, { target: '_blank' }));
+			expect(html.match(/<a /g)?.length).toBe(1);
+			expect(html).toContain(url.replaceAll('&', '&amp;'));
+		}
 	});
 });
 
@@ -123,7 +165,7 @@ describe('image', () => {
 	});
 
 	test('escapes parentheses in image URLs', () => {
-		expect(image('photo (1).png', 'Photo')).toBe('![Photo](photo%20%281%29.png)');
+		expect(image('photo (1).png', 'Photo')).toBe(String.raw`![Photo](photo%20\(1\).png)`);
 	});
 
 	test('escapes spaces in image URLs', () => {
@@ -132,6 +174,14 @@ describe('image', () => {
 
 	test('title-only options with no alt', () => {
 		expect(image('cat.png', undefined, { title: 'T' })).toBe('![](cat.png "T")');
+	});
+
+	test('preserves escaped Markdown in alt text', () => {
+		expect(render(image('u', escape('a_b_c')))).toBe('<p><img src="u" alt="a_b_c" /></p>');
+	});
+
+	test('preserves a leading angle bracket in the destination', () => {
+		expect(render(image('<bad>', 'x'))).toBe('<p><img src="%3Cbad%3E" alt="x" /></p>');
 	});
 });
 
@@ -442,6 +492,13 @@ describe('www and email autolinks', () => {
 	test('email HTML fallback does not produce nested anchors', () => {
 		const html = render(link('foo@bar.baz', undefined, { target: '_blank' }));
 		// Should have exactly one <a> opening tag
+		expect(html.match(/<a /g)?.length).toBe(1);
+		expect(html).toContain('foo@\u200Bbar.baz');
+	});
+
+	test('HTML fallback breaks mentions in URL display text', () => {
+		const html = render(link('https://example.com/@user', undefined, { target: '_blank' }));
+		expect(html).toContain('/@\u200Buser');
 		expect(html.match(/<a /g)?.length).toBe(1);
 	});
 

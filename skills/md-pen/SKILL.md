@@ -119,7 +119,7 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 ### Niche
 
-`kbd()`, `sub()`, and `sup()` HTML-escape content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes remain visible. Line endings become spaces, including in table cells.
+`kbd()`, `sub()`, and `sup()` HTML-escape content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
 
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>

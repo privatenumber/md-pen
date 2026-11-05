@@ -74,7 +74,7 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
-The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; use `link(url)` without a label for `http://` or `https://` URLs to generate a protected angle-bracket autolink.
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
 
 #### `link(url, text?, options?)`
 

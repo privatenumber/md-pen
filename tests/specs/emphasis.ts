@@ -60,15 +60,24 @@ describe('emphasis', () => {
 		expect(render(bold('Email a__b@example.com'))).toBe('<p><strong>Email <a href="mailto:a__b@example.com">a__b@example.com</a></strong></p>');
 		expect(render(`${bold(footnoteRef('a__b'))}\n\n${footnote('a__b', 'note')}`)).toContain('<a href="#fn-a__b"');
 		expect(render(bold(math('x_{1}')))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
-		expect(render(strikethrough(math('a ~ b')))).toBe('<p><del><span data-math-style="inline">a ~ b</span></del></p>');
+		expect(render(strikethrough(math('a ~ b')))).toBe(String.raw`<p><del><span data-math-style="inline">a \~ b</span></del></p>`);
 		expect(bold('snake_case')).toBe('__snake_case__');
 	});
 
 	test('handles renderer whitespace around delimiters', () => {
-		for (const character of ['\v', '\u2028', '\u2029']) {
+		for (const character of ['\v', '\u0085', '\u2028', '\u2029']) {
 			expect(italic(`${character}x${character}`)).toBe(`${character}*x*${character}`);
+			expect(italic(`${character}x`)).toBe(`${character}*x*`);
+			expect(italic(`x${character}`)).toBe(`*x*${character}`);
 		}
 		expect(render(italic('<a\ftitle="*">x</a>'))).toBe('<p><em><a\ftitle="*">x</a></em></p>');
+		expect(render(italic('<a\vtitle="*">x</a>'))).toBe('<p><em><a\vtitle="*">x</a></em></p>');
+	});
+
+	test('preserves strikethrough with interior tildes', () => {
+		expect(render(strikethrough('version ~1.0'))).toBe('<p><del>version ~1.0</del></p>');
+		expect(render(strikethrough(italic('a~')))).toBe('<p><del><em>a~</em></del></p>');
+		expect(render(strikethrough(code('~x~')))).toBe('<p><del><code>~x~</code></del></p>');
 	});
 
 	test('escapes delimiters in malformed declarations', () => {

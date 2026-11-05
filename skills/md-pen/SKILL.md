@@ -136,11 +136,12 @@ emoji('rocket')      // :rocket:
 
 ```ts
 el('br')                                    // <br />
+el('div')                                   // <div></div>
 el('img', { src: 'cat.png', alt: 'Cat' })   // <img src="cat.png" alt="Cat" />
 el('p', { align: 'center' }, 'centered')    // <p align="center">centered</p>
 ```
 
-Content is raw (not escaped). Without content, self-closing.
+Content is raw (not escaped). Without content, HTML void elements use a self-closing tag; other elements use an opening and closing tag.
 
 ### Escaping
 

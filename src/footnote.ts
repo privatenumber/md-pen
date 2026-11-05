@@ -1,7 +1,15 @@
-const normalizeId = (id: string) => id.trim()
-	.replaceAll(/\s+/g, '-')
-	.toLowerCase()
-	.replaceAll(/[^a-z\d_.\-\u0080-\uFFFF]/g, character => `%${character.codePointAt(0)!.toString(16).padStart(2, '0')}`);
+const normalizeId = (id: string) => {
+	if (!id.isWellFormed()) {
+		return '';
+	}
+	const encoder = new TextEncoder();
+	return id.trim()
+		.replaceAll(/\s+/g, '-')
+		.replaceAll(/[A-Z]/g, character => character.toLowerCase())
+		.replaceAll(/[^a-z\d.-]/gu, character => (
+			[...encoder.encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
+		));
+};
 
 const isValidId = (id: string) => id.length > 0
 	&& id.length <= 999

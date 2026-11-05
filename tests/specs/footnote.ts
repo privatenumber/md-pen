@@ -32,7 +32,7 @@ describe('footnote', () => {
 	});
 
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(250)]) {
+		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '_a_', 'é', '😀', '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(83)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
 			expect(html).toContain('<sup');
 		}
@@ -47,10 +47,19 @@ describe('footnote', () => {
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
-		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '😀'.repeat(500), '%'.repeat(334), '\0'.repeat(334)]) {
+		for (const id of ['x'.repeat(1000), '😀'.repeat(84), '%'.repeat(334), '\0'.repeat(334), '\uD800', '\uDC00']) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}
+	});
+
+	test('keeps distinct Georgian labels distinct', () => {
+		const ids = ['Ა', 'ა'];
+		const markdown = `${ids.map(id => `text${footnoteRef(id)}`).join(' ')}\n\n${ids.map((id, index) => footnote(id, `note${index}`)).join('\n')}`;
+		const html = render(markdown);
+		expect(html.match(/<sup/g)?.length).toBe(2);
+		expect(html).toContain('note0');
+		expect(html).toContain('note1');
 	});
 
 	test('distinct IDs with backslashes and percent escapes remain distinct', () => {
@@ -97,8 +106,8 @@ describe('footnote ID sanitization', () => {
 		expect(footnoteRef('a\\')).toBe('[^a%5c]');
 	});
 
-	test('preserves dashes and underscores', () => {
-		expect(footnoteRef('a-b_c')).toBe('[^a-b_c]');
+	test('preserves dashes and encodes underscores', () => {
+		expect(footnoteRef('a-b_c')).toBe('[^a-b%5fc]');
 	});
 
 	test('encodes backslash mid-ID', () => {

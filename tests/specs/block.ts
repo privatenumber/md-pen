@@ -49,7 +49,7 @@ describe('details', () => {
 
 	test('preserves closing tags inside code blocks', () => {
 		const html = render(details('S', codeBlock('</details>', 'html')));
-		expect(html).toContain('<code class="language-html">&lt;/details&gt;\n</code>');
+		expect(html).toContain('<code class="language-html">&lt;/\u200Bdetails&gt;\n</code>');
 	});
 
 	test('preserves nested details', () => {
@@ -64,67 +64,98 @@ describe('details', () => {
 		expect(html).not.toContain('&lt;/details&gt;');
 	});
 
+	test('preserves nested details with multiline summaries', () => {
+		const html = render(details('outer', details('first\nsecond', 'inside')));
+		expect(html.match(/<details>/g)?.length).toBe(2);
+		expect(html.match(/<\/details>/g)?.length).toBe(2);
+	});
+
+	test('neutralizes nested closers when content contains code', () => {
+		const inner = details('inner', codeBlock('</details>', 'html'));
+		const result = details('outer', `${inner}\n\nOUT`);
+		expect(result).toContain('</\u200Bdetails>\n\nOUT');
+		const html = render(result);
+		expect(html).toContain('&lt;/\u200Bdetails&gt;');
+		expect(html).toContain('<p>OUT</p>\n</details>');
+	});
+
+	test('neutralizes closers when code markers can obscure an opener', () => {
+		const cases = [
+			'    ```\n    <details>\n    ```\n\n</details>\n\nOUT',
+			'     ```\n     <details>\n     ```\n\n</details>\n\nOUT',
+			'      ```\n      <details>\n      ```\n\n</details>\n\nOUT',
+			'  ```\n<details>\n  ```\n\n</details>\n\nOUT',
+			'[x](url "a `") and `code`\n\n</details>\n\nOUT',
+		];
+		for (const content of cases) {
+			const html = render(details('S', content));
+			expect(html.match(/<\/details>/g)?.length).toBe(1);
+			expect(html.indexOf('OUT')).toBeLessThan(html.lastIndexOf('</details>'));
+		}
+	});
+
 	test('preserves closing tags in inline and indented code', () => {
 		const html = render(details('S', '`</details>`\n\n    </details>'));
-		expect(html).toContain('<code>&lt;/details&gt;</code>');
-		expect(html).toContain('<pre><code>&lt;/details&gt;\n</code></pre>');
+		expect(html).toContain('<code>&lt;/\u200Bdetails&gt;</code>');
+		expect(html).toContain('<pre><code>&lt;/\u200Bdetails&gt;\n</code></pre>');
 	});
 
 	test('protects an extra closer after a nested section', () => {
 		const html = render(details('S', `${details('inner', 'x')}\n\n</details>`));
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
-		expect(html.match(/&lt;\/details&gt;/g)?.length).toBe(1);
+		expect(html).toContain('&lt;/\u200Bdetails&gt;');
 	});
 
 	test('protects malformed closing tags in fallback mode', () => {
-		expect(details('S', '</details foo>')).toContain('&lt;/details&gt;');
+		expect(details('S', '</details foo>')).toContain('</\u200Bdetails foo>');
+		expect(details('S', '</DeTaIlS / >')).toContain('</\u200BDeTaIlS / >');
 	});
 
 	test('does not treat backticks across paragraphs as code spans', () => {
-		expect(details('S', '`\n\n</details>\n\n`')).toContain('&lt;/details&gt;');
-		expect(details('S', '`\n- </details>\n`')).toContain('&lt;/details&gt;');
-		expect(details('S', '`\n</details>\n`')).toContain('&lt;/details&gt;');
-		expect(details('S', '`\nx </details>\n---\n`\n\nOUT')).toContain('&lt;/details&gt;');
+		expect(details('S', '`\n\n</details>\n\n`')).toContain('</\u200Bdetails>');
+		expect(details('S', '`\n- </details>\n`')).toContain('</\u200Bdetails>');
+		expect(details('S', '`\n</details>\n`')).toContain('</\u200Bdetails>');
+		expect(details('S', '`\nx </details>\n---\n`\n\nOUT')).toContain('</\u200Bdetails>');
 	});
 
 	test('does not treat backticks in HTML attributes as code spans', () => {
-		expect(details('S', 'a <span title="`">x</span> </details> `')).toContain('&lt;/details&gt;');
-		expect(details('S', '<summary>`</details>`</summary>\n\nOUT')).toContain('&lt;/details&gt;');
-		expect(details('S', '<summary>x</summary>\n```\n</details>\n```\n\nOUT')).toContain('&lt;/details&gt;');
+		expect(details('S', 'a <span title="`">x</span> </details> `')).toContain('</\u200Bdetails>');
+		expect(details('S', '<summary>`</details>`</summary>\n\nOUT')).toContain('</\u200Bdetails>');
+		expect(details('S', '<summary>x</summary>\n```\n</details>\n```\n\nOUT')).toContain('</\u200Bdetails>');
 	});
 
 	test('treats fences inside HTML blocks as HTML, not code', () => {
 		const content = '<div>\n```\n</details>\n```\n</div>';
-		expect(details('S', content)).toContain('&lt;/details&gt;');
+		expect(details('S', content)).toContain('</\u200Bdetails>');
 		const code = '<div>\n\n```\n</details>\n```\n</div>';
-		expect(details('S', code)).toContain('&lt;/details&gt;');
+		expect(details('S', code)).toContain('</\u200Bdetails>');
 	});
 
 	test('preserves fenced code inside a list', () => {
 		const html = render(details('S', '- ```html\n  </details>\n  ```'));
-		expect(html).toContain('<code class="language-html">&lt;/details&gt;\n</code>');
+		expect(html).toContain('<code class="language-html">&lt;/\u200Bdetails&gt;\n</code>');
 	});
 
 	test('uses fallback for an HTML tag alone on a line', () => {
-		expect(details('S', '<kbd>\n\n```\n</details>\n```')).toContain('&lt;/details&gt;');
+		expect(details('S', '<kbd>\n\n```\n</details>\n```')).toContain('</\u200Bdetails>');
 	});
 
 	test('protects a closer inside an HTML block in a blockquote', () => {
 		const content = '> <div>\n> ```\n> </details>\n> ```\n> </div>\n\nOUT';
-		expect(details('S', content)).toContain('&lt;/details&gt;');
+		expect(details('S', content)).toContain('</\u200Bdetails>');
 	});
 
 	test('protects a closer inside an HTML block in a list', () => {
 		const content = '- <div>\n  ```\n  </details>\n  ```\n  </div>\n\nOUT';
-		expect(details('S', content)).toContain('&lt;/details&gt;');
+		expect(details('S', content)).toContain('</\u200Bdetails>');
 	});
 
 	test('does not count details openers inside a table HTML block', () => {
 		for (const content of ['<table><details></table></details>OUT', '<table>\n<details>\n</table></details>OUT']) {
-			expect(details('S', content)).toContain('&lt;/details&gt;OUT');
+			expect(details('S', content)).toContain('</\u200Bdetails>OUT');
 		}
 		const content = '<table>\n\n<details>\n\n</table>\n\n</details>\n\nOUT';
-		expect(details('S', content)).toContain('&lt;/details&gt;\n\nOUT');
+		expect(details('S', content)).toContain('</\u200Bdetails>\n\nOUT');
 	});
 
 	test('renders escaped closing tags as text inside details', () => {
@@ -138,21 +169,25 @@ describe('details content injection', () => {
 		const html = render(details('sum', '</details>\nout'));
 		expect(html.match(/<details>/g)?.length).toBe(1);
 		expect(html.match(/<\/details>/g)?.length).toBe(1);
+		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</DETAILS> case-insensitive does not close block early', () => {
 		const html = render(details('sum', '</DETAILS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
+		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</DeTaIlS> mixed case does not close block early', () => {
 		const html = render(details('sum', '</DeTaIlS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
+		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</details > with space does not close block early', () => {
 		const html = render(details('sum', '</details >\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
+		expect(html).toContain('out</p>\n</details>');
 	});
 });
 

@@ -265,7 +265,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. The summary is HTML-escaped. Content supports Markdown; stray closing `</details>` tags are protected, while code and nested `details()` sections are preserved when possible. Other raw HTML may cause closing tags inside code or nested sections to be escaped. Wrap untrusted text in `escape()`.
+Collapsible section. The summary is HTML-escaped and content supports Markdown. Stray `</details>` tags are neutralized with an invisible zero-width space, which remains when code is copied. Nested `details()` sections are preserved for simple content; otherwise, inner sections may not close. Wrap untrusted text in `escape()`.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')

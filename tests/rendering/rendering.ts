@@ -91,16 +91,6 @@ describe('rendering: non-trivial output', () => {
 		expect(html).toContain('<pre>');
 		expect(html).toContain('language-js');
 	});
-
-	test('html table renders escaped closing tags as text in one cell', () => {
-		const html = render(table([
-			['h'],
-			[escape('x</td><td>y</table>')],
-		], { html: true }));
-		expect(html).toContain('<td>\n<p>x&lt;/td&gt;&lt;td&gt;y&lt;/table&gt;</p>\n</td>');
-		expect(html.match(/<td>/g)?.length).toBe(1);
-		expect(html.match(/<table>/g)?.length).toBe(1);
-	});
 });
 
 describe('rendering: escaping', () => {

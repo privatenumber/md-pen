@@ -1,6 +1,6 @@
 import { escapeHtml, htmlAttributes } from './escape.ts';
 
-export const hr = () => '***';
+export const hr = () => '___';
 
 export const details = (
 	summary: string,

@@ -351,7 +351,7 @@ el('p', { align: 'center' }, 'centered text')
 
 #### `escape(text)`
 
-Escapes Markdown syntax in untrusted text, including GitHub mentions, issue references, emoji shortcodes, autolinks, and math. Invisible zero-width spaces prevent GitHub from interpreting mentions, issue references, emoji shortcodes, and dollar signs, and are retained when copying the rendered text. Leading indentation and whitespace before line breaks may be normalized.
+Escapes Markdown syntax in untrusted text, including GitHub mentions, issue references, emoji shortcodes, autolinks, and math. Invisible zero-width spaces prevent GitHub from interpreting mentions, issue references, emoji shortcodes, and dollar signs, and are retained when copying the rendered text. GitHub can interpret references in URL paths after the URL is escaped, so those paths may also contain zero-width spaces. Dollar signs are guarded even where GitHub does not render math, because other renderers may do so. GitHub commit SHA references are not neutralized. Leading indentation and whitespace before line breaks may be normalized.
 
 ```ts
 escape('**not bold**') // \*\*not bold\*\*

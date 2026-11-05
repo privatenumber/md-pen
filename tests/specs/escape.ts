@@ -54,7 +54,7 @@ describe('escape', () => {
 		expect(escape('hello 世界 🚀')).toBe('hello 世界 🚀');
 	});
 
-	test('renders GitHub references and math as literal text', () => {
+	test('emits guards for references and math', () => {
 		const input = '@octocat a@example.com #1 GH-1 $x$ $$x$$ $`x`$';
 		const html = render(escape(input));
 		expect(html).toBe('<p>@​octocat a@​example.com #​1 GH-​1 ​$x​$ ​$​$x​$​$ ​$`x`​$</p>');
@@ -64,7 +64,17 @@ describe('escape', () => {
 		const options = { extension: { shortcodes: true } };
 		expect(markdownToHTML(':smile:', options)).toBe('<p>😄</p>\n');
 		expect(markdownToHTML(escape(':smile: :+1: :100:'), options)).toBe('<p>:​smile: :​+1: :​100:</p>\n');
+		expect(markdownToHTML(escape('\t:smile:'), options)).toBe('<p>:​smile:</p>\n');
 		expect(escape(':invalid:smile: :smile::smile:')).toBe(':​invalid:​smile: :​smile::​smile:');
+	});
+
+	test('guards references in URL paths and emails but not embedded word references', () => {
+		for (const input of ['https://example.com/#1', 'a/#1', 'foo/@octocat', 'a@example.com', 'privatenumber/md-pen#1']) {
+			expect(escape(input)).toContain('\u200B');
+		}
+		for (const input of ['x#1', 'foo_#1', 'xGH-1', 'x@octocat', 'foo_@octocat']) {
+			expect(escape(input)).not.toContain('\u200B');
+		}
 	});
 
 	test('does not insert invisible characters into timestamps or URLs', () => {

@@ -1,16 +1,18 @@
 export const escape = (text: string) => text
 	.replaceAll(/\r\n?/g, '\n')
-	.replaceAll(/(^|[ \n]):[\w:+-]+/g, match => match.replaceAll(/:(?=[\w+-]+:)/g, ':\u200B'))
-	.replaceAll(/[\\`*_~[\]<>&#\-+$]/g, character => (character === '$' ? '\u200B\\$' : `\\${character}`))
 	.replaceAll(/^[ \t]+/gm, indentation => (indentation.includes('\t') || indentation.length >= 4 ? '   ' : indentation))
+	.replaceAll(/(^|[ \n]):[\w:+-]+/g, match => match.replaceAll(/:(?=[\w+-]+:)/g, ':\u200B'))
+	.replaceAll(/\B#(?=\d)|(?<=[\w.-]\/[\w.-]{1,100})#(?=\d)/g, '#\u200B')
+	.replaceAll(/\bGH-(?=\d)/gi, '$&\u200B')
+	.replaceAll(/@(?:[\w-]+(?:\.[\w-]+)+)?/g, (match, offset: number, input: string) => (
+		!/\w/.test(input[offset - 1] ?? '') || match.length > 1 ? `@\u200B${match.slice(1)}` : match
+	))
+	.replaceAll(/[\\`*_~[\]<>&#\-+$]/g, character => (character === '$' ? '\u200B\\$' : `\\${character}`))
 	.replaceAll(/^( {0,3}\d{1,9})([.)])(?=[ \t]|$)/gm, String.raw`$1\$2`)
 	.replaceAll(/^( {0,3})(=+)[ \t]*$/gm, String.raw`$1\$2`)
 	.replaceAll(/[ \t]+/g, (whitespace, offset: number, input: string) => (offset + whitespace.length === input.length || input[offset + whitespace.length] === '\n' ? ' ' : whitespace))
 	.replaceAll(/(?:https?|ftp):/gi, match => String.raw`${match.slice(0, -1)}\:`)
-	.replaceAll(/www\./gi, match => String.raw`${match.slice(0, -1)}\.`)
-	.replaceAll('@', '@\u200B')
-	.replaceAll(/\\#(?=\d)/g, '$&\u200B')
-	.replaceAll(/GH\\-(?=\d)/gi, '$&\u200B');
+	.replaceAll(/www\./gi, match => String.raw`${match.slice(0, -1)}\.`);
 
 const htmlEntityMap: Record<string, string> = {
 	'<': '&lt;',

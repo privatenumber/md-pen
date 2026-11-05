@@ -37,8 +37,17 @@ describe('kbd', () => {
 	test('composes escaped HTML punctuation without double escaping', () => {
 		for (const helper of [kbd, sub, sup]) {
 			expect(render(helper(escape('A & B <x>')))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(el('div', undefined, helper(escape('A & B <x>'))))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
+		}
+	});
+
+	test('escaped HTML cannot become a tag inside an HTML block', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(el('div', undefined, helper(escape('<img src=x onerror=alert(1) >'))));
+			expect(html).not.toContain('<img');
+			expect(html).toContain('&lt;img src=x onerror=alert(1) &gt;');
 		}
 	});
 

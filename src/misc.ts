@@ -13,7 +13,14 @@ const escapeInlineHtml = (input: string) => {
 			backslashes += 1;
 			result += character;
 		} else {
-			result += backslashes % 2 || !'<>&"'.includes(character) ? character : escapeHtml(character);
+			if ('<>&"'.includes(character)) {
+				if (backslashes % 2) {
+					result = result.slice(0, -1);
+				}
+				result += escapeHtml(character);
+			} else {
+				result += character;
+			}
 			backslashes = 0;
 		}
 	}

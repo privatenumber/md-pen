@@ -46,7 +46,7 @@ const precedingBackslashes = (text: string, offset: number) => {
 };
 
 export const escapeTableCell = (text: string) => {
-	// An odd backslash run already escapes the pipe in Markdown.
+	// An odd backslash run already escapes the table delimiter.
 	let result = text.replaceAll(
 		'|',
 		(_match, offset: number) => (precedingBackslashes(text, offset) % 2 === 0 ? String.raw`\|` : '|'),

@@ -202,7 +202,7 @@ table([
 Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 > [!NOTE]
-> In Markdown mode, newlines become `<br>` and the first and last boundary spaces or tabs become non-breaking spaces. A backslash immediately before a pipe in a code span, math span, or raw HTML attribute may not be preserved. HTML mode avoids table pipe escaping, but renderer behavior may still differ. HTML-mode cells are raw Markdown/HTML: closing tags such as `</td>` or `</table>` are not protected, and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; it does not preserve whitespace or line breaks exactly.
+> In Markdown mode, newlines become `<br>` and the first and last boundary spaces or tabs become non-breaking spaces. A backslash immediately before a pipe in a code span, math span, angle-bracket autolink, or raw HTML attribute may not be preserved; line endings in code spans become literal `<br>` text, so use HTML mode for those spans. HTML mode avoids table pipe escaping, but renderer behavior may still differ. HTML-mode cells are raw Markdown/HTML: closing tags such as `</td>` or `</table>` are not protected, and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; it does not preserve whitespace or line breaks exactly.
 
 #### `ul(items)` / `ol(items)`
 

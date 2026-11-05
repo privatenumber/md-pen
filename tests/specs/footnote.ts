@@ -32,9 +32,14 @@ describe('footnote', () => {
 	});
 
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '_a_', 'é', '😀', '文'.repeat(112), '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(250)]) {
+		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', 'a:b', 'a|b', 'a>b', 'a{b', 'a}b', 'a\u0085b', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '_a_', 'é', '😀', '文'.repeat(112), '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(250)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
-			expect(html).toContain('<sup');
+			const reference = html.match(/<sup[^>]*><a href="#([^"]+)" id="([^"]+)"/);
+			const definition = html.match(/<li id="([^"]+)">/);
+			const backLink = html.match(/<a href="#([^"]+)" class="footnote-backref"/);
+			expect(reference?.[1]).toBe(definition?.[1]);
+			expect(backLink?.[1]).toBe(reference?.[2]);
+			expect(reference).not.toBeNull();
 		}
 	});
 
@@ -44,6 +49,9 @@ describe('footnote', () => {
 		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
 		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
 		expect(footnoteRef('a&AMP;b')).toBe('[^a%26AMP;b]');
+		expect(footnoteRef('a&ſfoo;b')).toBe('[^a&ſfoo;b]');
+		expect(footnoteRef('a&Kfoo;b')).toBe('[^a&Kfoo;b]');
+		expect(footnoteRef('a\u0085b')).toBe('[^a%c2%85b]');
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {

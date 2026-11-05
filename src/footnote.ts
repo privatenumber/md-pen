@@ -4,10 +4,9 @@ const normalizeId = (id: string) => {
 	}
 	return id.trim()
 		.replaceAll(/\s+/g, '-')
-		.replaceAll(/[%\\`<$[\]\p{Cc}]|&(?=#(?:x[\da-f]{1,8}|\d{1,8});|[a-z][a-z\d]{1,31};)/giu, (character) => {
-			const code = character.codePointAt(0)!;
-			return code > 127 ? character : `%${code.toString(16).padStart(2, '0')}`;
-		});
+		.replaceAll(/[%\\`<>$[\]:^|{}\p{Cc}]|&(?=#(?:[xX][\da-fA-F]{1,8}|\d{1,8});|[a-zA-Z][a-zA-Z\d]{1,31};)/gu, character => (
+			[...new TextEncoder().encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
+		));
 };
 
 const isValidId = (id: string) => id.length > 0

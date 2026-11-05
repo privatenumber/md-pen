@@ -8,7 +8,7 @@ Typed utilities for formatting Markdown. GFM (GitHub-Flavored Markdown) first.
 ### Features
 
 - Zero dependencies
-- Full TypeScript with exported types
+- Full TypeScript with exported types, including `AlertType`, `ListItem`, `CellValue`, `TableOptions`, and `ColumnEntry`
 - Every output verified against a CommonMark parser
 - GitHub-compatible (audited against [cmark-gfm](https://github.com/github/cmark-gfm))
 - Functions compose naturally

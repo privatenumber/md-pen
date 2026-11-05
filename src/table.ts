@@ -10,14 +10,14 @@ export type TableOptions = {
 	html?: boolean;
 };
 
-type CellValue = string | number | boolean | null | undefined;
+export type CellValue = string | number | boolean | null | undefined;
 
-const isObjectArray = (
-	input: CellValue[][] | Record<string, CellValue>[],
-): input is Record<string, CellValue>[] => !Array.isArray(input[0]);
+const isObjectArray = <Row extends { [K in keyof Row]: CellValue }>(
+	input: readonly (readonly CellValue[])[] | readonly Row[],
+): input is readonly Row[] => !Array.isArray(input[0]);
 
-const resolveRows = (
-	input: CellValue[][] | Record<string, CellValue>[],
+const resolveRows = <Row extends { [K in keyof Row]: CellValue }>(
+	input: readonly (readonly CellValue[])[] | readonly Row[],
 	options?: TableOptions,
 ) => {
 	if (isObjectArray(input)) {
@@ -29,7 +29,7 @@ const resolveRows = (
 		return {
 			rows: [
 				headers,
-				...input.map(item => keys.map(key => item[key] ?? '')),
+				...input.map(item => keys.map(key => item[key as keyof Row] ?? '')),
 			] as CellValue[][],
 			columnCount: keys.length,
 		};
@@ -65,7 +65,7 @@ const separatorCell = (alignment: TableAlignment) => {
 	}
 };
 
-const buildMarkdownRow = (cells: CellValue[], columnCount: number) => {
+const buildMarkdownRow = (cells: readonly CellValue[], columnCount: number) => {
 	let row = '|';
 	for (let i = 0; i < columnCount; i += 1) {
 		row += ` ${escapeTableCell(stringify(i < cells.length ? cells[i] : undefined))} |`;
@@ -74,7 +74,7 @@ const buildMarkdownRow = (cells: CellValue[], columnCount: number) => {
 };
 
 const buildMarkdownTable = (
-	rows: CellValue[][],
+	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
 	options?: TableOptions,
 ) => {
@@ -104,7 +104,7 @@ const validAlignments = new Set(['left', 'center', 'right']);
 const alignAttribute = (alignment?: TableAlignment) => (alignment && validAlignments.has(alignment) ? ` align="${alignment}"` : '');
 
 const buildHtmlTable = (
-	rows: CellValue[][],
+	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
 	options?: TableOptions,
 ) => {
@@ -136,8 +136,8 @@ const buildHtmlTable = (
 
 // --- Public API ---
 
-export const table = (
-	input: CellValue[][] | Record<string, CellValue>[],
+export const table = <Row extends { [K in keyof Row]: CellValue }>(
+	input: readonly (readonly CellValue[])[] | readonly Row[],
 	options?: TableOptions,
 ) => {
 	if (input.length === 0) {

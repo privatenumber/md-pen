@@ -3,6 +3,6 @@ export const blockquote = (text: string) => {
 	return `> ${normalized.replaceAll('\n', '\n> ')}`;
 };
 
-type AlertType = 'note' | 'tip' | 'important' | 'warning' | 'caution';
+export type AlertType = 'note' | 'tip' | 'important' | 'warning' | 'caution';
 
 export const alert = (type: AlertType, content: string) => blockquote(`[!${type.toUpperCase()}]\n${content}`);

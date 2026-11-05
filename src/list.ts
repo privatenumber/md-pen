@@ -1,4 +1,6 @@
-type ListItem = string | ListItem[];
+export type ListItem = string | readonly ListItem[];
+
+const isNested = (item: ListItem): item is readonly ListItem[] => Array.isArray(item);
 
 const indentContinuation = (text: string, continuationIndent: string) => {
 	if (!text.includes('\n') && !text.includes('\r')) {
@@ -9,7 +11,7 @@ const indentContinuation = (text: string, continuationIndent: string) => {
 };
 
 const formatList = (
-	items: ListItem[],
+	items: readonly ListItem[],
 	indent: number,
 	ordered: boolean,
 ): string => {
@@ -18,7 +20,7 @@ const formatList = (
 
 	for (let i = 0; i < items.length; i += 1) {
 		const item = items[i];
-		if (Array.isArray(item)) {
+		if (isNested(item)) {
 			if (itemIndex === 0) {
 				lines.push(formatList(item, indent, ordered));
 			} else {
@@ -37,15 +39,15 @@ const formatList = (
 	return lines.join('\n');
 };
 
-export const ul = (items: ListItem[]) => formatList(items, 0, false);
+export const ul = (items: readonly ListItem[]) => formatList(items, 0, false);
 
-export const ol = (items: ListItem[]) => formatList(items, 0, true);
+export const ol = (items: readonly ListItem[]) => formatList(items, 0, true);
 
 // Task list continuation uses 2-space indent (matching "- " marker width)
 // rather than the full 6-char "- [ ] " prefix, because 6 spaces after a
 // blank line triggers an indented code block in some parsers.
 const taskListIndent = '  ';
 
-export const taskList = (items: [checked: boolean, label: string][]) => items
+export const taskList = (items: readonly (readonly [checked: boolean, label: string])[]) => items
 	.map(([checked, label]) => `- [${checked ? 'x' : ' '}] ${indentContinuation(label, taskListIndent)}`)
 	.join('\n');

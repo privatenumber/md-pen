@@ -6,12 +6,15 @@ const backtickDelimiter = (expression: string, minimum: number) => {
 	return '`'.repeat(length);
 };
 
+const hasMarkdownSyntax = (expression: string) => /[\\_*`[\]<>&~$|!@]/.test(expression)
+	|| /https?:\/\/|ftp:\/\/|www\./i.test(expression);
+
 export const math = (expression: string) => {
 	const singleLine = expression.replaceAll(/[\r\n]+/g, ' ').trim();
 	if (singleLine === '') {
 		return '';
 	}
-	if (singleLine.includes('$') || /\\[!"#$%&'()*+,./:;<=>?@[\]\\^_`{|}~-]/.test(singleLine) || singleLine.endsWith('\\')) {
+	if (hasMarkdownSyntax(singleLine)) {
 		const delimiter = backtickDelimiter(singleLine, 1);
 		const padding = singleLine.includes('`') ? ' ' : '';
 		return `$${delimiter}${padding}${singleLine}${padding}${delimiter}$`;
@@ -24,6 +27,11 @@ export const mathBlock = (expression: string) => {
 	if (normalized === '') {
 		return '';
 	}
+	const separator = normalized.endsWith('\n') ? '' : '\n';
+	const lines = separator ? normalized : normalized.slice(0, -1);
+	if (!hasMarkdownSyntax(normalized) && !/^(?:[ \t]*$| {0,3}\t| {4}| {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$)|(?:=+|-+)[ \t]*$))/m.test(lines)) {
+		return `$$\n${normalized}${separator}$$`;
+	}
 	const delimiter = backtickDelimiter(normalized, 3);
-	return `${delimiter}math\n${normalized}\n${delimiter}`;
+	return `${delimiter}math\n${normalized}${separator}${delimiter}`;
 };

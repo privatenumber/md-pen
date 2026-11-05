@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { math, mathBlock } from '../../src/math.ts';
+import { taskList } from '../../src/list.ts';
 
 describe('math', () => {
 	test('inline math', () => {
@@ -8,7 +9,7 @@ describe('math', () => {
 	});
 
 	test('passes through LaTeX special characters', () => {
-		expect(math(String.raw`\frac{a}{b}`)).toBe(String.raw`$\frac{a}{b}$`);
+		expect(math(String.raw`\frac{a}{b}`)).toBe('$`\\frac{a}{b}`$');
 	});
 
 	test('trims boundary whitespace', () => {
@@ -24,7 +25,16 @@ describe('math', () => {
 		expect(math(String.raw`\#`)).toBe('$`\\#`$');
 		expect(math(String.raw`\{`)).toBe('$`\\{`$');
 		expect(math('a\\')).toBe('$`a\\`$');
-		expect(math('a_b')).toBe('$a_b$');
+		expect(math('a_b')).toBe('$`a_b`$');
+	});
+
+	test('protects Markdown syntax and autolinks in inline expressions', () => {
+		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
+		for (const character of ['\\', '_', '*', '`', '[', ']', '<', '>', '&', '~', '$', '|', '!', '@']) {
+			expect(math(`a${character}b`)).not.toBe(`$a${character}b$`);
+		}
+		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
+		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
 	});
 
 	test('uses longer backtick delimiters when needed', () => {
@@ -44,16 +54,32 @@ describe('math edge cases', () => {
 
 describe('mathBlock', () => {
 	test('block math', () => {
-		expect(mathBlock('x^2 + y^2 = z^2')).toBe('```math\nx^2 + y^2 = z^2\n```');
+		expect(mathBlock('x^2 + y^2 = z^2')).toBe('$$\nx^2 + y^2 = z^2\n$$');
 	});
 
 	test('multiline expression', () => {
-		expect(mathBlock('a = 1\nb = 2')).toBe('```math\na = 1\nb = 2\n```');
+		expect(mathBlock('a = 1\nb = 2')).toBe('$$\na = 1\nb = 2\n$$');
 		expect(mathBlock('a\r\n \r- b')).toBe('```math\na\n \n- b\n```');
 	});
 
 	test('empty expression returns empty string', () => {
 		expect(mathBlock('')).toBe('');
+	});
+
+	test('does not add a blank line after a trailing newline', () => {
+		expect(mathBlock('x\n')).toBe('$$\nx\n$$');
+		expect(mathBlock('x_1\n')).toBe('```math\nx_1\n```');
+	});
+
+	test('uses fences for lines that start Markdown blocks', () => {
+		for (const line of [' ', '- b', '+ b', '> b', '# b', '1. b', '1) b', '    code', '\tcode', '---', '===', '<b>', '```', '~~~']) {
+			expect(mathBlock(`a\n${line}`)).toMatch(/^`{3,}math\n/);
+		}
+	});
+
+	test('simple display math composes in task lists in comrak', () => {
+		const markdown = taskList([[false, mathBlock('x^2')]]);
+		expect(render(markdown)).toContain('data-math-style="display"');
 	});
 
 	test('preserves blank lines and block markers inside the fence', () => {

@@ -311,10 +311,10 @@ mathBlock(String.raw`\sum_{i=1}^n x_i`)
 
 Inline math trims boundary whitespace and replaces line breaks with spaces. Display math normalizes line endings and preserves blank lines. `math()` returns an empty string for whitespace-only input; `mathBlock()` returns an empty string only for an empty input.
 
-Expressions containing dollar signs, backslash-escaped ASCII punctuation, or a trailing backslash use GitHub's backtick-delimited inline math. Display math uses a `math` code fence. Both forms pass the expression through without escaping dollar signs. Some Markdown renderers, including comrak, interpret inline backticks as part of the expression or do not recognize the expression as math.
+Inline math uses `$...$` when the expression contains no Markdown-active characters or autolinks; otherwise it uses GitHub's backtick-delimited form. Display math uses `$$` delimiters when the expression is safe from Markdown block parsing; otherwise it uses a `math` code fence. Expressions pass through without escaping dollar signs. Some Markdown renderers, including comrak, interpret inline backticks as part of the expression or do not recognize the expression as math.
 
 > [!NOTE]
-> GitHub does not recognize inline math ending with `\`, including the backtick-delimited form. Its fenced display math renderer also changes expressions ending with `\` and escapes dollar signs, which can affect expressions such as `\verb0$0`.
+> GitHub does not recognize inline math ending with `\`, including the backtick-delimited form. Its fenced display math renderer also changes expressions ending with `\` and escapes dollar signs, which can affect expressions such as `\verb0$0`. GitHub does not render `$$` display math inside a task list item, although comrak does. GitHub can also expand mentions, issue references, and emoji shortcodes inside inline math.
 
 #### `mermaid(code)`
 

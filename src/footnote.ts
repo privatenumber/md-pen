@@ -4,7 +4,7 @@ const normalizeId = (id: string) => {
 	}
 	return id.trim()
 		.replaceAll(/\s+/g, '-')
-		.replaceAll(/[%\\`<>$[\]:^|{}\p{Cc}]|&(?=#(?:[xX][\da-fA-F]{1,8}|\d{1,8});|[a-zA-Z][a-zA-Z\d]{1,31};)/gu, character => (
+		.replaceAll(/%(?=[\da-fA-F]{2})|[\\`<>$[\]:^|{}\p{Cc}]|&(?=#(?:[xX][\da-fA-F]{1,8}|\d{1,8});|[a-zA-Z][a-zA-Z\d]{1,31};)/gu, character => (
 			[...new TextEncoder().encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
 		));
 };

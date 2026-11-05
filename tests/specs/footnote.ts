@@ -54,8 +54,15 @@ describe('footnote', () => {
 		expect(footnoteRef('a\u0085b')).toBe('[^a%c2%85b]');
 	});
 
+	test('preserves bare percent signs and encodes percent escapes', () => {
+		expect(footnoteRef('25%')).toBe('[^25%]');
+		expect(footnoteRef('%5c')).toBe('[^%255c]');
+		expect(footnoteRef('\\')).toBe('[^%5c]');
+		expect(render(`text${footnoteRef('25%')}\n\n[^25%]: note`)).toContain('<sup');
+	});
+
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
-		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '%'.repeat(334), '\0'.repeat(334), '\uD800', '\uDC00']) {
+		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '%ab'.repeat(200), '\0'.repeat(334), '\uD800', '\uDC00']) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}

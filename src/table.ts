@@ -2,15 +2,21 @@ import { escapeTableCell } from './escape.ts';
 
 type TableAlignment = 'left' | 'center' | 'right' | 'none';
 
-export type ColumnEntry = string | readonly [key: string, header: string];
+export type ColumnEntry = string | [key: string, header: string];
 
 export type TableOptions = {
-	align?: readonly TableAlignment[];
-	columns?: readonly ColumnEntry[];
+	align?: TableAlignment[];
+	columns?: ColumnEntry[];
 	html?: boolean;
 };
 
 export type CellValue = string | number | boolean | null | undefined;
+
+type ReadonlyTableOptions = {
+	align?: readonly TableAlignment[];
+	columns?: readonly (string | readonly [key: string, header: string])[];
+	html?: boolean;
+};
 
 const isObjectArray = <Row extends { [K in keyof Row]: CellValue }>(
 	input: readonly (readonly CellValue[])[] | readonly Row[],
@@ -18,7 +24,7 @@ const isObjectArray = <Row extends { [K in keyof Row]: CellValue }>(
 
 const resolveRows = <Row extends { [K in keyof Row]: CellValue }>(
 	input: readonly (readonly CellValue[])[] | readonly Row[],
-	options?: TableOptions,
+	options?: ReadonlyTableOptions,
 ) => {
 	if (isObjectArray(input)) {
 		const columnEntries = options?.columns
@@ -76,7 +82,7 @@ const buildMarkdownRow = (cells: readonly CellValue[], columnCount: number) => {
 const buildMarkdownTable = (
 	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
-	options?: TableOptions,
+	options?: ReadonlyTableOptions,
 ) => {
 	const alignments = options?.align ?? [];
 
@@ -106,7 +112,7 @@ const alignAttribute = (alignment?: TableAlignment) => (alignment && validAlignm
 const buildHtmlTable = (
 	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
-	options?: TableOptions,
+	options?: ReadonlyTableOptions,
 ) => {
 	const alignments = options?.align ?? [];
 	const [header, ...body] = rows;
@@ -142,15 +148,20 @@ type ObjectRow<Row extends object> = Row extends readonly unknown[]
 		? Row extends Record<string, CellValue> ? Row : never
 		: Row & { [K in keyof Row]: CellValue };
 
-export const table = <Row extends object>(
-	input: readonly (readonly CellValue[])[] | readonly ObjectRow<Row>[],
-	options?: TableOptions,
+type TableRows = readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[];
+
+export const table: {
+	<Row extends object>(input: readonly ObjectRow<Row>[], options?: ReadonlyTableOptions): string;
+	(input: TableRows, options?: ReadonlyTableOptions): string;
+} = (
+	input: readonly (readonly CellValue[])[] | readonly object[],
+	options?: ReadonlyTableOptions,
 ) => {
 	if (input.length === 0) {
 		return '';
 	}
 
-	const { rows, columnCount } = resolveRows(input, options);
+	const { rows, columnCount } = resolveRows(input as TableRows, options);
 
 	if (columnCount === 0) {
 		return '';

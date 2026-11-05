@@ -153,7 +153,7 @@ table([
 // | Alice | 30 |
 ```
 
-Also accepts an array of objects (keys become headers):
+Also accepts an array of objects (own enumerable keys become headers; pass `columns` for getters):
 
 ```ts
 table([

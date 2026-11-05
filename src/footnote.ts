@@ -1,12 +1,9 @@
 const normalizeId = (id: string) => id.trim()
 	.replaceAll(/\s+/g, '-')
-	.replaceAll('%', '%25')
-	.replaceAll('\\', '%5c')
-	.replaceAll(/&(?=#(?:x[\da-f]{1,8}|\d{1,8});|[a-z][a-z\d]{1,31};)/gi, '%26');
+	.toLowerCase()
+	.replaceAll(/[^a-z\d_.\-\u0080-\uFFFF]/g, character => `%${character.codePointAt(0)!.toString(16).padStart(2, '0')}`);
 
 const isValidId = (id: string) => id.length > 0
-	&& !id.includes(']')
-	&& !id.includes('[')
 	&& id.length <= 999
 	&& new TextEncoder().encode(id).length <= 1000;
 

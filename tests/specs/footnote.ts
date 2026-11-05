@@ -32,21 +32,22 @@ describe('footnote', () => {
 	});
 
 	test('retains supported punctuation, Unicode, and long IDs', () => {
-		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', 'x'.repeat(999), '😀'.repeat(250)]) {
+		for (const id of ['\\', String.raw`a\b`, String.raw`a\-b`, '^', '日本語', 'a&b', 'a&copy;b', 'a&foo;b', 'a&#65;b', 'a&#x41;b', 'a&amp;b', '`code`', '<https://x>', '$x$', '[', ']', '\0'.repeat(333), 'x'.repeat(999), '😀'.repeat(250)]) {
 			const html = render(`text${footnoteRef(id)}\n\n${footnote(id, 'note')}`);
 			expect(html).toContain('<sup');
 		}
 	});
 
 	test('normalizes entity-shaped IDs and escaped punctuation consistently', () => {
-		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy;b]');
-		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo;b]');
+		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy%3bb]');
+		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo%3bb]');
 		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
-		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
+		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo%3bb]: note');
+		expect(footnoteRef('a&AMP;b')).toBe('[^a%26amp%3bb]');
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
-		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '😀'.repeat(500), '%'.repeat(334)]) {
+		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '😀'.repeat(500), '%'.repeat(334), '\0'.repeat(334)]) {
 			expect(footnoteRef(id)).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}
@@ -76,12 +77,12 @@ describe('footnote multiline', () => {
 });
 
 describe('footnote ID sanitization', () => {
-	test('rejects ID containing ]', () => {
-		expect(footnoteRef('a]b')).toBe('');
+	test('encodes ID containing ]', () => {
+		expect(footnoteRef('a]b')).toBe('[^a%5db]');
 	});
 
-	test('rejects ID containing [', () => {
-		expect(footnoteRef('a[b')).toBe('');
+	test('encodes ID containing [', () => {
+		expect(footnoteRef('a[b')).toBe('[^a%5bb]');
 	});
 
 	test('strips spaces from ID', () => {

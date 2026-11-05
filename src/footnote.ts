@@ -2,11 +2,14 @@ const normalizeId = (id: string) => {
 	if (!id.isWellFormed()) {
 		return '';
 	}
-	return id.trim()
-		.replaceAll(/\s+/g, '-')
-		.replaceAll(/%(?=[\da-fA-F]{2})|[\\`<>$[\]:^|{}\p{Cc}]|&(?=#(?:[xX][\da-fA-F]{1,8}|\d{1,8});|[a-zA-Z][a-zA-Z\d]{1,31};)/gu, character => (
-			[...new TextEncoder().encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
-		));
+	const collapsed = id.trim().replaceAll(/\s+/g, '-');
+	// Encoding only lengthens the ID, so skip it for IDs already over the limit
+	if (collapsed.length > 999) {
+		return '';
+	}
+	return collapsed.replaceAll(/%(?=[\da-fA-F]{2})|[\\`<>$[\]:^|{}\p{Cc}]|&(?=#(?:[xX][\da-fA-F]{1,8}|\d{1,8});|[a-zA-Z][a-zA-Z\d]{1,31};)/gu, character => (
+		[...new TextEncoder().encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('')
+	));
 };
 
 const isValidId = (id: string) => id.length > 0

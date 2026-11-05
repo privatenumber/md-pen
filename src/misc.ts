@@ -2,25 +2,16 @@ import { escapeHtml, htmlAttributes } from './escape.ts';
 
 type HtmlOptions = Record<string, string | number>;
 
-const escapeInlineHtml = (input: string) => {
-	const text = input.replaceAll(/\r\n?|\n/g, ' ');
-	let result = '';
-	let backslashes = 0;
-	for (const character of text) {
+const escapeInlineHtml = (input: string) => input
+	.replaceAll(/\r\n?|\n/g, ' ')
+	.replaceAll(/\\+[<>&"]?|[<>&"]/g, (match) => {
+		const character = match.at(-1)!;
 		if (character === '\\') {
-			backslashes += 1;
-		} else {
-			if ('<>&"'.includes(character)) {
-				result += '\\'.repeat(backslashes - (backslashes % 2));
-				result += escapeHtml(character);
-			} else {
-				result += '\\'.repeat(backslashes) + character;
-			}
-			backslashes = 0;
+			return match;
 		}
-	}
-	return result + '\\'.repeat(backslashes);
-};
+		const backslashes = match.length - 1;
+		return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
+	});
 
 const htmlTag = (
 	tag: string,
@@ -39,6 +30,9 @@ export const el = (
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
+	if (!/^[a-z][a-z0-9-]*$/i.test(tag)) {
+		throw new TypeError(`Invalid HTML tag name: ${tag}`);
+	}
 	if (content === undefined) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}

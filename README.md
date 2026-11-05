@@ -285,7 +285,7 @@ details('Expanded', 'Visible', { open: '' })
 
 #### `kbd(key, options?)`
 
-Content is HTML-escaped but still parsed as Markdown (except inside a raw HTML block, such as `el()` content); wrap literal text in `escape()`. Line endings become spaces, including in table cells.
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes remain visible. Line endings become spaces, including in table cells.
 
 ```ts
 kbd('Ctrl') // <kbd>Ctrl</kbd>
@@ -294,7 +294,7 @@ kbd('Enter', { title: 'Confirm' }) // <kbd title="Confirm">Enter</kbd>
 
 #### `sub(text, options?)` / `sup(text, options?)`
 
-Content is HTML-escaped but still parsed as Markdown (except inside a raw HTML block, such as `el()` content); wrap literal text in `escape()`. Line endings become spaces, including in table cells.
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes remain visible. Line endings become spaces, including in table cells.
 
 ```ts
 sub('2') // <sub>2</sub>
@@ -339,7 +339,7 @@ emoji('rocket') // :rocket:
 
 #### `el(tag, attributes?, content?)`
 
-Generic HTML element builder for tags without a dedicated function. Attribute values are HTML-escaped. All HTML helpers drop attribute names outside the CommonMark grammar `[A-Za-z_:][A-Za-z0-9_.:-]*`. Content is raw (not escaped). Without content, produces a self-closing tag.
+Generic HTML element builder for tags without a dedicated function. Tag names must match `[A-Za-z][A-Za-z0-9-]*`; invalid names throw a `TypeError`. Attribute values are HTML-escaped. All HTML helpers drop attribute names outside the CommonMark grammar `[A-Za-z_:][A-Za-z0-9_.:-]*`. Content is raw (not escaped). Without content, produces a self-closing tag.
 
 ```ts
 el('br') // <br />

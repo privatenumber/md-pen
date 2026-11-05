@@ -154,6 +154,16 @@ describe('sup with attributes', () => {
 });
 
 describe('el', () => {
+	test('rejects invalid CommonMark tag names', () => {
+		for (const tag of ['svg:path', '', '1div', 'div x', 'div>']) {
+			expect(() => el(tag, { title: 'a\n\n![x](https://attacker.test/i.png)' }, 'text')).toThrow(TypeError);
+		}
+	});
+
+	test('accepts CommonMark tag names', () => {
+		expect(el('X-custom-1', undefined, 'text')).toBe('<X-custom-1>text</X-custom-1>');
+	});
+
 	test('void element without attributes', () => {
 		expect(el('br')).toBe('<br />');
 	});

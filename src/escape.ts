@@ -19,8 +19,6 @@ export const escapeHtml = (text: string) => text.replaceAll(
 	character => htmlEntityMap[character] ?? (character === '\r' ? '&#13;' : '&#10;'),
 );
 
-const sanitizeAttributeName = (name: string) => name.replaceAll(/[\s"'>/=<]/g, '');
-
 export const htmlAttributes = (
 	attributes?: Record<string, string | number>,
 ) => {
@@ -29,9 +27,8 @@ export const htmlAttributes = (
 	}
 	let result = '';
 	for (const [key, value] of Object.entries(attributes)) {
-		const name = sanitizeAttributeName(key);
-		if (name.length > 0) {
-			result += ` ${name}="${escapeHtml(String(value))}"`;
+		if (/^[a-z_:][\w:.-]*$/i.test(key)) {
+			result += ` ${key}="${escapeHtml(String(value))}"`;
 		}
 	}
 	return result;

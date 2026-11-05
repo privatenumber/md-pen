@@ -2,6 +2,7 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { escape } from '../../src/escape.ts';
 import { image, link } from '../../src/link.ts';
+import { table } from '../../src/table.ts';
 import {
 	kbd, sub, sup, mention, emoji, el,
 } from '../../src/misc.ts';
@@ -20,7 +21,23 @@ describe('kbd', () => {
 		for (const helper of [kbd, sub, sup]) {
 			const html = render(helper(input));
 			expect(html.match(/<p>/g)?.length).toBe(1);
-			expect(html).toContain('a\n\nb');
+			expect(html).toContain('a\nb');
+		}
+	});
+
+	test('preserves Markdown line breaks and code spans', () => {
+		expect(kbd('a\r\nb')).toBe('<kbd>a\r\nb</kbd>');
+		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a\nb</kbd>');
+		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
+		expect(render(kbd('a\\\nb'))).toContain('a<br />\nb');
+		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a<br>b</kbd>');
+	});
+
+	test('composes escaped HTML punctuation without double escaping', () => {
+		for (const helper of [kbd, sub, sup]) {
+			expect(render(helper(escape('A & B <x>')))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
 		}
 	});
 
@@ -156,6 +173,14 @@ describe('el', () => {
 			expect(html).not.toContain('src="https://attacker.test/i.png"');
 			expect(html).toContain('a&#10;&#10;![x](https://attacker.test/i.png)');
 		}
+	});
+
+	test('drops invalid attribute names before Markdown parsing', () => {
+		const html = render(image('safe.png', 'alt', {
+			'@foo': 'a\n\n![x](https://attacker.test/i.png)',
+		}));
+		expect(html).not.toContain('attacker.test');
+		expect(html).toContain('src="safe.png"');
 	});
 
 	test('empty attributes treated as no attributes', () => {

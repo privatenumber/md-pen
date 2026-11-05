@@ -88,6 +88,16 @@ describe('htmlAttributes', () => {
 	test('encodes line endings in attribute values', () => {
 		expect(htmlAttributes({ title: 'a\nb\rc\r\nd' })).toBe(' title="a&#10;b&#13;c&#13;&#10;d"');
 	});
+
+	test('accepts CommonMark attribute names and drops invalid names', () => {
+		expect(htmlAttributes({
+			':foo': 'x',
+			'_x.y-z': 'y',
+			'@foo': 'z',
+			'1name': 'z',
+			'on"error': 'z',
+		})).toBe(' :foo="x" _x.y-z="y"');
+	});
 });
 
 describe('escapeTableCell', () => {

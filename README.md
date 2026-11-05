@@ -202,7 +202,7 @@ table([
 Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 > [!NOTE]
-> In markdown mode, newlines become `<br>` and boundary whitespace becomes `&nbsp;`, so those literal strings can't be represented in cells. Use `html: true` for exact content preservation.
+> In Markdown mode, newlines become `<br>` and the first and last boundary spaces or tabs become non-breaking spaces. A backslash immediately before a pipe inside a code span may render with an extra backslash; use HTML mode for that content. HTML mode allows block content, but cells are raw Markdown/HTML: closing tags such as `</td>` or `</table>` are not protected, and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; it does not preserve whitespace or line breaks exactly.
 
 #### `ul(items)` / `ol(items)`
 

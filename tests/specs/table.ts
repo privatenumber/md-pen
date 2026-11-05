@@ -2,6 +2,8 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { table } from '../../src/table.ts';
 import { kbd, sub } from '../../src/misc.ts';
+import { escape } from '../../src/escape.ts';
+import { code } from '../../src/code.ts';
 
 describe('table', () => {
 	test('basic 2x2 table', () => {
@@ -237,6 +239,27 @@ describe('table', () => {
 		);
 	});
 
+	test('object cells only read own properties', () => {
+		const own = JSON.parse('{"toString":"own","__proto__":"prototype","constructor":"constructor","hasOwnProperty":"method"}');
+		const columns = ['toString', '__proto__', 'constructor', 'hasOwnProperty'];
+		expect(table([own, { name: 'missing' }])).toBe(
+			'| toString | __proto__ | constructor | hasOwnProperty | name |\n'
+			+ '| - | - | - | - | - |\n'
+			+ '| own | prototype | constructor | method |  |\n'
+			+ '|  |  |  |  | missing |',
+		);
+		for (const html of [false, true]) {
+			const output = render(table([own, { name: 'missing' }], {
+				columns,
+				html,
+			}));
+			expect(output).toContain('own');
+			expect(output).toContain('prototype');
+			expect(output).not.toContain('[native code]');
+			expect(output).not.toContain('[object Object]');
+		}
+	});
+
 	test('undefined and null values produce empty cells', () => {
 		expect(table([
 			{
@@ -277,6 +300,10 @@ describe('table cells with carriage return', () => {
 		const bodyRows = html.match(/<td>/g) ?? [];
 		expect(bodyRows.length).toBe(1);
 	});
+
+	test('line endings each produce one break', () => {
+		expect(render(table([['H'], ['a\r\nb\rc\nd']]))).toContain('<td>a<br>b<br>c<br>d</td>');
+	});
 });
 
 describe('table object keys union', () => {
@@ -315,6 +342,17 @@ describe('zero-column tables', () => {
 });
 
 describe('table backslash-pipe', () => {
+	test('HTML mode preserves backslash before a pipe in a code span', () => {
+		expect(render(table([['H'], [code(String.raw`a\|b`)]], { html: true })))
+			.toContain(String.raw`<code>a\|b</code>`);
+	});
+
+	test('escaped literal backslashes before a pipe are preserved', () => {
+		for (let count = 0; count < 6; count += 1) {
+			const text = `${'\\'.repeat(count)}|`;
+			expect(render(table([['H'], [escape(text)]]))).toContain(`<td>${text}</td>`);
+		}
+	});
 	test('cell with backslash-pipe preserves full content', () => {
 		const html = render(table([['H'], [String.raw`a\|b`]]));
 		expect(html).toContain('<td>');
@@ -353,6 +391,12 @@ describe('table whitespace trimming', () => {
 		const html = render(table([['H'], ['   ']]));
 		const tdMatch = html.match(/<td>(.*?)<\/td>/);
 		expect(tdMatch![1].length).toBeGreaterThan(0);
+	});
+
+	test('multiple boundary spaces survive trimming', () => {
+		expect(render(table([['H'], ['   x   '], ['   ']])))
+			.toContain('<td>\u00A0  x  \u00A0</td>');
+		expect(render(table([['H'], ['   ']]))).toContain('<td>\u00A0 \u00A0</td>');
 	});
 });
 

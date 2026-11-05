@@ -38,10 +38,16 @@ export const htmlAttributes = (
 };
 
 export const escapeTableCell = (text: string) => {
-	// Escape | for table structure, handling \| (backslash before pipe) in one pass
+	// Preserve literal backslashes while escaping the pipe for table structure.
 	let result = text.replaceAll(
-		/\\?\|/g,
-		match => (match.length === 1 ? String.raw`\|` : String.raw`\\\|`),
+		'|',
+		(_match, offset: number) => {
+			let backslashes = 0;
+			while (offset > backslashes && text[offset - backslashes - 1] === '\\') {
+				backslashes += 1;
+			}
+			return backslashes % 2 === 0 ? String.raw`\|` : String.raw`\\|`;
+		},
 	);
 
 	// Replace newlines with <br>

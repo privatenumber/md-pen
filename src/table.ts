@@ -18,12 +18,12 @@ export type ReadonlyTableOptions = {
 	html?: boolean;
 };
 
-const isObjectArray = <Row extends { [K in keyof Row]: CellValue }>(
-	input: readonly (readonly CellValue[])[] | readonly Row[],
-): input is readonly Row[] => !Array.isArray(input[0]);
+const isObjectArray = (
+	input: readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[],
+): input is readonly Record<string, CellValue>[] => !Array.isArray(input[0]);
 
-const resolveRows = <Row extends { [K in keyof Row]: CellValue }>(
-	input: readonly (readonly CellValue[])[] | readonly Row[],
+const resolveRows = (
+	input: readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[],
 	options?: ReadonlyTableOptions,
 ) => {
 	if (isObjectArray(input)) {
@@ -35,8 +35,8 @@ const resolveRows = <Row extends { [K in keyof Row]: CellValue }>(
 		return {
 			rows: [
 				headers,
-				...input.map(item => keys.map(key => item[key as keyof Row] ?? '')),
-			] as CellValue[][],
+				...input.map(item => keys.map(key => item[key] ?? '')),
+			],
 			columnCount: keys.length,
 		};
 	}

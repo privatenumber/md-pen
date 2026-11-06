@@ -60,6 +60,8 @@ code('a `b` c') // `` a `b` c ``
 bold('important') // __important__
 ```
 
+Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case. Nested italic content ending in `_` may also prevent bold from rendering.
+
 #### `italic(text)`
 
 ```ts
@@ -71,6 +73,8 @@ italic('emphasis') // *emphasis*
 ```ts
 strikethrough('no') // ~~no~~
 ```
+
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
 
 #### `link(url, text?, options?)`
 

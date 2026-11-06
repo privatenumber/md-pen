@@ -3,6 +3,29 @@ import { render } from '../utils/render.ts';
 import { footnoteRef, footnote } from '../../src/footnote.ts';
 
 describe('footnote', () => {
+	test('ASCII normalization table', () => {
+		const outcomes = [
+			'eeeeeeeeewwwwwee',
+			'eeeeeeeeeeeeeeee',
+			'wvvveeevvvvvvvvv',
+			'vvvvvvvvvvevevev',
+			'vvvvvvvvvvvvvvvv',
+			'vvvvvvvvvvveeeev',
+			'evvvvvvvvvvvvvvv',
+			'vvvvvvvvvvveeeve',
+		].join('');
+		for (let code = 0; code < 128; code += 1) {
+			const character = String.fromCodePoint(code);
+			const expected = outcomes[code] === 'w'
+				? '-'
+				: (outcomes[code] === 'v' ? character : `%${code.toString(16).padStart(2, '0')}`);
+			expect(footnoteRef(`p${character}q`)).toBe(`[^p${expected}q]`);
+		}
+		for (const [input, expected] of [['é', 'é'], ['文', '文'], ['😀', '😀'], ['\u0085', '%c2%85']]) {
+			expect(footnoteRef(`p${input}q`)).toBe(`[^p${expected}q]`);
+		}
+	});
+
 	test('footnoteRef', () => {
 		expect(footnoteRef('1')).toBe('[^1]');
 	});
@@ -49,16 +72,16 @@ describe('footnote', () => {
 		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
 		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
 		expect(footnoteRef('a&AMP;b')).toBe('[^a%26AMP;b]');
-		expect(footnoteRef('a&ſfoo;b')).toBe('[^a&ſfoo;b]');
-		expect(footnoteRef('a&Kfoo;b')).toBe('[^a&Kfoo;b]');
+		expect(footnoteRef('a&ſfoo;b')).toBe('[^a%26ſfoo;b]');
+		expect(footnoteRef('a&Kfoo;b')).toBe('[^a%26Kfoo;b]');
 		expect(footnoteRef('a\u0085b')).toBe('[^a%c2%85b]');
 	});
 
-	test('preserves bare percent signs and encodes percent escapes', () => {
-		expect(footnoteRef('25%')).toBe('[^25%]');
+	test('encodes percent signs and backslashes distinctly', () => {
+		expect(footnoteRef('25%')).toBe('[^25%25]');
 		expect(footnoteRef('%5c')).toBe('[^%255c]');
 		expect(footnoteRef('\\')).toBe('[^%5c]');
-		expect(render(`text${footnoteRef('25%')}\n\n[^25%]: note`)).toContain('<sup');
+		expect(render(`text${footnoteRef('25%')}\n\n${footnote('25%', 'note')}`)).toContain('<sup');
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {

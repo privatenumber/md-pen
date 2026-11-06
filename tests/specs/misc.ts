@@ -1,4 +1,8 @@
 import { describe, test, expect } from 'manten';
+import { render } from '../utils/render.ts';
+import { escape } from '../../src/escape.ts';
+import { image, link } from '../../src/link.ts';
+import { table } from '../../src/table.ts';
 import {
 	kbd, sub, sup, mention, emoji, el,
 } from '../../src/misc.ts';
@@ -10,6 +14,61 @@ describe('kbd', () => {
 
 	test('escapes HTML in key', () => {
 		expect(kbd('<script>')).toBe('<kbd>&lt;script&gt;</kbd>');
+	});
+
+	test('line endings cannot create Markdown blocks', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(helper('a\n\n# heading'));
+			expect(html.match(/<p>/g)?.length).toBe(1);
+			expect(html).not.toContain('<h1');
+			expect(html).toContain('a  # heading');
+			expect(helper('\n a \r\n')).toContain('>  a  </');
+		}
+	});
+
+	test('normalizes line endings in Markdown and table cells', () => {
+		expect(kbd('a\r\nb')).toBe('<kbd>a b</kbd>');
+		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a  \t b</kbd>');
+		expect(kbd(' a  b ')).toBe('<kbd> a  b </kbd>');
+		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
+		expect(render(kbd('`a  \n  b`'))).toBe('<p><kbd><code>a     b</code></kbd></p>');
+		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a b</kbd>');
+	});
+
+	test('composes escaped HTML punctuation without double escaping', () => {
+		for (const helper of [kbd, sub, sup]) {
+			expect(render(helper(escape('A & B <x>')))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(el('div', undefined, helper(escape('A & B <x>'))))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
+		}
+	});
+
+	test('preserves backslash runs around HTML punctuation', () => {
+		expect(kbd(String.raw`\< \\< \\\<`)).toBe(String.raw`<kbd>&lt; \\&lt; \\&lt;</kbd>`);
+	});
+
+	test('escaped HTML cannot become a tag inside an HTML block', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(el('div', undefined, helper(escape('<img src=x onerror=alert(1) >'))));
+			expect(html).not.toContain('<img');
+			expect(html).toContain('&lt;img src');
+		}
+	});
+
+	test('escape protects literal multiline content from Markdown', () => {
+		const html = render(kbd(escape('a\n\n![x](https://example.test/i.png)')));
+		expect(html).not.toContain('<img');
+		expect(html).not.toContain('<a ');
+		expect(html).toContain('![x](https://example.test/i.png)');
+	});
+
+	test('leading newline cannot turn escaped HTML into a raw tag', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(helper(escape('\n<img src=x onerror=alert(1) >')));
+			expect(html).not.toContain('<img');
+			expect(html).toContain('&lt;img src=x onerror=alert(1) &gt;');
+		}
 	});
 });
 
@@ -95,8 +154,31 @@ describe('sup with attributes', () => {
 });
 
 describe('el', () => {
-	test('void element without attributes', () => {
-		expect(el('br')).toBe('<br />');
+	test('rejects invalid CommonMark tag names', () => {
+		for (const tag of ['svg:path', '', '1div', 'div x', 'div>', 'linK']) {
+			expect(() => el(tag, { title: 'a\n\n![x](https://attacker.test/i.png)' }, 'text')).toThrow(TypeError);
+		}
+	});
+
+	test('accepts CommonMark tag names', () => {
+		expect(el('X-custom-1', undefined, 'text')).toBe('<X-custom-1>text</X-custom-1>');
+	});
+
+	test('self-closes HTML void elements and foreign roots without content', () => {
+		for (const tag of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']) {
+			expect(el(tag)).toBe(`<${tag} />`);
+			expect(el(tag.toUpperCase())).toBe(`<${tag.toUpperCase()} />`);
+		}
+		for (const tag of ['svg', 'math', 'SVG', 'MATH']) {
+			expect(el(tag)).toBe(`<${tag} />`);
+			expect(el(tag, undefined, 'content')).toBe(`<${tag}>content</${tag}>`);
+		}
+		expect(render(`${el('svg')}\n\nafter`)).toBe('<svg />\n<p>after</p>');
+		expect(render(`${el('math')}\n\nafter`)).toBe('<math />\n<p>after</p>');
+		expect(el('div')).toBe('<div></div>');
+		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
+		expect(el('custom-element')).toBe('<custom-element></custom-element>');
+		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 
 	test('void element with attributes', () => {
@@ -120,6 +202,31 @@ describe('el', () => {
 
 	test('escapes HTML in attribute values', () => {
 		expect(el('div', { title: 'a"b' }, 'text')).toBe('<div title="a&quot;b">text</div>');
+	});
+
+	test('blank lines in HTML attributes cannot inject Markdown', () => {
+		const input = 'a\n\n![x](https://attacker.test/i.png)';
+		const samples = [
+			el('span', { title: input }, 'text'),
+			link('x', 'text', {
+				title: input,
+				target: '_blank',
+			}),
+			image('x', input, { width: 1 }),
+		];
+		for (const markdown of samples) {
+			const html = render(markdown);
+			expect(html).not.toContain('src="https://attacker.test/i.png"');
+			expect(html).toContain('a&#10;&#10;![x](https://attacker.test/i.png)');
+		}
+	});
+
+	test('drops invalid attribute names before Markdown parsing', () => {
+		const html = render(image('safe.png', 'alt', {
+			'@foo': 'a\n\n![x](https://attacker.test/i.png)',
+		}));
+		expect(html).not.toContain('attacker.test');
+		expect(html).toContain('src="safe.png"');
 	});
 
 	test('empty attributes treated as no attributes', () => {

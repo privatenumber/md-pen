@@ -8,7 +8,7 @@ Typed utilities for formatting Markdown. GFM (GitHub-Flavored Markdown) first.
 ### Features
 
 - Zero dependencies
-- Full TypeScript with exported types
+- Full TypeScript with exported types, including `AlertType`, `ListItem`, `ReadonlyListItem`, `CellValue`, `TableOptions`, `ReadonlyTableOptions`, and `ColumnEntry`
 - Every output verified against a CommonMark parser
 - GitHub-compatible (audited against [cmark-gfm](https://github.com/github/cmark-gfm))
 - Functions compose naturally
@@ -60,6 +60,8 @@ code('a `b` c') // `` a `b` c ``
 bold('important') // __important__
 ```
 
+Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case. Nested italic content ending in `_` may also prevent bold from rendering.
+
 #### `italic(text)`
 
 ```ts
@@ -72,9 +74,12 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
+
 #### `link(url, text?, options?)`
 
 Markdown by default. Falls back to HTML when options go beyond what markdown supports.
+Explicit link text is Markdown, so it can contain output from other helpers. If text is omitted, the URL is displayed as literal text.
 
 > [!NOTE]
 > `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
@@ -93,6 +98,7 @@ link('https://x.com', 'click', { target: '_blank' })
 #### `image(url, alt?, options?)`
 
 Same fallback principle as `link`.
+In Markdown output, alt text is Markdown and can contain output from other helpers. In HTML output, alt text is an HTML attribute.
 
 ```ts
 image('cat.png') // ![](cat.png)
@@ -153,7 +159,9 @@ table([
 // | Alice | 30 |
 ```
 
-Also accepts an array of objects (keys become headers):
+Also accepts an array of objects. An object-literal `type` alias works without an index signature; an `interface` or class needs a compatible string index signature. Own enumerable string keys, including getters, become headers; pass `columns` for inherited or non-enumerable getters (in TypeScript, a class instance still needs that index signature).
+
+List and table inputs accept readonly arrays, including nested arrays and task tuples.
 
 ```ts
 table([
@@ -202,11 +210,13 @@ table([
 Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 > [!NOTE]
-> In markdown mode, newlines become `<br>` and boundary whitespace becomes `&nbsp;`, so those literal strings can't be represented in cells. Use `html: true` for exact content preservation.
+> In Markdown mode, newlines become `<br>` and the first and last boundary spaces or tabs become non-breaking spaces. A backslash immediately before a pipe in a code span, math span, angle-bracket autolink, or raw HTML attribute may not be preserved; line endings in code spans become literal `<br>` text, so use HTML mode for those spans. HTML mode avoids table pipe escaping, but renderer behavior may still differ. HTML-mode cells are raw Markdown/HTML: closing tags such as `</td>` or `</table>` are not protected, and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; it does not preserve whitespace or line breaks exactly.
 
 #### `ul(items)` / `ol(items)`
 
 Nested arrays become children of the preceding item.
+
+Item text is Markdown and leading spaces and tabs are stripped; raw HTML blocks or other block syntax in an item can swallow or reshape nested lists.
 
 ```ts
 ul(['a', 'b', ['nested 1', 'nested 2'], 'c'])
@@ -226,7 +236,7 @@ ol(['first', 'second', ['sub-a'], 'third'])
 #### `hr()`
 
 ```ts
-hr() // ---
+hr() // ___
 ```
 
 ### GFM Extras
@@ -254,6 +264,8 @@ alert('warning', 'Be careful') // eslint-disable-line no-alert
 
 #### `footnoteRef(id)` / `footnote(id, text)`
 
+GitHub footnote backlinks may not navigate correctly for IDs containing uppercase or non-ASCII characters.
+
 ```ts
 footnoteRef('1') // [^1]
 footnote('1', 'Source') // [^1]: Source
@@ -261,7 +273,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. Summary is HTML-escaped, content supports markdown.
+Collapsible section. The summary and attributes are HTML-escaped, and content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')
@@ -285,12 +297,16 @@ details('Expanded', 'Visible', { open: '' })
 
 #### `kbd(key, options?)`
 
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
+
 ```ts
 kbd('Ctrl') // <kbd>Ctrl</kbd>
 kbd('Enter', { title: 'Confirm' }) // <kbd title="Confirm">Enter</kbd>
 ```
 
 #### `sub(text, options?)` / `sup(text, options?)`
+
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
 
 ```ts
 sub('2') // <sub>2</sub>
@@ -339,10 +355,12 @@ emoji('rocket') // :rocket:
 
 #### `el(tag, attributes?, content?)`
 
-Generic HTML element builder for tags without a dedicated function. Attribute values are HTML-escaped and attribute names are sanitized against injection. Content is raw (not escaped). Without content, produces a self-closing tag.
+Generic HTML element builder for tags without a dedicated function. Tag names must match `[A-Za-z][A-Za-z0-9-]*`; invalid names throw a `TypeError`. Attribute values are HTML-escaped. All HTML helpers drop attribute names outside the CommonMark grammar `[A-Za-z_:][A-Za-z0-9_.:-]*`. Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
 
 ```ts
 el('br') // <br />
+el('div') // <div></div>
+el('span', { '@invalid': 'x' }, 'text') // <span>text</span>
 el('img', {
     src: 'cat.png',
     alt: 'A cat'
@@ -355,7 +373,9 @@ el('p', { align: 'center' }, 'centered text')
 
 #### `escape(text)`
 
-Escapes markdown special characters in untrusted input.
+Backslash-escapes all ASCII punctuation in untrusted text, plus GitHub-specific guards for mentions, issue references, emoji shortcodes, and dollar signs. The guards use invisible zero-width spaces, which are retained when copying the rendered text. GitHub can interpret references in URL paths after the URL is escaped, so those paths may also contain zero-width spaces. Dollar signs are guarded even where GitHub does not render math, because other renderers may do so. GitHub commit SHA references are not neutralized. Leading indentation, whitespace before line breaks, and whitespace at the end of the input may be normalized, so `escape('a  ') + 'b'` produces `a b`.
+
+`escape()` does not keep an emoji-name table. It inserts a zero-width space in colon-delimited names in shortcode position even if they are not emoji names. Digit-only names are an exception: only `:100:` and `:1234:` are guarded.
 
 ```ts
 escape('**not bold**') // \*\*not bold\*\*
@@ -388,8 +408,8 @@ ul([
 Each function escapes only what would break its own syntax:
 
 - `table()` escapes `|` in cells, newlines become `<br>`
-- `link()` / `image()` percent-encodes `(`, `)`, spaces, and control chars in URLs
+- `link()` / `image()` escapes Markdown destination delimiters and character references, and percent-encodes spaces and control characters in URLs in both Markdown and HTML output
 - `code()` adjusts backtick delimiter length
-- HTML functions (`kbd`, `sub`, `sup`, `details`) escape `<`, `>`, `&`, `"`
+- HTML functions (`kbd`, `sub`, `sup`) escape `<`, `>`, `&`, `"`; `details` escapes its summary and attributes, and protects its content against early closing
 
 Composition works without double-escaping. Use `escape()` for untrusted user input.

@@ -1,4 +1,10 @@
-type ListItem = string | ListItem[];
+export type ListItem = string | ListItem[];
+
+export type ReadonlyListItem = string | readonly ReadonlyListItem[];
+
+const isNested = (item: ReadonlyListItem): item is readonly ReadonlyListItem[] => (
+	Array.isArray(item)
+);
 
 const indentContinuation = (text: string, continuationIndent: string) => {
 	if (!text.includes('\n') && !text.includes('\r')) {
@@ -9,43 +15,57 @@ const indentContinuation = (text: string, continuationIndent: string) => {
 };
 
 const formatList = (
-	items: ListItem[],
+	items: readonly ReadonlyListItem[],
 	indent: number,
 	ordered: boolean,
 ): string => {
 	const lines: string[] = [];
-	let itemIndex = 0;
+	let count = 0;
+	let childIndent = indent;
 
-	for (let i = 0; i < items.length; i += 1) {
-		const item = items[i];
-		if (Array.isArray(item)) {
-			if (itemIndex === 0) {
-				lines.push(formatList(item, indent, ordered));
+	const append = (current: readonly ReadonlyListItem[]) => {
+		for (const item of current) {
+			if (isNested(item)) {
+				if (count === 0) {
+					append(item);
+				} else {
+					const nested = formatList(item, childIndent, ordered);
+					if (nested) {
+						// An empty child item cannot interrupt a paragraph.
+						if (/^ *(?:-|\d+\.) *(?:\n|$)/.test(nested)) {
+							const marker = ordered ? `${count}. ` : '- ';
+							const parentPrefix = `${' '.repeat(indent)}${marker}`;
+							const previous = lines.at(-1)!;
+							if (previous.startsWith(parentPrefix) && /[^ \t\r\n]/.test(previous.slice(parentPrefix.length))) {
+								lines.push('');
+							}
+						}
+						lines.push(nested);
+					}
+				}
 			} else {
-				const markerWidth = ordered ? String(itemIndex).length + 2 : 2;
-				lines.push(formatList(item, indent + markerWidth, ordered));
+				const marker = ordered ? `${count + 1}. ` : '- ';
+				childIndent = indent + marker.length;
+				const text = item.replace(/^[ \t]+/, '');
+				lines.push(`${' '.repeat(indent)}${marker}${indentContinuation(text, ' '.repeat(childIndent))}`);
+				count += 1;
 			}
-		} else {
-			const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
-			const spaces = ' '.repeat(indent);
-			const continuationIndent = ' '.repeat(indent + prefix.length);
-			lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
-			itemIndex += 1;
 		}
-	}
+	};
+	append(items);
 
 	return lines.join('\n');
 };
 
-export const ul = (items: ListItem[]) => formatList(items, 0, false);
+export const ul = (items: readonly ReadonlyListItem[]) => formatList(items, 0, false);
 
-export const ol = (items: ListItem[]) => formatList(items, 0, true);
+export const ol = (items: readonly ReadonlyListItem[]) => formatList(items, 0, true);
 
 // Task list continuation uses 2-space indent (matching "- " marker width)
 // rather than the full 6-char "- [ ] " prefix, because 6 spaces after a
 // blank line triggers an indented code block in some parsers.
 const taskListIndent = '  ';
 
-export const taskList = (items: [checked: boolean, label: string][]) => items
+export const taskList = (items: readonly (readonly [checked: boolean, label: string])[]) => items
 	.map(([checked, label]) => `- [${checked ? 'x' : ' '}] ${indentContinuation(label, taskListIndent)}`)
 	.join('\n');

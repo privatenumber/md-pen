@@ -64,7 +64,7 @@ codeBlock('const x = 1', 'ts')
 // const x = 1
 // ```
 
-hr()  // ---
+hr()  // ___
 ```
 
 ### Tables

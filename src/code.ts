@@ -37,10 +37,11 @@ export const code = (text: string) => {
 export const codeBlock = (content: string, language?: string) => {
 	// Sanitize: info string cannot contain backticks or newlines per CommonMark
 	const sanitizedLanguage = language?.replaceAll(/[`\n\r]/g, '') ?? '';
+	const separator = content.endsWith('\n') || content.endsWith('\r') ? '' : '\n';
 
 	// Fast path: no backtick fences in content (common case)
 	if (!content.includes('```')) {
-		return `\`\`\`${sanitizedLanguage}\n${content}\n\`\`\``;
+		return `\`\`\`${sanitizedLanguage}\n${content}${separator}\`\`\``;
 	}
 
 	// Slow path: find longest fence (0-3 spaces indent allowed per CommonMark)
@@ -53,7 +54,7 @@ export const codeBlock = (content: string, language?: string) => {
 	}
 
 	const fence = '`'.repeat(Math.max(3, longestFenceRun + 1));
-	return `${fence}${sanitizedLanguage}\n${content}\n${fence}`;
+	return `${fence}${sanitizedLanguage}\n${content}${separator}${fence}`;
 };
 
 export const mermaid = (content: string) => codeBlock(content, 'mermaid');

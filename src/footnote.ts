@@ -10,15 +10,14 @@ const normalizeId = (id: string) => {
 	if (collapsed.length > 999) {
 		return '';
 	}
-	const encoder = new TextEncoder();
 	let result = '';
 	for (const character of collapsed) {
 		const code = character.codePointAt(0)!;
-		if (code > 0x9F || (code < 0x80 && allowedAscii.test(character))) {
+		if (code > 0x9F || allowedAscii.test(character)) {
 			result += character;
 		} else {
 			// Encoding every percent sign keeps encoded sequences distinct from literal input.
-			result += [...encoder.encode(character)].map(byte => `%${byte.toString(16).padStart(2, '0')}`).join('');
+			result += encodeURIComponent(character).toLowerCase();
 		}
 	}
 	return result;

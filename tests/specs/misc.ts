@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'manten';
+import { render } from '../utils/render.ts';
 import {
 	kbd, sub, sup, mention, emoji, el,
 } from '../../src/misc.ts';
@@ -95,8 +96,22 @@ describe('sup with attributes', () => {
 });
 
 describe('el', () => {
-	test('void element without attributes', () => {
-		expect(el('br')).toBe('<br />');
+	test('self-closes HTML void elements and foreign roots without content', () => {
+		for (const tag of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']) {
+			expect(el(tag)).toBe(`<${tag} />`);
+			expect(el(tag.toUpperCase())).toBe(`<${tag.toUpperCase()} />`);
+		}
+		for (const tag of ['svg', 'math', 'SVG', 'MATH']) {
+			expect(el(tag)).toBe(`<${tag} />`);
+			expect(el(tag, undefined, 'content')).toBe(`<${tag}>content</${tag}>`);
+		}
+		expect(render(`${el('svg')}\n\nafter`)).toBe('<svg />\n<p>after</p>');
+		expect(render(`${el('math')}\n\nafter`)).toBe('<math />\n<p>after</p>');
+		expect(el('div')).toBe('<div></div>');
+		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
+		expect(el('custom-element')).toBe('<custom-element></custom-element>');
+		expect(el('linK')).toBe('<linK></linK>');
+		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 
 	test('void element with attributes', () => {

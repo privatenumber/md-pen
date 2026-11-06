@@ -14,15 +14,20 @@ export const sub = (text: string, options?: HtmlOptions) => htmlTag('sub', text,
 
 export const sup = (text: string, options?: HtmlOptions) => htmlTag('sup', text, options);
 
+const selfClosingElements = new Set([
+	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr', 'svg', 'math',
+]);
+
 export const el = (
 	tag: string,
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
-	if (content === undefined) {
+	// HTML tag names use ASCII case folding, not Unicode lowercasing.
+	if (content === undefined && selfClosingElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}
-	return `<${tag}${htmlAttributes(attributes)}>${content}</${tag}>`;
+	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;
 };
 
 export const mention = (username: string) => `@${username}`;

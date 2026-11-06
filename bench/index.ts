@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { bench, run, summary } from 'mitata';
 import * as md from '../src/index.ts';
 import {
-	adversarial, buildDocument, distinctBacktickRuns, nestedDetails, plainText, repeatTo, tableRows, userText,
+	adversarial, buildDocument, distinctBacktickRuns, nestedDetails,
+	plainText, repeatTo, tableRows, userText,
 	type Pattern,
 } from './fixtures.ts';
 import { writeResults } from './results.ts';
@@ -101,7 +102,10 @@ summary(() => {
 
 summary(() => {
 	bench('table - object rows $rows', function* rows(state: BenchState) {
-		const input = Array.from({ length: state.get('rows') }, (_, index) => ({ ...tableRows[index % tableRows.length], id: index }));
+		const input = Array.from({ length: state.get('rows') }, (_, index) => ({
+			...tableRows[index % tableRows.length],
+			id: index,
+		}));
 		yield () => md.table(input);
 	}).args('rows', [100, 1000, 10_000]);
 });

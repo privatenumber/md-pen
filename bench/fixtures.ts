@@ -46,14 +46,16 @@ export const adversarial = {
 	// Backslashes without HTML punctuation; a backtracking regex goes quadratic here.
 	backslashes: '\\',
 	// Escaped pipes exercise the table cell backslash parity scan.
-	'escaped pipes': '\\|',
+	'escaped pipes': String.raw`\|`,
 	// Whitespace runs exercise trailing-whitespace and indentation handling.
 	whitespace: ' \t',
 } as const;
 
 export type Pattern = keyof typeof adversarial;
 
-export const repeatTo = (pattern: string, size: number) => pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size);
+export const repeatTo = (pattern: string, size: number) => (
+	pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size)
+);
 
 // Backtick runs of increasing length, so every run is distinct and a code-span
 // matcher cannot reuse earlier closers.

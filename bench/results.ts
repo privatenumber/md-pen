@@ -23,7 +23,12 @@ export const writeResults = async ({ context, benchmarks }: BenchmarkRun) => {
 			if (!stats) {
 				throw new Error(`Benchmark "${result.name}" produced no statistics`);
 			}
-			rows.push([code(result.name), formatTime(stats.avg), formatTime(stats.p75), formatTime(stats.p99)]);
+			rows.push([
+				code(result.name),
+				formatTime(stats.avg),
+				formatTime(stats.p75),
+				formatTime(stats.p99),
+			]);
 		}
 	}
 

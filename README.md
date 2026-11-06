@@ -8,7 +8,7 @@ Typed utilities for formatting Markdown. GFM (GitHub-Flavored Markdown) first.
 ### Features
 
 - Zero dependencies
-- Full TypeScript with exported types
+- Full TypeScript with exported types, including `AlertType`, `ListItem`, `ReadonlyListItem`, `CellValue`, `TableOptions`, `ReadonlyTableOptions`, and `ColumnEntry`
 - Every output verified against a CommonMark parser
 - GitHub-compatible (audited against [cmark-gfm](https://github.com/github/cmark-gfm))
 - Functions compose naturally
@@ -159,7 +159,9 @@ table([
 // | Alice | 30 |
 ```
 
-Also accepts an array of objects (keys become headers):
+Also accepts an array of objects. An object-literal `type` alias works without an index signature; an `interface` or class needs a compatible string index signature. Own enumerable string keys, including getters, become headers; pass `columns` for inherited or non-enumerable getters (in TypeScript, a class instance still needs that index signature).
+
+List and table inputs accept readonly arrays, including nested arrays and task tuples.
 
 ```ts
 table([

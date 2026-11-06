@@ -10,27 +10,33 @@ export type TableOptions = {
 	html?: boolean;
 };
 
-type CellValue = string | number | boolean | null | undefined;
+export type CellValue = string | number | boolean | null | undefined;
+
+export type ReadonlyTableOptions = {
+	align?: readonly TableAlignment[];
+	columns?: readonly (string | readonly [key: string, header: string])[];
+	html?: boolean;
+};
 
 const isObjectArray = (
-	input: CellValue[][] | Record<string, CellValue>[],
-): input is Record<string, CellValue>[] => !Array.isArray(input[0]);
+	input: readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[],
+): input is readonly Record<string, CellValue>[] => !Array.isArray(input[0]);
 
 const resolveRows = (
-	input: CellValue[][] | Record<string, CellValue>[],
-	options?: TableOptions,
+	input: readonly (readonly CellValue[])[] | readonly Record<string, CellValue>[],
+	options?: ReadonlyTableOptions,
 ) => {
 	if (isObjectArray(input)) {
 		const columnEntries = options?.columns
 			?? [...new Set(input.flatMap(item => Object.keys(item)))];
-		const keys = columnEntries.map(entry => (Array.isArray(entry) ? entry[0] : entry));
-		const headers = columnEntries.map(entry => (Array.isArray(entry) ? entry[1] : entry));
+		const keys = columnEntries.map(entry => (Array.isArray(entry) ? entry[0] : entry as string));
+		const headers = columnEntries.map(entry => (Array.isArray(entry) ? entry[1] : entry as string));
 
 		return {
 			rows: [
 				headers,
 				...input.map(item => keys.map(key => (Object.hasOwn(item, key) ? item[key] : ''))),
-			] as CellValue[][],
+			],
 			columnCount: keys.length,
 		};
 	}
@@ -65,7 +71,7 @@ const separatorCell = (alignment: TableAlignment) => {
 	}
 };
 
-const buildMarkdownRow = (cells: CellValue[], columnCount: number) => {
+const buildMarkdownRow = (cells: readonly CellValue[], columnCount: number) => {
 	let row = '|';
 	for (let i = 0; i < columnCount; i += 1) {
 		row += ` ${escapeTableCell(stringify(i < cells.length ? cells[i] : undefined))} |`;
@@ -74,9 +80,9 @@ const buildMarkdownRow = (cells: CellValue[], columnCount: number) => {
 };
 
 const buildMarkdownTable = (
-	rows: CellValue[][],
+	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
-	options?: TableOptions,
+	options?: ReadonlyTableOptions,
 ) => {
 	const alignments = options?.align ?? [];
 
@@ -104,9 +110,9 @@ const validAlignments = new Set(['left', 'center', 'right']);
 const alignAttribute = (alignment?: TableAlignment) => (alignment && validAlignments.has(alignment) ? ` align="${alignment}"` : '');
 
 const buildHtmlTable = (
-	rows: CellValue[][],
+	rows: readonly (readonly CellValue[])[],
 	columnCount: number,
-	options?: TableOptions,
+	options?: ReadonlyTableOptions,
 ) => {
 	const alignments = options?.align ?? [];
 	const [header, ...body] = rows;
@@ -136,9 +142,11 @@ const buildHtmlTable = (
 
 // --- Public API ---
 
+type TableRows = readonly (readonly CellValue[])[] | readonly Readonly<Record<string, CellValue>>[];
+
 export const table = (
-	input: CellValue[][] | Record<string, CellValue>[],
-	options?: TableOptions,
+	input: TableRows,
+	options?: TableOptions | ReadonlyTableOptions,
 ) => {
 	if (input.length === 0) {
 		return '';

@@ -17,6 +17,9 @@ importers:
       comrak:
         specifier: 0.48.0-rc.0
         version: 0.48.0-rc.0
+      expect-type:
+        specifier: ^1.4.0
+        version: 1.4.0
       lintroll:
         specifier: ^1.30.1
         version: 1.30.1(@types/estree@1.0.8)(@typescript-eslint/utils@8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@6.0.2))(jiti@2.6.1)(jsonc-eslint-parser@2.4.2)(typescript@6.0.2)
@@ -1554,6 +1557,10 @@ packages:
   esutils@2.0.3:
     resolution: {integrity: sha512-kVscqXk4OCp68SZ0dkgEKVi6/8ij300KBWTJq32P/dYeWTSwK41WyTxalN1eRmA5Z9UU/LX9D7FWSmV9SAYx6g==}
     engines: {node: '>=0.10.0'}
+
+  expect-type@1.4.0:
+    resolution: {integrity: sha512-KfYbmpRm0VbLjEvVa9yGwCi9GI34xvi7A/HXYWQO65CSD2u3MczUJSuwXKFIxlGsgBQizV9q5J9NHj4VG0n+pA==}
+    engines: {node: '>=12.0.0'}
 
   expect@30.3.0:
     resolution: {integrity: sha512-1zQrciTiQfRdo7qJM1uG4navm8DayFa2TgCSRlzUyNkhcJ6XUZF3hjnpkyr3VhAqPH7i/9GkG7Tv5abz6fqz0Q==}
@@ -4348,6 +4355,8 @@ snapshots:
   estree-walker@2.0.2: {}
 
   esutils@2.0.3: {}
+
+  expect-type@1.4.0: {}
 
   expect@30.3.0:
     dependencies:

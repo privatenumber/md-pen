@@ -5,9 +5,13 @@ export { link, image } from './link.ts';
 export {
 	heading, h1, h2, h3, h4, h5, h6,
 } from './heading.ts';
-export { blockquote, alert } from './blockquote.ts';
-export { ul, ol, taskList } from './list.ts';
-export { table, type TableOptions, type ColumnEntry } from './table.ts';
+export { blockquote, alert, type AlertType } from './blockquote.ts';
+export {
+	ul, ol, taskList, type ListItem, type ReadonlyListItem,
+} from './list.ts';
+export {
+	table, type TableOptions, type ReadonlyTableOptions, type ColumnEntry, type CellValue,
+} from './table.ts';
 export { hr, details } from './block.ts';
 export { math, mathBlock } from './math.ts';
 export { footnoteRef, footnote } from './footnote.ts';

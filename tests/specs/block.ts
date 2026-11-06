@@ -77,6 +77,65 @@ describe('details', () => {
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
 	});
 
+	test('falls back for each HTML scope and parsing boundary', () => {
+		const tags = [
+			'applet',
+			'caption',
+			'html',
+			'table',
+			'td',
+			'th',
+			'marquee',
+			'object',
+			'template',
+			'mi',
+			'mo',
+			'mn',
+			'ms',
+			'mtext',
+			'annotation-xml',
+			'foreignobject',
+			'desc',
+			'title',
+			'tbody',
+			'thead',
+			'tfoot',
+			'tr',
+			'colgroup',
+			'col',
+			'select',
+			'script',
+			'style',
+			'textarea',
+			'xmp',
+			'iframe',
+			'noembed',
+			'noframes',
+			'noscript',
+			'plaintext',
+			'svg',
+			'math',
+		];
+		const inner = details('inner', 'content');
+		for (const tag of tags) {
+			for (const prefix of ['', '/']) {
+				for (const name of [tag, tag.toUpperCase()]) {
+					const result = details('outer', `${inner}\n\nx <${prefix}${name}>`);
+					expect(result).toContain('<\u200Bdetails>');
+					expect(result).toContain('<\u200B/details>');
+				}
+			}
+		}
+	});
+
+	test('distinguishes HTML boundary tags from look-alikes', () => {
+		const inner = details('inner', 'content');
+		for (const input of ['<tablex>', '<tab>', '<table=bad>', '<table']) {
+			expect(details('outer', `${inner}\n\nx ${input}`)).toContain(inner);
+		}
+		expect(details('outer', `${inner}\n\nx \\<table>`)).toContain('<\u200Bdetails>');
+	});
+
 	test('preserves nested details containing a list or blockquote', () => {
 		for (const content of ['- first', '> first']) {
 			const html = render(details('outer', details('inner', content)));

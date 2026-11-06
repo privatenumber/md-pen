@@ -1,12 +1,6 @@
 import { hasCharacterReference } from './escape.ts';
-
-const backtickDelimiter = (expression: string, minimum: number) => {
-	let length = minimum;
-	for (const run of expression.matchAll(/`+/g)) {
-		length = Math.max(length, run[0].length + 1);
-	}
-	return '`'.repeat(length);
-};
+import { backtickDelimiter } from './utils/backtick-delimiter.ts';
+import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
 
 // These characters can create Markdown syntax or alter math in surrounding Markdown.
 const markdownActive = new Set('*`[]<>~$|@');
@@ -62,7 +56,7 @@ export const math = (expression: string) => {
 };
 
 export const mathBlock = (expression: string) => {
-	const normalized = expression.replaceAll(/\r\n?/g, '\n');
+	const normalized = normalizeLineEndings(expression);
 	if (normalized === '') {
 		return '';
 	}

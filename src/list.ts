@@ -1,3 +1,5 @@
+import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
+
 export type ListItem = string | ListItem[];
 
 export type ReadonlyListItem = string | readonly ReadonlyListItem[];
@@ -10,7 +12,7 @@ const indentContinuation = (text: string, continuationIndent: string) => {
 	if (!text.includes('\n') && !text.includes('\r')) {
 		return text;
 	}
-	const normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+	const normalized = normalizeLineEndings(text);
 	return normalized.replaceAll('\n', `\n${continuationIndent}`);
 };
 

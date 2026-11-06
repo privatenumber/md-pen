@@ -54,6 +54,16 @@ describe('escape', () => {
 		expect(escape('hello 世界 🚀')).toBe('hello 世界 🚀');
 	});
 
+	test('renders every ASCII punctuation character literally', () => {
+		const punctuation = String.raw`!"#$%&'()*+,-./:;<=>?@[\]^_\`{|}~`;
+		for (const character of punctuation) {
+			for (const input of [character, `a${character}b`]) {
+				const htmlText = input.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+				expect(render(escape(input)).replaceAll('\u200B', '')).toBe(`<p>${htmlText}</p>`);
+			}
+		}
+	});
+
 	test('emits guards for references and math', () => {
 		const input = '@octocat a@example.com #1 GH-1 $x$ $$x$$ $`x`$';
 		const html = render(escape(input));
@@ -69,11 +79,11 @@ describe('escape', () => {
 			expect(markdownToHTML(input, options)).toContain('😄');
 			expect(markdownToHTML(escape(input), options)).not.toContain('😄');
 		}
-		expect(escape(':invalid:smile: :smile::smile:')).toBe(':​invalid:​smile: :​smile::​smile:');
+		expect(markdownToHTML(escape(':invalid:smile: :smile::smile:'), options)).toBe('<p>:​invalid:​smile: :​smile::​smile:</p>\n');
 	});
 
-	test('guards references in URL paths and emails but not embedded word references', () => {
-		for (const input of ['https://example.com/#1', 'a/#1', 'foo/@octocat', 'a@example.com', 'privatenumber/md-pen#1']) {
+	test('guards references in URL paths and emails', () => {
+		for (const input of ['#1', 'a/b#1', '@octocat', 'foo@bar.com', 'https://example.com/#1', 'a/#1', 'foo/@octocat', 'a@example.com', 'privatenumber/md-pen#1']) {
 			expect(escape(input)).toContain('\u200B');
 		}
 		for (const input of ['x#1', 'foo_#1', 'xGH-1', 'x@octocat', 'foo_@octocat']) {
@@ -290,7 +300,7 @@ describe('escape autolinks', () => {
 
 	test('escape uppercase HTTP:// does not render as link on GitHub', () => {
 		// GitHub autolinks HTTP:// and Https:// (case-insensitive)
-		expect(escape('HTTP://example.com')).toBe(String.raw`HTTP\://example.com`);
-		expect(escape('Https://example.com')).toBe(String.raw`Https\://example.com`);
+		expect(escape('HTTP://example.com')).toBe(String.raw`HTTP\:\/\/example\.com`);
+		expect(escape('Https://example.com')).toBe(String.raw`Https\:\/\/example\.com`);
 	});
 });

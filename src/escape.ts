@@ -12,11 +12,13 @@ const htmlEntityMap: Record<string, string> = {
 	'>': '&gt;',
 	'&': '&amp;',
 	'"': '&quot;',
+	'\r': '&#13;',
+	'\n': '&#10;',
 };
 
 export const escapeHtml = (text: string) => text.replaceAll(
 	/[<>&"\r\n]/g,
-	character => htmlEntityMap[character] ?? (character === '\r' ? '&#13;' : '&#10;'),
+	character => htmlEntityMap[character],
 );
 
 export const htmlAttributes = (

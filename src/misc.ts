@@ -10,6 +10,7 @@ const escapeInlineHtml = (input: string) => input
 			return match;
 		}
 		const backslashes = match.length - 1;
+		// Keep paired backslashes; an unpaired backslash escapes the character.
 		return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
 	});
 

@@ -1,3 +1,5 @@
+import { backtickDelimiter } from './utils/backtick-delimiter.ts';
+
 export const code = (text: string) => {
 	if (text.length === 0) {
 		return '` `';
@@ -19,14 +21,7 @@ export const code = (text: string) => {
 	}
 
 	// Slow path: find longest backtick run, use longer delimiter
-	let longestBacktickRun = 0;
-	for (const run of normalized.match(/`+/g)!) {
-		if (run.length > longestBacktickRun) {
-			longestBacktickRun = run.length;
-		}
-	}
-
-	const delimiter = '`'.repeat(longestBacktickRun + 1);
+	const delimiter = backtickDelimiter(normalized, 1);
 
 	// Backtick disambiguation padding (1 space each side) doubles as the
 	// expendable space for CommonMark's leading/trailing space stripping.

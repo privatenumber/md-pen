@@ -1,6 +1,6 @@
-export const escape = (text: string) => text
-	// CommonMark treats CR and CRLF as line endings.
-	.replaceAll(/\r\n?/g, '\n')
+import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
+
+export const escape = (text: string) => normalizeLineEndings(text)
 	// Backslash escapes cannot prevent indented code blocks.
 	.replaceAll(/^[ \t]+/gm, indentation => (indentation.includes('\t') || indentation.length >= 4 ? '   ' : indentation))
 	// GitHub substitutes shortcodes after processing backslash escapes.

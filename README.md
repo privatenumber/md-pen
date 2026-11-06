@@ -359,7 +359,9 @@ el('p', { align: 'center' }, 'centered text')
 
 #### `escape(text)`
 
-Escapes markdown special characters in untrusted input.
+Backslash-escapes all ASCII punctuation in untrusted text, plus GitHub-specific guards for mentions, issue references, emoji shortcodes, and dollar signs. The guards use invisible zero-width spaces, which are retained when copying the rendered text. GitHub can interpret references in URL paths after the URL is escaped, so those paths may also contain zero-width spaces. Dollar signs are guarded even where GitHub does not render math, because other renderers may do so. GitHub commit SHA references are not neutralized. Leading indentation, whitespace before line breaks, and whitespace at the end of the input may be normalized, so `escape('a  ') + 'b'` produces `a b`.
+
+`escape()` does not keep an emoji-name table. It inserts a zero-width space in colon-delimited names in shortcode position even if they are not emoji names. Digit-only names are an exception: only `:100:` and `:1234:` are guarded.
 
 ```ts
 escape('**not bold**') // \*\*not bold\*\*

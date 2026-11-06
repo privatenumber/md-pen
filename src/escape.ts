@@ -16,8 +16,8 @@ export const escape = (text: string) => text
 	// GitHub and comrak can interpret escaped dollar signs as math.
 	.replaceAll('$', '\u200B$')
 	// Trailing whitespace can create a hard line break, including after composition.
-	.replaceAll(/[ \t]+/g, (whitespace, offset: number, input: string) => (offset + whitespace.length === input.length || input[offset + whitespace.length] === '\n' ? ' ' : whitespace))
-	.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `\\${character}`);
+	.replaceAll(/(?<![ \t])[ \t]+(?=\n|$)/g, ' ')
+	.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, String.raw`\$&`);
 
 const htmlEntityMap: Record<string, string> = {
 	'<': '&lt;',

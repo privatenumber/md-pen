@@ -1,4 +1,7 @@
-import { escapeHtml, escapeUrl, htmlAttributes } from './escape.ts';
+import {
+	encodeUrlWhitespace, escapeUrl, hasCharacterReference, htmlAttributes,
+} from './escape.ts';
+import { createInlineScanner } from './inline-constructs.ts';
 
 const hasOnlyTitle = (
 	options: Record<string, string | number>,
@@ -12,11 +15,91 @@ const escapeTitle = (title: string) => title
 	.replaceAll('\\', String.raw`\\`)
 	.replaceAll('"', String.raw`\"`);
 
-const escapeLinkText = (text: string) => text
+const imageDestination = /\((?:\\.|[^ \t\r\n()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
+
+const imageSpans = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
+	const stack: {
+		index: number;
+		image: boolean;
+	}[] = [];
+	const openings = new Set<number>();
+	const closings = new Map<number, number>();
+	let previousBang = false;
+	for (let index = 0; index < text.length;) {
+		const end = scanner.protectedEnd(index);
+		if (end !== -1) {
+			index = end;
+			previousBang = false;
+			continue;
+		}
+		if (text[index] === '[') {
+			stack.push({
+				index,
+				image: previousBang,
+			});
+		} else if (text[index] === ']') {
+			const open = stack.pop();
+			if (open?.image) {
+				imageDestination.lastIndex = index + 1;
+				if (imageDestination.test(text)) {
+					openings.add(open.index);
+					closings.set(index, imageDestination.lastIndex);
+					index = imageDestination.lastIndex;
+					previousBang = false;
+					continue;
+				}
+			}
+		}
+		previousBang = text[index] === '!';
+		index += 1;
+	}
+	return {
+		openings,
+		closings,
+	};
+};
+
+const escapeLinkText = (input: string) => {
+	const text = input.replaceAll(/[\r\n]+/g, ' ');
+	const scanner = createInlineScanner(text, { angle: true });
+	const images = imageSpans(text, scanner);
+	let result = '';
+	for (let index = 0; index < text.length;) {
+		const end = scanner.protectedEnd(index);
+		if (end !== -1) {
+			result += text.slice(index, end);
+			index = end;
+			continue;
+		}
+		if (text[index] === '!' && images.openings.has(index + 1)) {
+			result += '![';
+			index += 2;
+			continue;
+		}
+		const endOfDestination = images.closings.get(index);
+		if (endOfDestination !== undefined) {
+			result += text.slice(index, endOfDestination);
+			index = endOfDestination;
+			continue;
+		}
+		const character = text[index];
+		if (character === '[' || character === ']') {
+			result += '\\';
+		}
+		result += character;
+		index += 1;
+	}
+	let trailingBackslashes = 0;
+	while (text[text.length - trailingBackslashes - 1] === '\\') {
+		trailingBackslashes += 1;
+	}
+	return trailingBackslashes % 2 ? `${result}\\` : result;
+};
+
+const literalLinkText = (text: string) => text
 	.replaceAll(/[\r\n]+/g, ' ')
-	.replaceAll('\\', String.raw`\\`)
-	.replaceAll('[', String.raw`\[`)
-	.replaceAll(']', String.raw`\]`);
+	.replaceAll(/[\\`*_~[\]<>&]/g, character => `\\${character}`)
+	.replaceAll('$', '\u200B\\$');
 
 const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url)
 	&& !/\.\.|[_-]$/.test(url);
@@ -40,6 +123,8 @@ const normalizeHref = (url: string) => {
 	return url;
 };
 
+const htmlDestination = (url: string) => encodeUrlWhitespace(url.replaceAll('\\', '%5C'));
+
 export const link = (
 	url: string,
 	text?: string,
@@ -48,15 +133,19 @@ export const link = (
 	if (options && Object.keys(options).length > 0) {
 		const href = normalizeHref(url);
 		if (hasOnlyTitle(options)) {
-			return `[${escapeLinkText(text ?? url)}](${escapeUrl(href)} "${escapeTitle(String(options.title))}")`;
+			return `[${text === undefined ? literalLinkText(url) : escapeLinkText(text)}](${escapeUrl(href)} "${escapeTitle(String(options.title))}")`;
 		}
 
 		const attributes: Record<string, string> = {
 			...options,
-			href,
+			href: htmlDestination(href),
 		};
-		// Break email autolink in display text to prevent nested <a> tags
-		const displayText = text ?? escapeHtml(url).replaceAll('@', '\u200B@');
+		// Entities keep URL text literal in Markdown and raw HTML.
+		// GitHub still needs ZWSP guards for math (`$`) and mentions (`@`).
+		const displayText = text ?? url.replaceAll(/[\r\n]+/g, ' ')
+			.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `&#${character.codePointAt(0)};`)
+			.replaceAll('&#36;', '\u200B&#36;')
+			.replaceAll('&#64;', '&#64;\u200B');
 		return `<a${htmlAttributes(attributes)}>${displayText}</a>`;
 	}
 
@@ -65,11 +154,11 @@ export const link = (
 	}
 
 	// eslint-disable-next-line no-control-regex
-	if (/^https?:\/\//.test(url) && !/[ \u0000-\u001F<>]/.test(url)) {
+	if (/^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) {
 		return `<${url}>`;
 	}
 
-	return `[${escapeLinkText(url)}](${escapeUrl(normalizeHref(url))})`;
+	return `[${literalLinkText(url)}](${escapeUrl(normalizeHref(url))})`;
 };
 
 export const image = (
@@ -84,7 +173,7 @@ export const image = (
 
 		const attributes: Record<string, string | number> = {
 			...options,
-			src: url,
+			src: htmlDestination(url),
 			...(alt === undefined ? {} : { alt }),
 		};
 		return `<img${htmlAttributes(attributes)} />`;

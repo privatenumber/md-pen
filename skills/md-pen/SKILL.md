@@ -32,6 +32,8 @@ import { bold, table, link } from 'md-pen'
 
 ### Links and Images
 
+Explicit link text and Markdown image alt text accept Markdown; an omitted link text displays the URL as literal text. HTML image alt text is an attribute.
+
 > [!NOTE]
 > `link(url, text)` and `image(url, alt)` take URL first — matches HTML's `<a href="url">text</a>`, not Markdown's `[text](url)`.
 
@@ -90,6 +92,8 @@ table([['Before', 'After'], [codeBlock('old', 'js'), codeBlock('new', 'js')]], {
 
 Alignment: `'left'`, `'center'`, `'right'`, `'none'`. Ragged rows auto-padded. Pipes in cells escaped.
 
+Markdown-mode pipe escaping may not preserve a backslash before a pipe inside code spans, math spans, angle-bracket autolinks, or raw HTML attributes; line endings in code spans become literal `<br>` text, so use `html: true` for those spans. HTML mode avoids table pipe escaping, but check the target renderer. HTML-mode cells are raw Markdown/HTML; closing tags are not protected and boundary whitespace may be trimmed. Wrap untrusted or literal cell text in `escape()` in either mode; whitespace and line breaks are not preserved exactly.
+
 ### Lists
 
 ```ts
@@ -111,6 +115,8 @@ footnoteRef('1')                    // [^1]
 footnote('1', 'Source text')        // [^1]: Source text
 ```
 
+`details()` escapes the summary and attributes, and its content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
+
 > [!TIP]
 > On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:
 > ```ts
@@ -118,6 +124,8 @@ footnote('1', 'Source text')        // [^1]: Source text
 > ```
 
 ### Niche
+
+`kbd()`, `sub()`, and `sup()` HTML-escape content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
 
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>
@@ -134,13 +142,16 @@ emoji('rocket')      // :rocket:
 
 ### Generic HTML Element
 
+`el()` throws `TypeError` for tag names outside `[A-Za-z][A-Za-z0-9-]*`. All HTML helpers drop attribute names outside `[A-Za-z_:][A-Za-z0-9_.:-]*`; for example, `el('span', { '@invalid': 'x' }, 'text')` returns `<span>text</span>`.
+
 ```ts
 el('br')                                    // <br />
+el('div')                                   // <div></div>
 el('img', { src: 'cat.png', alt: 'Cat' })   // <img src="cat.png" alt="Cat" />
 el('p', { align: 'center' }, 'centered')    // <p align="center">centered</p>
 ```
 
-Content is raw (not escaped). Without content, self-closing.
+Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
 
 ### Escaping
 
@@ -148,7 +159,7 @@ Content is raw (not escaped). Without content, self-closing.
 escape('**not bold**')  // \*\*not bold\*\*
 ```
 
-Use `escape()` for untrusted user input. Bold uses `__` and italic uses `*` — different delimiters that compose without collision:
+Use `escape()` for untrusted user input. It inserts a zero-width space in colon-delimited names in shortcode position even when they are not emoji names; among digit-only names, it guards only `:100:` and `:1234:`. Bold uses `__`, which cannot apply inside a word; use `el('strong', undefined, 'text')` there. Nested italic content ending in `_` may prevent bold from rendering. Emphasis content must stay within one paragraph: blank lines and block-starting lines end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
 
 ```ts
 bold(link('https://x.com', 'text'))  // __[text](https://x.com)__

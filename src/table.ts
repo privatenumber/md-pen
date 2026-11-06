@@ -35,7 +35,7 @@ const resolveRows = (
 		return {
 			rows: [
 				headers,
-				...input.map(item => keys.map(key => item[key] ?? '')),
+				...input.map(item => keys.map(key => (Object.hasOwn(item, key) ? item[key] : ''))),
 			],
 			columnCount: keys.length,
 		};

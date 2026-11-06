@@ -73,8 +73,5 @@ export const encodeUrlWhitespace = (url: string) => url
 
 export const escapeUrl = (url: string) => encodeUrlWhitespace(url
 	.replaceAll('\\', '%5C')
-	.replaceAll('(', String.raw`\(`)
-	.replaceAll(')', String.raw`\)`)
-	.replaceAll('<', String.raw`\<`)
-	.replaceAll('>', String.raw`\>`)
+	.replaceAll(/[()<>]/g, character => `\\${character}`)
 	.replaceAll(characterReference, '&amp;'));

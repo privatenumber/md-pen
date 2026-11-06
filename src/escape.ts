@@ -48,25 +48,35 @@ export const htmlAttributes = (
 	return result;
 };
 
+const precedingBackslashes = (text: string, offset: number) => {
+	let count = 0;
+	while (offset > count && text[offset - count - 1] === '\\') {
+		count += 1;
+	}
+	return count;
+};
+
 export const escapeTableCell = (text: string) => {
-	// Escape | for table structure, handling \| (backslash before pipe) in one pass
+	// An odd backslash run already escapes the table delimiter.
 	let result = text.replaceAll(
-		/\\?\|/g,
-		match => (match.length === 1 ? String.raw`\|` : String.raw`\\\|`),
+		'|',
+		(_match, offset: number) => (precedingBackslashes(text, offset) % 2 === 0 ? String.raw`\|` : '|'),
 	);
 
-	// Replace newlines with <br>
-	result = result
-		.replaceAll('\r\n', '<br>')
-		.replaceAll('\r', '<br>')
-		.replaceAll('\n', '<br>');
+	// A backslash that makes a hard line break must not escape the inserted tag.
+	result = result.replaceAll(/\\?(?:\r\n|\r|\n)/g, (match, offset: number, source: string) => {
+		const hasBackslash = match.startsWith('\\');
+		const count = precedingBackslashes(source, offset) + Number(hasBackslash);
+		return `${hasBackslash && count % 2 === 0 ? '\\' : ''}<br>`;
+	});
 
 	// Preserve leading/trailing whitespace with &nbsp; since GFM trims it
 	if (result.startsWith(' ') || result.startsWith('\t')) {
 		result = `&nbsp;${result.slice(1)}`;
 	}
 	if (result.endsWith(' ') || result.endsWith('\t')) {
-		result = `${result.slice(0, -1)}&nbsp;`;
+		const backslashes = precedingBackslashes(result, result.length - 1);
+		result = `${result.slice(0, -1)}${backslashes % 2 === 1 ? '\\' : ''}&nbsp;`;
 	}
 
 	return result;

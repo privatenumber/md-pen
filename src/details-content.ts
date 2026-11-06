@@ -25,10 +25,13 @@ const tableStructure = new Set(['tbody', 'thead', 'tfoot', 'tr', 'colgroup', 'co
 const textElements = new Set(['script', 'style', 'textarea', 'title', 'xmp', 'iframe', 'noembed', 'noframes', 'noscript', 'plaintext']);
 // https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inforeign
 const foreignRoots = new Set(['svg', 'math']);
-// https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
-const selectElements = new Set(['select']);
 const unsafeTags = new Set([
-	...scopeBoundaries, ...tableStructure, ...textElements, ...foreignRoots, ...selectElements,
+	...scopeBoundaries,
+	...tableStructure,
+	...textElements,
+	...foreignRoots,
+	// https://html.spec.whatwg.org/multipage/parsing.html#parsing-main-inbody
+	'select',
 ]);
 const detailsTag = new Set(['details']);
 const opening = /^<details(?:[ \t]+[^\s"'<>/=]+="[^">]*")*[ \t]*>[ \t]*$/i;
@@ -73,7 +76,7 @@ const findTag = (text: string, from: number, names: Set<string>, allowEnd: boole
 				};
 			}
 		}
-		index = Math.max(start + 1, end);
+		index = end;
 	}
 	return null;
 };
@@ -172,7 +175,7 @@ const trackLine = (line: string, index: number, state: PairState) => {
 	return true;
 };
 
-const balancedClosers = (text: string): Set<number> | null => {
+const preservedTagOffsets = (text: string): Set<number> | null => {
 	if (text.includes('`') || findTag(text, 0, unsafeTags, false) || text.includes('<!--')) {
 		return null;
 	}
@@ -199,7 +202,7 @@ export const protectDetailsContent = (text: string) => {
 	if (!match) {
 		return text;
 	}
-	const preserved = balancedClosers(text);
+	const preserved = preservedTagOffsets(text);
 	const chunks: string[] = [];
 	let start = 0;
 	while (match) {

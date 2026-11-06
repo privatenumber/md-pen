@@ -84,7 +84,8 @@ export const escapeTableCell = (text: string) => {
 
 const percentEncode = (character: string) => `%${character.codePointAt(0)!.toString(16).toUpperCase().padStart(2, '0')}`;
 
-const characterReference = /&(?=(?:#\d{1,7}|#x[\da-f]{1,6}|[a-z][a-z\d]{1,31});)/gi;
+// GitHub decodes numeric references of any length (such as `&#00000065;`), unlike CommonMark.
+const characterReference = /&(?=(?:#\d+|#x[\da-f]+|[a-z][a-z\d]{1,31});)/gi;
 
 export const hasCharacterReference = (text: string) => text.search(characterReference) !== -1;
 

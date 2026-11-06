@@ -1,3 +1,4 @@
+import { hasCharacterReference } from './escape.ts';
 import { backtickDelimiter } from './utils/backtick-delimiter.ts';
 import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
 
@@ -14,7 +15,6 @@ const hasMarkdownEscape = (expression: string) => {
 	return false;
 };
 
-const hasEntity = (expression: string) => /&(?:[a-z][a-z\d]*|#\d+|#x[\da-f]+);/i.test(expression);
 const hasUnsafeUnderscore = (expression: string) => /(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u.test(expression);
 const hasAutolink = (expression: string) => /https?:\/\/|ftp:\/\/|www\./i.test(expression);
 
@@ -24,7 +24,7 @@ const hasMarkdownSyntax = (expression: string) => {
 			return true;
 		}
 	}
-	return hasEntity(expression)
+	return hasCharacterReference(expression)
 		|| hasUnsafeUnderscore(expression)
 		|| hasMarkdownEscape(expression)
 		|| hasAutolink(expression);

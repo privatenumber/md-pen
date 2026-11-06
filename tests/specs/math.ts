@@ -31,12 +31,54 @@ describe('math', () => {
 
 	test('protects Markdown syntax and autolinks in inline expressions', () => {
 		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
-		for (const character of ['*', '`', '[', ']', '<', '>', '~', '$', '|', '@']) {
-			expect(math(`a${character}b`)).not.toBe(`$a${character}b$`);
-		}
 		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
 		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
 	});
+
+	// GitHub /markdown for `$a<c>b$`; protected characters may be active in other contexts.
+	const punctuation: [character: string, alternate: boolean, githubBare: string][] = [
+		['!', false, 'same'],
+		['"', false, 'same'],
+		['#', false, 'same'],
+		['$', true, 'not math'],
+		['%', false, 'same'],
+		['&', false, 'double-encoded'],
+		["'", false, 'same'],
+		['(', false, 'same'],
+		[')', false, 'same'],
+		['*', true, 'same'],
+		['+', false, 'same'],
+		[',', false, 'same'],
+		['-', false, 'same'],
+		['.', false, 'same'],
+		['/', false, 'same'],
+		[':', false, 'same'],
+		[';', false, 'same'],
+		['<', true, 'double-encoded'],
+		['=', false, 'same'],
+		['>', true, 'double-encoded'],
+		['?', false, 'same'],
+		['@', true, 'same'],
+		['[', true, 'same'],
+		['\\', false, 'same'],
+		[']', true, 'same'],
+		['^', false, 'same'],
+		['_', false, 'same'],
+		['`', true, 'same'],
+		['{', false, 'same'],
+		['|', true, 'same'],
+		['}', false, 'same'],
+		['~', true, 'same'],
+	];
+	for (const [character, alternate, githubBare] of punctuation) {
+		test(`ASCII ${character}: GitHub bare ${githubBare}`, () => {
+			const expression = `a${character}b`;
+			const delimiter = character === '`' ? '``' : '`';
+			const padding = character === '`' ? ' ' : '';
+			expect(math(expression)).toBe(alternate ? `$${delimiter}${padding}${expression}${padding}${delimiter}$` : `$${expression}$`);
+			expect(mathBlock(expression)).toBe(alternate ? `\`\`\`math\n${expression}\n\`\`\`` : `$$\n${expression}\n$$`);
+		});
+	}
 
 	test('uses portable delimiters for bare ampersands and factorials', () => {
 		expect(math('a & b')).toBe('$a & b$');

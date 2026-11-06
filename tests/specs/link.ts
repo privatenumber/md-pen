@@ -78,7 +78,7 @@ describe('link', () => {
 
 	test('uses url as text in HTML fallback when no text', () => {
 		expect(link('https://x.com', undefined, { target: '_blank' })).toBe(
-			'<a target="_blank" href="https://x.com">https&#58;//x.com</a>',
+			'<a target="_blank" href="https://x.com">https&#58;&#47;&#47;x&#46;com</a>',
 		);
 	});
 
@@ -92,7 +92,29 @@ describe('link', () => {
 	test('HTML fallback display text works inside a raw HTML block', () => {
 		const result = link('https://example.com/a_b', undefined, { target: '_blank' });
 		expect(render(result)).toContain('>https://example.com/a_b</a>');
-		expect(render(el('div', undefined, result))).toContain('>https&#58;//example.com/a&#95;b</a>');
+		expect(render(el('div', undefined, result))).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
+	});
+
+	test('HTML fallback displays literal URL punctuation in both contexts', () => {
+		for (const url of ['http://example.com/a_b?x=1&y=2', 'www.example.com/@user', 'https://example.com/$5$/`code`', 'foo@example.com', 'https://example.com/&#35;<x>"']) {
+			const expected = url.replaceAll('$', '\u200B$').replaceAll('@', '@\u200B');
+			const result = link(url, undefined, { target: '_blank' });
+			for (const markdown of [result, el('div', undefined, result)]) {
+				const html = render(markdown);
+				const content = html.match(/>([^<]*)<\/a>/)?.[1];
+				const entities: Record<string, string> = {
+					lt: '<',
+					gt: '>',
+					amp: '&',
+					quot: '"',
+				};
+				const decoded = content?.replaceAll(/&#(\d+);|&(lt|gt|amp|quot);/g, (_, codePoint: string, name: string) => (
+					codePoint ? String.fromCodePoint(Number(codePoint)) : entities[name]
+				));
+				expect(decoded).toBe(expected);
+				expect(html.match(/<a /g)?.length).toBe(1);
+			}
+		}
 	});
 
 	test('URL-derived labels do not render dollar-delimited math', () => {

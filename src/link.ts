@@ -1,5 +1,5 @@
 import {
-	encodeUrlWhitespace, escapeHtml, escapeUrl, hasCharacterReference, htmlAttributes,
+	encodeUrlWhitespace, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
 import { createInlineScanner } from './inline-constructs.ts';
 
@@ -140,13 +140,12 @@ export const link = (
 			...options,
 			href: htmlDestination(href),
 		};
-		// Break email autolinks and mentions in display text.
-		const displayText = text ?? escapeHtml(url.replaceAll(/[\r\n]+/g, ' '))
-			.replaceAll(/[\\`*_~[\]]/g, character => `&#${character.codePointAt(0)};`)
-			.replaceAll(/(https?|ftp):/gi, '$1&#58;')
-			.replaceAll(/www\./gi, 'www&#46;')
-			.replaceAll('$', '\u200B&#36;')
-			.replaceAll('@', '@\u200B');
+		// Entities keep URL text literal in Markdown and raw HTML.
+		// GitHub still needs ZWSP guards for math (`$`) and mentions (`@`).
+		const displayText = text ?? url.replaceAll(/[\r\n]+/g, ' ')
+			.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `&#${character.codePointAt(0)};`)
+			.replaceAll('&#36;', '\u200B&#36;')
+			.replaceAll('&#64;', '&#64;\u200B');
 		return `<a${htmlAttributes(attributes)}>${displayText}</a>`;
 	}
 

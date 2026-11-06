@@ -61,11 +61,12 @@ export const math = (expression: string) => {
 };
 
 export const mathBlock = (expression: string) => {
-	const normalized = expression.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+	const normalized = expression.replaceAll(/\r\n?/g, '\n');
 	if (normalized === '') {
 		return '';
 	}
 	const separator = normalized.endsWith('\n') ? '' : '\n';
+	// Exclude the final line terminator so it does not create a synthetic blank line.
 	const lines = separator ? normalized : normalized.slice(0, -1);
 	if (!hasMarkdownSyntax(normalized) && !blockStartPatterns.some(pattern => pattern.test(lines))) {
 		return `$$\n${normalized}${separator}$$`;

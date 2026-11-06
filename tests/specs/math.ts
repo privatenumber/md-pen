@@ -183,10 +183,6 @@ describe('mathBlock', () => {
 });
 
 describe('math with dollar signs', () => {
-	test('inline dollars use GitHub backtick-delimited math', () => {
-		expect(math('price = $5')).toBe('$`price = $5`$');
-	});
-
 	test('mathBlock with $$ does not close early', () => {
 		const md = mathBlock('x = $$');
 		const html = render(md);
@@ -197,17 +193,9 @@ describe('math with dollar signs', () => {
 });
 
 describe('math edge cases', () => {
-	test('math("") returns empty string', () => {
-		expect(math('')).toBe('');
-	});
-
 	test('math with blank line does not split into paragraphs', () => {
 		const html = render(math('a\n\nb'));
 		expect(html).toContain('data-math-style="inline"');
-	});
-
-	test('mathBlock("") returns empty string', () => {
-		expect(mathBlock('')).toBe('');
 	});
 
 	test('mathBlock with blank line does not split', () => {

@@ -208,6 +208,8 @@ Alignment: `'left'`, `'center'`, `'right'`, `'none'`
 
 Nested arrays become children of the preceding item.
 
+Item text is Markdown and leading spaces and tabs are stripped; raw HTML blocks or other block syntax in an item can swallow or reshape nested lists.
+
 ```ts
 ul(['a', 'b', ['nested 1', 'nested 2'], 'c'])
 // - a

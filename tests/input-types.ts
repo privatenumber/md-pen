@@ -1,3 +1,4 @@
+// Compile-time assertions, enforced by `pnpm type-check` (not `pnpm test`).
 import { expectTypeOf } from 'expect-type';
 import {
 	alert, ol, table, taskList, ul,

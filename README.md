@@ -293,12 +293,16 @@ details('Expanded', 'Visible', { open: '' })
 
 #### `kbd(key, options?)`
 
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
+
 ```ts
 kbd('Ctrl') // <kbd>Ctrl</kbd>
 kbd('Enter', { title: 'Confirm' }) // <kbd title="Confirm">Enter</kbd>
 ```
 
 #### `sub(text, options?)` / `sup(text, options?)`
+
+Content is HTML-escaped but still parsed as Markdown, except inside a raw HTML block such as `el()` content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
 
 ```ts
 sub('2') // <sub>2</sub>
@@ -343,11 +347,12 @@ emoji('rocket') // :rocket:
 
 #### `el(tag, attributes?, content?)`
 
-Generic HTML element builder for tags without a dedicated function. Attribute values are HTML-escaped and attribute names are sanitized against injection. Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
+Generic HTML element builder for tags without a dedicated function. Tag names must match `[A-Za-z][A-Za-z0-9-]*`; invalid names throw a `TypeError`. Attribute values are HTML-escaped. All HTML helpers drop attribute names outside the CommonMark grammar `[A-Za-z_:][A-Za-z0-9_.:-]*`. Content is raw (not escaped). Without content, HTML void elements and the `svg`/`math` roots use a self-closing tag; other elements use an opening and closing tag.
 
 ```ts
 el('br') // <br />
 el('div') // <div></div>
+el('span', { '@invalid': 'x' }, 'text') // <span>text</span>
 el('img', {
     src: 'cat.png',
     alt: 'A cat'

@@ -24,14 +24,14 @@ const htmlEntityMap: Record<string, string> = {
 	'>': '&gt;',
 	'&': '&amp;',
 	'"': '&quot;',
+	'\r': '&#13;',
+	'\n': '&#10;',
 };
 
 export const escapeHtml = (text: string) => text.replaceAll(
-	/[<>&"]/g,
+	/[<>&"\r\n]/g,
 	character => htmlEntityMap[character],
 );
-
-const sanitizeAttributeName = (name: string) => name.replaceAll(/[\s"'>/=<]/g, '');
 
 export const htmlAttributes = (
 	attributes?: Record<string, string | number>,
@@ -41,9 +41,8 @@ export const htmlAttributes = (
 	}
 	let result = '';
 	for (const [key, value] of Object.entries(attributes)) {
-		const name = sanitizeAttributeName(key);
-		if (name.length > 0) {
-			result += ` ${name}="${escapeHtml(String(value))}"`;
+		if (/^[a-z_:][\w:.-]*$/i.test(key)) {
+			result += ` ${key}="${escapeHtml(String(value))}"`;
 		}
 	}
 	return result;

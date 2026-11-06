@@ -123,6 +123,8 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 ### Niche
 
+`kbd()`, `sub()`, and `sup()` HTML-escape content. In Markdown-parsed contexts, wrap literal text in `escape()`; inside raw HTML blocks, Markdown escapes such as `\*` remain visible, while a backslash before `<`, `>`, `&`, or `"` is dropped because that character is emitted as an HTML entity. Line endings become spaces, including in table cells.
+
 ```ts
 kbd('Ctrl')          // <kbd>Ctrl</kbd>
 kbd('Enter', { title: 'Confirm' })  // <kbd title="Confirm">Enter</kbd>
@@ -137,6 +139,8 @@ emoji('rocket')      // :rocket:
 ```
 
 ### Generic HTML Element
+
+`el()` throws `TypeError` for tag names outside `[A-Za-z][A-Za-z0-9-]*`. All HTML helpers drop attribute names outside `[A-Za-z_:][A-Za-z0-9_.:-]*`; for example, `el('span', { '@invalid': 'x' }, 'text')` returns `<span>text</span>`.
 
 ```ts
 el('br')                                    // <br />

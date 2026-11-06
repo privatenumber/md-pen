@@ -2,7 +2,7 @@ import { describe, test, expect } from 'manten';
 import { markdownToHTML } from 'comrak';
 import { render } from '../utils/render.ts';
 import {
-	escape, escapeHtml, escapeTableCell, escapeUrl,
+	escape, escapeHtml, escapeTableCell, escapeUrl, htmlAttributes,
 } from '../../src/escape.ts';
 
 describe('escape', () => {
@@ -148,8 +148,28 @@ describe('escapeHtml', () => {
 		expect(escapeHtml('<a href="x">&</a>')).toBe('&lt;a href=&quot;x&quot;&gt;&amp;&lt;/a&gt;');
 	});
 
+	test('encodes line endings without normalizing them', () => {
+		expect(escapeHtml('a\nb\rc\r\nd')).toBe('a&#10;b&#13;c&#13;&#10;d');
+	});
+
 	test('leaves plain text unchanged', () => {
 		expect(escapeHtml('hello world')).toBe('hello world');
+	});
+});
+
+describe('htmlAttributes', () => {
+	test('encodes line endings in attribute values', () => {
+		expect(htmlAttributes({ title: 'a\nb\rc\r\nd' })).toBe(' title="a&#10;b&#13;c&#13;&#10;d"');
+	});
+
+	test('accepts CommonMark attribute names and drops invalid names', () => {
+		expect(htmlAttributes({
+			':foo': 'x',
+			'_x.y-z': 'y',
+			'@foo': 'z',
+			'1name': 'z',
+			'on"error': 'z',
+		})).toBe(' :foo="x" _x.y-z="y"');
 	});
 });
 

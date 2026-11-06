@@ -94,6 +94,8 @@ const htmlAttributesEnd = (text: string, start: number, cache: Map<number, numbe
 	if (cache.has(index)) {
 		result = cache.get(index)!;
 	}
+	// Cache the result for every visited position so overlapping tag attempts do not
+	// rescan attributes.
 	for (const position of visited) {
 		cache.set(position, result);
 	}
@@ -121,6 +123,7 @@ const htmlSpecialEnd = (text: string, index: number, last: Map<string, number>) 
 	} else {
 		return -1;
 	}
+	// Avoid searching the remaining text repeatedly when no terminator exists.
 	if (!last.has(terminator)) {
 		last.set(terminator, text.lastIndexOf(terminator));
 	}

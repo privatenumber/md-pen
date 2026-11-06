@@ -36,6 +36,13 @@ describe('codeBlock', () => {
 	test('handles content with longer backtick fences', () => {
 		expect(codeBlock('````\ncode\n````')).toBe('`````\n````\ncode\n````\n`````');
 	});
+
+	test('preserves trailing line endings without an extra blank line', () => {
+		for (const content of ['x\n', 'x\r\n', 'x\r', '\n', '\n\n', '\r\n\r\n', '```\n']) {
+			const normalized = content.replaceAll(/\r\n?|\n/g, '\n');
+			expect(render(codeBlock(content)).replaceAll(/\r\n?|\n/g, '\n')).toBe(`<pre><code>${normalized}</code></pre>`);
+		}
+	});
 });
 
 describe('mermaid', () => {

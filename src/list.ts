@@ -20,25 +20,39 @@ const formatList = (
 	ordered: boolean,
 ): string => {
 	const lines: string[] = [];
-	let itemIndex = 0;
+	let count = 0;
+	let childIndent = indent;
 
-	for (let i = 0; i < items.length; i += 1) {
-		const item = items[i];
-		if (isNested(item)) {
-			if (itemIndex === 0) {
-				lines.push(formatList(item, indent, ordered));
+	const append = (current: readonly ReadonlyListItem[]) => {
+		for (const item of current) {
+			if (isNested(item)) {
+				if (count === 0) {
+					append(item);
+				} else {
+					const nested = formatList(item, childIndent, ordered);
+					if (nested) {
+						// An empty child item cannot interrupt a paragraph.
+						if (/^ *(?:-|\d+\.) *(?:\n|$)/.test(nested)) {
+							const marker = ordered ? `${count}. ` : '- ';
+							const parentPrefix = `${' '.repeat(indent)}${marker}`;
+							const previous = lines.at(-1)!;
+							if (previous.startsWith(parentPrefix) && /[^ \t\r\n]/.test(previous.slice(parentPrefix.length))) {
+								lines.push('');
+							}
+						}
+						lines.push(nested);
+					}
+				}
 			} else {
-				const markerWidth = ordered ? String(itemIndex).length + 2 : 2;
-				lines.push(formatList(item, indent + markerWidth, ordered));
+				const marker = ordered ? `${count + 1}. ` : '- ';
+				childIndent = indent + marker.length;
+				const text = item.replace(/^[ \t]+/, '');
+				lines.push(`${' '.repeat(indent)}${marker}${indentContinuation(text, ' '.repeat(childIndent))}`);
+				count += 1;
 			}
-		} else {
-			const prefix = ordered ? `${itemIndex + 1}. ` : '- ';
-			const spaces = ' '.repeat(indent);
-			const continuationIndent = ' '.repeat(indent + prefix.length);
-			lines.push(`${spaces}${prefix}${indentContinuation(item, continuationIndent)}`);
-			itemIndex += 1;
 		}
-	}
+	};
+	append(items);
 
 	return lines.join('\n');
 };

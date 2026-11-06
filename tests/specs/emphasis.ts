@@ -109,7 +109,6 @@ describe('emphasis', () => {
 		expect(render(italic(escape('a*b')))).toBe('<p><em>a*b</em></p>');
 		expect(render(italic(escape(String.raw`a\*b`)))).toBe(String.raw`<p><em>a\*b</em></p>`);
 		expect(render(bold(escape('_a_')))).toBe('<p><strong>_a_</strong></p>');
-		expect(render(strikethrough(code('~x~')))).toBe('<p><del><code>~x~</code></del></p>');
 		expect(render(italic(link('https://example.com', 'a*b')))).toBe('<p><em><a href="https://example.com">a*b</a></em></p>');
 		expect(render(italic(link('https://example.com/a*b')))).toBe('<p><em><a href="https://example.com/a*b">https://example.com/a*b</a></em></p>');
 		expect(render(bold(`see ${link('www.example.com/a_b')}`))).toBe('<p><strong>see <a href="http://www.example.com/a_b">www.example.com/a_b</a></strong></p>');

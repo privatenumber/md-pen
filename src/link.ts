@@ -1,5 +1,5 @@
 import {
-	encodeUrlWhitespace, escapeUrl, hasCharacterReference, htmlAttributes,
+	encodeUrlWhitespace, escape, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
 import { createInlineScanner } from './inline-constructs.ts';
 
@@ -96,10 +96,8 @@ const escapeLinkText = (input: string) => {
 	return trailingBackslashes % 2 ? `${result}\\` : result;
 };
 
-const literalLinkText = (text: string) => text
-	.replaceAll(/[\r\n]+/g, ' ')
-	.replaceAll(/[\\`*_~[\]<>&]/g, character => `\\${character}`)
-	.replaceAll('$', '\u200B\\$');
+// Boundary whitespace may change shape, but HTML collapses it to the same rendered space.
+const literalLinkText = (text: string) => escape(text.replaceAll(/[\r\n]+/g, ' '));
 
 const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url)
 	&& !/\.\.|[_-]$/.test(url);

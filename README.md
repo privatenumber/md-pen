@@ -86,7 +86,7 @@ Explicit link text is Markdown, so it can contain output from other helpers. If 
 
 ```ts
 link('https://x.com') // <https://x.com>
-link('/docs/guide') // [/docs/guide](/docs/guide)
+link('/docs/guide') // [\/docs\/guide](/docs/guide)
 link('https://x.com', 'click') // [click](https://x.com)
 link('https://x.com', 'click', { title: 'T' }) // [click](https://x.com "T")
 

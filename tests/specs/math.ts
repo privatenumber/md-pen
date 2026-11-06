@@ -92,6 +92,10 @@ describe('math', () => {
 		expect(mathBlock(matrix)).toBe(`\`\`\`math\n${matrix}\n\`\`\``);
 	});
 
+	test('protects overlong numeric references from GitHub math decoding', () => {
+		expect(math('&#00000065;')).toBe('$`&#00000065;`$');
+	});
+
 	test('keeps intraword underscores in portable math delimiters', () => {
 		for (const expression of ['x_i', 'x_i + y_j', 'a_b_c', 'α_β']) {
 			expect(math(expression)).toBe(`$${expression}$`);

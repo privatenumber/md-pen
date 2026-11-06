@@ -17,7 +17,12 @@ describe('link', () => {
 	});
 
 	test('uses markdown link for non-http URL without text', () => {
-		expect(link('/docs/guide')).toBe('[/docs/guide](/docs/guide)');
+		expect(render(link('/docs/guide'))).toBe('<p><a href="/docs/guide">/docs/guide</a></p>');
+	});
+
+	test('URL-derived label does not render emoji shortcodes', () => {
+		const html = render(link('https://x.test/a :smile: b'));
+		expect(html.replaceAll('\u200B', '')).toContain('https://x.test/a :smile: b');
 	});
 
 	test('creates markdown link with text', () => {
@@ -71,9 +76,7 @@ describe('link', () => {
 	});
 
 	test('uses url as text when title-only options but no text', () => {
-		expect(link('https://x.com', undefined, { title: 'T' })).toBe(
-			'[https://x.com](https://x.com "T")',
-		);
+		expect(render(link('https://x.com', undefined, { title: 'T' }))).toBe('<p><a href="https://x.com" title="T">https://x.com</a></p>');
 	});
 
 	test('uses url as text in HTML fallback when no text', () => {
@@ -209,6 +212,14 @@ describe('link', () => {
 			const href = url.replaceAll('&', '&amp;');
 			expect(render(link(url, 'x'))).toContain(`href="${href}"`);
 			expect(render(link(url))).toContain(`href="${href}"`);
+		}
+	});
+
+	// GitHub decodes these, although CommonMark (and comrak) leave them literal.
+	test('neutralizes overlong numeric references in destinations', () => {
+		const url = 'https://x.test/?a=&#00000065;&b=&#x00000041;';
+		for (const markdown of [link(url), link(url, 'x'), image(url, 'i')]) {
+			expect(markdown).toContain('(https://x.test/?a=&amp;#00000065;&b=&amp;#x00000041;)');
 		}
 	});
 

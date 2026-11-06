@@ -1,3 +1,5 @@
+import { hasCharacterReference } from './escape.ts';
+
 const backtickDelimiter = (expression: string, minimum: number) => {
 	let length = minimum;
 	for (const run of expression.matchAll(/`+/g)) {
@@ -19,7 +21,6 @@ const hasMarkdownEscape = (expression: string) => {
 	return false;
 };
 
-const hasEntity = (expression: string) => /&(?:[a-z][a-z\d]*|#\d+|#x[\da-f]+);/i.test(expression);
 const hasUnsafeUnderscore = (expression: string) => /(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/u.test(expression);
 const hasAutolink = (expression: string) => /https?:\/\/|ftp:\/\/|www\./i.test(expression);
 
@@ -29,7 +30,7 @@ const hasMarkdownSyntax = (expression: string) => {
 			return true;
 		}
 	}
-	return hasEntity(expression)
+	return hasCharacterReference(expression)
 		|| hasUnsafeUnderscore(expression)
 		|| hasMarkdownEscape(expression)
 		|| hasAutolink(expression);

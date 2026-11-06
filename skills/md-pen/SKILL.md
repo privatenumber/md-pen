@@ -113,7 +113,7 @@ footnoteRef('1')                    // [^1]
 footnote('1', 'Source text')        // [^1]: Source text
 ```
 
-`details()` escapes the summary and attributes. It neutralizes unpaired `<details` and `</details` tokens with an invisible zero-width space, including in URLs and HTML attributes. They look unchanged in code, but copied code contains the space. Nested sections are preserved for simple content; otherwise, their tags are neutralized. Literal HTML table tags trigger this fallback; Markdown tables alone do not. Use `escape()` for untrusted text parsed as Markdown. Backslash escapes do not work inside raw HTML blocks, such as after a `<div>` line, so `escape()` does not make untrusted text safe there.
+`details()` escapes the summary and attributes, and its content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
 
 > [!TIP]
 > On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:

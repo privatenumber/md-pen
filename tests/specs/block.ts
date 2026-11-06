@@ -88,65 +88,6 @@ describe('details', () => {
 		expect(html.match(/<\/details>/g)?.length).toBe(2);
 	});
 
-	test('falls back for each HTML scope and parsing boundary', () => {
-		const tags = [
-			'applet',
-			'caption',
-			'html',
-			'table',
-			'td',
-			'th',
-			'marquee',
-			'object',
-			'template',
-			'mi',
-			'mo',
-			'mn',
-			'ms',
-			'mtext',
-			'annotation-xml',
-			'foreignobject',
-			'desc',
-			'title',
-			'tbody',
-			'thead',
-			'tfoot',
-			'tr',
-			'colgroup',
-			'col',
-			'select',
-			'script',
-			'style',
-			'textarea',
-			'xmp',
-			'iframe',
-			'noembed',
-			'noframes',
-			'noscript',
-			'plaintext',
-			'svg',
-			'math',
-		];
-		const inner = details('inner', 'content');
-		for (const tag of tags) {
-			for (const prefix of ['', '/']) {
-				for (const name of [tag, tag.toUpperCase()]) {
-					const result = details('outer', `${inner}\n\nx <${prefix}${name}>`);
-					expect(result).toContain('<\u200Bdetails>');
-					expect(result).toContain('<\u200B/details>');
-				}
-			}
-		}
-	});
-
-	test('distinguishes HTML boundary tags from look-alikes', () => {
-		const inner = details('inner', 'content');
-		for (const input of ['<tablex>', '<tab>', '<table=bad>', '<table']) {
-			expect(details('outer', `${inner}\n\nx ${input}`)).toContain(inner);
-		}
-		expect(details('outer', `${inner}\n\nx \\<table>`)).toContain('<\u200Bdetails>');
-	});
-
 	test('preserves nested details containing a list or blockquote', () => {
 		for (const content of ['- first', '> first']) {
 			const html = render(details('outer', details('inner', content)));
@@ -163,7 +104,7 @@ describe('details', () => {
 		expect(raw).toContain('<\u200B/details>\nOUT');
 	});
 
-	test('falls back for multiline quoted attributes inside a summary', () => {
+	test('neutralizes unmatched details tags near multiline quoted attributes', () => {
 		for (const quote of ['"', "'"]) {
 			const content = `<summary>\n<a title=${quote}\n</summary>\n\n<details>\n${quote}>\n\n</details>\n\nOUT`;
 			const result = details('S', content);
@@ -191,12 +132,10 @@ describe('details', () => {
 		expect(render(`${result}\n\nAFTER`)).toBe('<details>\n<summary>S</summary>\n<ul>\n<li>x\n&lt;\u200Bdetails&gt;</li>\n</ul>\n<p>&lt;\u200B/details&gt;</p>\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
 	});
 
-	test('neutralizes both ends of nested details in fallback mode', () => {
-		const inner = details('inner', codeBlock('const x=1', 'js'));
-		const result = details('outer', inner);
-		expect(result).toContain('<\u200Bdetails>');
-		expect(result).toContain('<\u200B/details>');
-		expect(render(`${result}\n\nOUT`)).toBe('<details>\n<summary>outer</summary>\n<p>&lt;\u200Bdetails&gt;</p>\n<summary>inner</summary>\n<pre><code class="language-js">const x=1\n</code></pre>\n<p>&lt;\u200B/details&gt;</p>\n</details>\n<p>OUT</p>');
+	test('preserves nested details containing a code block', () => {
+		const content = details('inner', codeBlock('const x=1', 'js'));
+		const html = render(`${details('outer', content)}\n\nAFTER`);
+		expect(html).toBe('<details>\n<summary>outer</summary>\n<details>\n<summary>inner</summary>\n<pre><code class="language-js">const x=1\n</code></pre>\n</details>\n</details>\n<p>AFTER</p>');
 	});
 
 	test('neutralizes unpaired opening tokens', () => {
@@ -213,13 +152,10 @@ describe('details', () => {
 		expect(details('S', String.raw`\</details>`)).toContain('\\<\u200B/details>');
 	});
 
-	test('neutralizes nested closers when content contains code', () => {
+	test('preserves nested details and outer content around closing tags in code', () => {
 		const inner = details('inner', codeBlock('</details>', 'html'));
-		const result = details('outer', `${inner}\n\nOUT`);
-		expect(result).toContain('<\u200B/details>\n\nOUT');
-		const html = render(result);
-		expect(html).toContain('&lt;\u200B/details&gt;');
-		expect(html).toContain('<p>OUT</p>\n</details>');
+		const html = render(`${details('outer', `${inner}\n\nOUT`)}\n\nAFTER`);
+		expect(html).toBe('<details>\n<summary>outer</summary>\n<details>\n<summary>inner</summary>\n<pre><code class="language-html">&lt;\u200B/details&gt;\n</code></pre>\n</details>\n<p>OUT</p>\n</details>\n<p>AFTER</p>');
 	});
 
 	test('neutralizes closers when code markers can obscure an opener', () => {
@@ -249,25 +185,25 @@ describe('details', () => {
 		expect(html).toContain('&lt;\u200B/details&gt;');
 	});
 
-	test('protects malformed closing tags in fallback mode', () => {
+	test('protects malformed closing tags', () => {
 		expect(details('S', '</details foo>')).toContain('<\u200B/details foo>');
 		expect(details('S', '</DeTaIlS / >')).toContain('<\u200B/DeTaIlS / >');
 	});
 
-	test('does not treat backticks across paragraphs as code spans', () => {
+	test('neutralizes stray closers near backticks across paragraphs', () => {
 		expect(details('S', '`\n\n</details>\n\n`')).toContain('<\u200B/details>');
 		expect(details('S', '`\n- </details>\n`')).toContain('<\u200B/details>');
 		expect(details('S', '`\n</details>\n`')).toContain('<\u200B/details>');
 		expect(details('S', '`\nx </details>\n---\n`\n\nOUT')).toContain('<\u200B/details>');
 	});
 
-	test('does not treat backticks in HTML attributes as code spans', () => {
+	test('neutralizes stray closers near backticks in raw HTML', () => {
 		expect(details('S', 'a <span title="`">x</span> </details> `')).toContain('<\u200B/details>');
 		expect(details('S', '<summary>`</details>`</summary>\n\nOUT')).toContain('<\u200B/details>');
 		expect(details('S', '<summary>x</summary>\n```\n</details>\n```\n\nOUT')).toContain('<\u200B/details>');
 	});
 
-	test('treats fences inside HTML blocks as HTML, not code', () => {
+	test('neutralizes unmatched closers near fences and HTML blocks', () => {
 		const content = '<div>\n```\n</details>\n```\n</div>';
 		expect(details('S', content)).toContain('<\u200B/details>');
 		const code = '<div>\n\n```\n</details>\n```\n</div>';
@@ -279,7 +215,7 @@ describe('details', () => {
 		expect(html).toContain('<code class="language-html">&lt;\u200B/details&gt;\n</code>');
 	});
 
-	test('uses fallback for an HTML tag alone on a line', () => {
+	test('neutralizes an unmatched closer after standalone HTML', () => {
 		expect(details('S', '<kbd>\n\n```\n</details>\n```')).toContain('<\u200B/details>');
 	});
 
@@ -293,7 +229,7 @@ describe('details', () => {
 		expect(details('S', content)).toContain('<\u200B/details>');
 	});
 
-	test('does not count details openers inside a table HTML block', () => {
+	test('neutralizes unmatched details tags inside an HTML table', () => {
 		for (const content of ['<table><details></table></details>OUT', '<table>\n<details>\n</table></details>OUT']) {
 			expect(details('S', content)).toContain('<\u200B/details>OUT');
 		}

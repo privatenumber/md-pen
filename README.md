@@ -269,7 +269,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. The summary is HTML-escaped and content supports Markdown. Unpaired `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. This also changes matching tokens in URLs and HTML attributes. Nested `details()` sections are preserved for simple content; otherwise, their opening and closing tags are neutralized. Literal HTML table tags trigger this fallback; Markdown tables alone do not. Use `escape()` for untrusted text parsed as Markdown. Backslash escapes do not work inside raw HTML blocks, such as after a `<div>` line, so `escape()` does not make untrusted text safe there. Malformed raw HTML in content, such as an unclosed attribute quote, can still break the surrounding document; containment covers `details` tags only.
+Collapsible section. The summary and attributes are HTML-escaped, and content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')

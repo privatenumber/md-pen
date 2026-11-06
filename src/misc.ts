@@ -23,6 +23,7 @@ export const el = (
 	attributes?: HtmlOptions,
 	content?: string,
 ) => {
+	// HTML tag names use ASCII case folding, not Unicode lowercasing.
 	if (content === undefined && selfClosingElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}

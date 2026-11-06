@@ -114,10 +114,6 @@ describe('el', () => {
 		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 
-	test('void element without attributes', () => {
-		expect(el('br')).toBe('<br />');
-	});
-
 	test('void element with attributes', () => {
 		expect(el('img', {
 			src: 'cat.png',

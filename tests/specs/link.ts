@@ -1,7 +1,10 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
-import { kbd, sub } from '../../src/misc.ts';
+import { el, kbd, sub } from '../../src/misc.ts';
+import { escape } from '../../src/escape.ts';
+import { code } from '../../src/code.ts';
+import { math } from '../../src/math.ts';
 
 describe('link', () => {
 	test('autolinks http URL without text', () => {
@@ -10,6 +13,7 @@ describe('link', () => {
 
 	test('autolinks http URL with protocol variations', () => {
 		expect(link('http://example.com')).toBe('<http://example.com>');
+		expect(link('https://x.com/?a=1&b=2')).toBe('<https://x.com/?a=1&b=2>');
 	});
 
 	test('uses markdown link for non-http URL without text', () => {
@@ -41,7 +45,7 @@ describe('link', () => {
 
 	test('escapes parentheses in URLs', () => {
 		expect(link('https://en.wikipedia.org/wiki/Foo_(bar)', 'link')).toBe(
-			'[link](https://en.wikipedia.org/wiki/Foo_%28bar%29)',
+			String.raw`[link](https://en.wikipedia.org/wiki/Foo_\(bar\))`,
 		);
 	});
 
@@ -74,8 +78,146 @@ describe('link', () => {
 
 	test('uses url as text in HTML fallback when no text', () => {
 		expect(link('https://x.com', undefined, { target: '_blank' })).toBe(
-			'<a target="_blank" href="https://x.com">https://x.com</a>',
+			'<a target="_blank" href="https://x.com">https&#58;&#47;&#47;x&#46;com</a>',
 		);
+	});
+
+	test('HTML fallback encodes destination whitespace and prevents blank-line injection', () => {
+		const url = 'https://x.test/\n\n![x](https://attacker.test/i.png)';
+		const html = render(link(url, undefined, { target: '_blank' }));
+		expect(html).toContain('href="https://x.test/%0A%0A![x](https://attacker.test/i.png)"');
+		expect(html).not.toContain('<img');
+	});
+
+	test('HTML fallback display text works inside a raw HTML block', () => {
+		const result = link('https://example.com/a_b', undefined, { target: '_blank' });
+		expect(render(result)).toContain('>https://example.com/a_b</a>');
+		expect(render(el('div', undefined, result))).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
+	});
+
+	test('HTML fallback displays literal URL punctuation in both contexts', () => {
+		for (const url of ['http://example.com/a_b?x=1&y=2', 'www.example.com/@user', 'https://example.com/$5$/`code`', 'foo@example.com', 'https://example.com/&#35;<x>"']) {
+			const expected = url.replaceAll('$', '\u200B$').replaceAll('@', '@\u200B');
+			const result = link(url, undefined, { target: '_blank' });
+			for (const markdown of [result, el('div', undefined, result)]) {
+				const html = render(markdown);
+				const content = html.match(/>([^<]*)<\/a>/)?.[1];
+				const entities: Record<string, string> = {
+					lt: '<',
+					gt: '>',
+					amp: '&',
+					quot: '"',
+				};
+				const decoded = content?.replaceAll(/&#(\d+);|&(lt|gt|amp|quot);/g, (_, codePoint: string, name: string) => (
+					codePoint ? String.fromCodePoint(Number(codePoint)) : entities[name]
+				));
+				expect(decoded).toBe(expected);
+				expect(html.match(/<a /g)?.length).toBe(1);
+			}
+		}
+	});
+
+	test('URL-derived labels do not render dollar-delimited math', () => {
+		const optionsList: Record<string, string>[] = [{ title: 'T' }, { target: '_blank' }];
+		for (const options of optionsList) {
+			const result = link('https://x.test/$5$', undefined, options);
+			for (const markdown of [result, el('div', undefined, result)]) {
+				const html = render(markdown);
+				expect(html).not.toContain('<math');
+				if (markdown === result) {
+					expect(html).toContain('\u200B$5\u200B$');
+				}
+			}
+		}
+	});
+
+	test('URL-derived labels are literal text', () => {
+		const url = 'https://x.test/<img src=x onerror=alert(1)>';
+		for (const options of [undefined, { title: 'title' }]) {
+			const html = render(link(url, undefined, options));
+			expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+			expect(html).not.toContain('<img');
+		}
+	});
+
+	test('composes Markdown labels without changing code or escaping', () => {
+		expect(render(link('u', code('a[0]')))).toBe('<p><a href="u"><code>a[0]</code></a></p>');
+		expect(render(link('u', code('a]b[')))).toBe('<p><a href="u"><code>a]b[</code></a></p>');
+		expect(render(link('u', escape('*x*')))).toBe('<p><a href="u">*x*</a></p>');
+		expect(render(link('/x', image('/cat.png', 'cat')))).toBe('<p><a href="/x"><img src="/cat.png" alt="cat" /></a></p>');
+	});
+
+	test('balanced label brackets cannot resolve as reference links', () => {
+		expect(render(`${link('/outer', 'hello [world]')}\n\n[world]: /inner`)).toBe('<p><a href="/outer">hello [world]</a></p>');
+	});
+
+	test('preserves raw HTML attributes and code spans in labels', () => {
+		const label = `${kbd('key', { title: '`' })} ] ${code('x')}`;
+		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><kbd title="`">key</kbd> ] <code>x</code></a></p>');
+		const htmlImage = image('cat.png', 'cat', {
+			title: 'See [details',
+			width: 1,
+		});
+		expect(render(link('/outer', htmlImage))).toContain('title="See [details"');
+	});
+
+	test('preserves inline images with escaped destinations and titles', () => {
+		const nested = image('/cat(1).png', 'cat', { title: 'a(b' });
+		expect(render(link('/outer', nested))).toBe('<p><a href="/outer"><img src="/cat(1).png" alt="cat" title="a(b" /></a></p>');
+		expect(render(`${link('/outer', '![hello [world]](cat.png)')}\n\n[world]: /inner`)).toBe('<p><a href="/outer"><img src="cat.png" alt="hello [world]" /></a></p>');
+	});
+
+	test('preserves consecutive images with backticks in their titles', () => {
+		const label = `${image('/a.png', 'a', { title: '`' })} ${image('/b.png', 'b', { title: '`' })}`;
+		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><img src="/a.png" alt="a" title="`" /> <img src="/b.png" alt="b" title="`" /></a></p>');
+	});
+
+	test('preserves nested images with non-breaking spaces in destinations', () => {
+		const html = render(link('/outer', image('/a\u00A0b.png', 'cat')));
+		expect(html).toBe('<p><a href="/outer"><img src="/a%C2%A0b.png" alt="cat" /></a></p>');
+	});
+
+	test('HTML fallback percent-encodes destination backslashes', () => {
+		const url = String.raw`https://x.test/a\b`;
+		expect(render(link(url, 'x', { target: '_blank' }))).toContain('href="https://x.test/a%5Cb"');
+		expect(render(image(url, 'x', { width: 1 }))).toContain('src="https://x.test/a%5Cb"');
+	});
+
+	test('encodes DEL in Markdown and HTML destinations', () => {
+		const url = 'https://x.test/a\u007Fb';
+		expect(render(link(url, 'x'))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(link(url))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(link(url, 'x', { target: '_blank' }))).toContain('href="https://x.test/a%7Fb"');
+		expect(render(image(url, 'x'))).toContain('src="https://x.test/a%7Fb"');
+		expect(render(image(url, 'x', { width: 1 }))).toContain('src="https://x.test/a%7Fb"');
+	});
+
+	test('keeps bracket math inside the outer link', () => {
+		const result = link('/outer', math('[0,1)'));
+		expect(render(result)).toContain('href="/outer"');
+	});
+
+	test('balances brackets around escaped and unequal backtick runs', () => {
+		expect(render(link('u', '\\`[`a]`'))).toBe('<p><a href="u">`[<code>a]</code></a></p>');
+		expect(render(link('u', '``[`]``'))).toBe('<p><a href="u"><code>[`]</code></a></p>');
+		expect(render(link('u', '\\``]`[`'))).toBe('<p><a href="u">`<code>]</code>[`</a></p>');
+	});
+
+	test('preserves entity-like URL text in destinations', () => {
+		for (const reference of ['&#35;', '&copy;', '&amp;']) {
+			const url = `https://x.test/?a=1${reference}z`;
+			const href = url.replaceAll('&', '&amp;');
+			expect(render(link(url, 'x'))).toContain(`href="${href}"`);
+			expect(render(link(url))).toContain(`href="${href}"`);
+		}
+	});
+
+	test('HTML fallback does not create nested autolinks', () => {
+		for (const url of ['https://example.com?a=1&b=2', 'www.example.com']) {
+			const html = render(link(url, undefined, { target: '_blank' }));
+			expect(html.match(/<a /g)?.length).toBe(1);
+			expect(html).toContain(url.replaceAll('&', '&amp;'));
+		}
 	});
 });
 
@@ -123,7 +265,7 @@ describe('image', () => {
 	});
 
 	test('escapes parentheses in image URLs', () => {
-		expect(image('photo (1).png', 'Photo')).toBe('![Photo](photo%20%281%29.png)');
+		expect(image('photo (1).png', 'Photo')).toBe(String.raw`![Photo](photo%20\(1\).png)`);
 	});
 
 	test('escapes spaces in image URLs', () => {
@@ -132,6 +274,21 @@ describe('image', () => {
 
 	test('title-only options with no alt', () => {
 		expect(image('cat.png', undefined, { title: 'T' })).toBe('![](cat.png "T")');
+	});
+
+	test('preserves escaped Markdown in alt text', () => {
+		expect(render(image('u', escape('a_b_c')))).toBe('<p><img src="u" alt="a_b_c" /></p>');
+	});
+
+	test('preserves a leading angle bracket in the destination', () => {
+		expect(render(image('<bad>', 'x'))).toBe('<p><img src="%3Cbad%3E" alt="x" /></p>');
+	});
+
+	test('HTML fallback encodes destination whitespace', () => {
+		const url = 'https://x.test/\n\n![x](https://attacker.test/i.png)';
+		const html = render(image(url, 'x', { width: 1 }));
+		expect(html).toContain('src="https://x.test/%0A%0A![x](https://attacker.test/i.png)"');
+		expect(html.match(/<img /g)?.length).toBe(1);
 	});
 });
 
@@ -442,6 +599,13 @@ describe('www and email autolinks', () => {
 	test('email HTML fallback does not produce nested anchors', () => {
 		const html = render(link('foo@bar.baz', undefined, { target: '_blank' }));
 		// Should have exactly one <a> opening tag
+		expect(html.match(/<a /g)?.length).toBe(1);
+		expect(html).toContain('foo@\u200Bbar.baz');
+	});
+
+	test('HTML fallback breaks mentions in URL display text', () => {
+		const html = render(link('https://example.com/@user', undefined, { target: '_blank' }));
+		expect(html).toContain('/@\u200Buser');
 		expect(html.match(/<a /g)?.length).toBe(1);
 	});
 

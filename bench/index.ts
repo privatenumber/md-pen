@@ -6,6 +6,7 @@ import {
 	plainText, repeatTo, tableRows, userText,
 	type Pattern,
 } from './fixtures.ts';
+import { assertLinear } from './complexity.ts';
 import { writeResults } from './results.ts';
 
 type BenchState = {
@@ -22,32 +23,38 @@ assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`)
 assert.ok(md.bold(`_${adversarial['unterminated attributes']}`).startsWith(String.raw`__\_`), 'emphasis scanner runs');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 
+// `--check` runs only the scaling sweeps and writes no files. CI uses it to
+// catch superlinear regressions without depending on runner speed.
+const check = process.argv.includes('--check');
+
 // Typical calls with short inputs. Rows use different inputs, so compare each
 // row with its own earlier runs, not with other rows.
-bench('escape - plain text', () => md.escape(plainText));
-bench('escape - punctuated text', () => md.escape(userText));
-// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() scans it.
-bench('bold - punctuated text', () => md.bold(userText));
-bench('italic - punctuated text', () => md.italic(userText));
-bench('code', () => md.code('const x = `a`;'));
-bench('codeBlock', () => md.codeBlock('const x = 1;\n```\n', 'ts'));
-bench('link - with text', () => md.link('https://example.com/a?b=1&c=2', 'Example'));
-bench('link - autolink', () => md.link('https://example.com/a?b=1&c=2'));
-bench('link - URL label', () => md.link('/docs/guide a b'));
-bench('image', () => md.image('https://example.com/badge.svg', 'badge'));
-bench('heading', () => md.h2(userText));
-bench('ul - 10 items', () => md.ul(Array.from({ length: 10 }, (_, index) => `item ${index}`)));
-bench('table - 100 object rows', () => md.table(tableRows));
-bench('details', () => md.details('Summary', userText));
-bench('math', () => md.math('x^2 + y_1'));
-bench('footnote', () => md.footnote('note-1', userText));
-bench('el', () => md.el('div', { id: 'a' }, 'content'));
+if (!check) {
+	bench('escape - plain text', () => md.escape(plainText));
+	bench('escape - punctuated text', () => md.escape(userText));
+	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() scans it.
+	bench('bold - punctuated text', () => md.bold(userText));
+	bench('italic - punctuated text', () => md.italic(userText));
+	bench('code', () => md.code('const x = `a`;'));
+	bench('codeBlock', () => md.codeBlock('const x = 1;\n```\n', 'ts'));
+	bench('link - with text', () => md.link('https://example.com/a?b=1&c=2', 'Example'));
+	bench('link - autolink', () => md.link('https://example.com/a?b=1&c=2'));
+	bench('link - URL label', () => md.link('/docs/guide a b'));
+	bench('image', () => md.image('https://example.com/badge.svg', 'badge'));
+	bench('heading', () => md.h2(userText));
+	bench('ul - 10 items', () => md.ul(Array.from({ length: 10 }, (_, index) => `item ${index}`)));
+	bench('table - 100 object rows', () => md.table(tableRows));
+	bench('details', () => md.details('Summary', userText));
+	bench('math', () => md.math('x^2 + y_1'));
+	bench('footnote', () => md.footnote('note-1', userText));
+	bench('el', () => md.el('div', { id: 'a' }, 'content'));
 
-// A realistic document that composes every helper.
-bench('document - $sections sections', function* document(state: BenchState) {
-	const sections = state.get('sections');
-	yield () => buildDocument(sections);
-}).args('sections', [10, 100]);
+	// A realistic document that composes every helper.
+	bench('document - $sections sections', function* document(state: BenchState) {
+		const sections = state.get('sections');
+		yield () => buildDocument(sections);
+	}).args('sections', [10, 100]);
+}
 
 // Scaling sweeps. Each size is 16x the previous one, so linear code takes about
 // 16x longer per step; a much larger jump means superlinear behavior. Sizes stay
@@ -79,17 +86,17 @@ for (const [name, pattern, format] of sweeps) {
 }
 
 summary(() => {
-	bench('code - distinct backtick runs $count', function* backticks(state: BenchState) {
-		const input = distinctBacktickRuns(state.get('count'));
+	bench('code - distinct backtick runs $size', function* backticks(state: BenchState) {
+		const input = distinctBacktickRuns(state.get('size'));
 		yield () => md.code(input);
-	}).args('count', [16, 64, 256]);
+	}).args('size', sizes);
 });
 
 summary(() => {
-	bench('math - distinct backtick runs $count', function* backticks(state: BenchState) {
-		const input = distinctBacktickRuns(state.get('count'));
+	bench('math - distinct backtick runs $size', function* backticks(state: BenchState) {
+		const input = distinctBacktickRuns(state.get('size'));
 		yield () => md.math(input);
-	}).args('count', [16, 64, 256]);
+	}).args('size', sizes);
 });
 
 // One details() call over content that already holds nested details() output.
@@ -117,4 +124,8 @@ const benchmarkRun = await run({
 	throw: true,
 });
 
-await writeResults(benchmarkRun);
+assertLinear(benchmarkRun.benchmarks);
+
+if (!check) {
+	await writeResults(benchmarkRun);
+}

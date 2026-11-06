@@ -57,9 +57,15 @@ export const repeatTo = (pattern: string, size: number) => (
 	pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size)
 );
 
-// Backtick runs of increasing length, so every run is distinct and a code-span
-// matcher cannot reuse earlier closers.
-export const distinctBacktickRuns = (count: number) => Array.from({ length: count }, (_, index) => `${'`'.repeat(index + 1)}a`).join(' ');
+// Backtick runs of increasing length up to `size` characters, so every run is
+// distinct and a code-span matcher cannot reuse earlier closers.
+export const distinctBacktickRuns = (size: number) => {
+	let result = '';
+	for (let length = 1; result.length < size; length += 1) {
+		result += `${'`'.repeat(length)}a `;
+	}
+	return result;
+};
 
 export const nestedDetails = (depth: number) => {
 	let content = 'content';

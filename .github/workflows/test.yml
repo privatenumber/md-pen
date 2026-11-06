@@ -36,3 +36,6 @@ jobs:
 
       - name: Test
         run: pnpm test
+
+      - name: Benchmark scaling
+        run: pnpm bench:check

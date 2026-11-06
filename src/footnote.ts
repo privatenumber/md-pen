@@ -1,3 +1,5 @@
+import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
+
 // See the ASCII normalization table in tests/specs/footnote.ts.
 const allowedAscii = /^[\w!"#'()*+,./;=?@~-]$/;
 
@@ -40,7 +42,7 @@ export const footnote = (id: string, text: string) => {
 	if (!isValidId(normalized)) {
 		return '';
 	}
-	const content = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+	const content = normalizeLineEndings(text);
 	if (!content.includes('\n')) {
 		return `[^${normalized}]: ${content}`;
 	}

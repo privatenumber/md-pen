@@ -1,5 +1,7 @@
+import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
+
 export const blockquote = (text: string) => {
-	const normalized = text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
+	const normalized = normalizeLineEndings(text);
 	return `> ${normalized.replaceAll('\n', '\n> ')}`;
 };
 

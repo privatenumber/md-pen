@@ -91,7 +91,7 @@ describe('footnote', () => {
 		}
 	});
 
-	test('keeps distinct Georgian labels distinct', () => {
+	test('emits non-ASCII case variants verbatim (renderers decide case folding)', () => {
 		expect(footnoteRef('Ა')).toBe('[^Ა]');
 		expect(footnoteRef('ა')).toBe('[^ა]');
 		expect(footnote('Ა', 'note')).toBe('[^Ა]: note');

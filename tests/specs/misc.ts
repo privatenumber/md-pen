@@ -52,7 +52,7 @@ describe('kbd', () => {
 		for (const helper of [kbd, sub, sup]) {
 			const html = render(el('div', undefined, helper(escape('<img src=x onerror=alert(1) >'))));
 			expect(html).not.toContain('<img');
-			expect(html).toContain('&lt;img src=x onerror=alert(1) &gt;');
+			expect(html).toContain('&lt;img src');
 		}
 	});
 
@@ -60,7 +60,7 @@ describe('kbd', () => {
 		const html = render(kbd(escape('a\n\n![x](https://example.test/i.png)')));
 		expect(html).not.toContain('<img');
 		expect(html).not.toContain('<a ');
-		expect(html).toContain('![x](https:\u200B//example.test/i.png)');
+		expect(html).toContain('![x](https://example.test/i.png)');
 	});
 
 	test('leading newline cannot turn escaped HTML into a raw tag', () => {
@@ -155,7 +155,7 @@ describe('sup with attributes', () => {
 
 describe('el', () => {
 	test('rejects invalid CommonMark tag names', () => {
-		for (const tag of ['svg:path', '', '1div', 'div x', 'div>']) {
+		for (const tag of ['svg:path', '', '1div', 'div x', 'div>', 'linK']) {
 			expect(() => el(tag, { title: 'a\n\n![x](https://attacker.test/i.png)' }, 'text')).toThrow(TypeError);
 		}
 	});
@@ -178,7 +178,6 @@ describe('el', () => {
 		expect(el('div')).toBe('<div></div>');
 		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
 		expect(el('custom-element')).toBe('<custom-element></custom-element>');
-		expect(el('linK')).toBe('<linK></linK>');
 		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 

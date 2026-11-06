@@ -38,8 +38,8 @@ export const el = (
 	if (!/^[a-z][a-z0-9-]*$/i.test(tag)) {
 		throw new TypeError(`Invalid HTML tag name: ${tag}`);
 	}
-	// HTML tag names use ASCII case folding, not Unicode lowercasing.
-	if (content === undefined && selfClosingElements.has(tag.replaceAll(/[A-Z]/g, character => character.toLowerCase()))) {
+	// The tag name is ASCII here, so toLowerCase() is HTML's ASCII case folding.
+	if (content === undefined && selfClosingElements.has(tag.toLowerCase())) {
 		return `<${tag}${htmlAttributes(attributes)} />`;
 	}
 	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;

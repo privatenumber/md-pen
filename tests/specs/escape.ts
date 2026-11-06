@@ -78,6 +78,8 @@ describe('escape', () => {
 		for (const input of ['hello\t:smile:', '(:smile:)']) {
 			expect(markdownToHTML(input, options)).toContain('😄');
 			expect(markdownToHTML(escape(input), options)).not.toContain('😄');
+			// GitHub ignores backslashes here, so the zero-width guard itself must be present
+			expect(escape(input)).toContain(':\u200Bsmile');
 		}
 		expect(markdownToHTML(escape(':invalid:smile: :smile::smile:'), options)).toBe('<p>:​invalid:​smile: :​smile::​smile:</p>\n');
 	});

@@ -174,7 +174,7 @@ describe('escapeTableCell', () => {
 describe('escapeUrl', () => {
 	test('escapes closing parenthesis', () => {
 		expect(escapeUrl('https://en.wikipedia.org/wiki/Foo_(bar)')).toBe(
-			'https://en.wikipedia.org/wiki/Foo_%28bar%29',
+			String.raw`https://en.wikipedia.org/wiki/Foo_\(bar\)`,
 		);
 	});
 
@@ -194,6 +194,10 @@ describe('escapeUrl', () => {
 		expect(escapeUrl('https://example.com/path?q=1&r=2#hash')).toBe(
 			'https://example.com/path?q=1&r=2#hash',
 		);
+	});
+
+	test('escapes entity-shaped ampersands without changing query separators', () => {
+		expect(escapeUrl('https://x.test/?a=1&b=2&#35;&copy;&amp;')).toBe('https://x.test/?a=1&b=2&amp;#35;&amp;copy;&amp;amp;');
 	});
 });
 

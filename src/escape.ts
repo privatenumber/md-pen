@@ -75,10 +75,15 @@ export const escapeTableCell = (text: string) => {
 
 const percentEncode = (character: string) => `%${character.codePointAt(0)!.toString(16).toUpperCase().padStart(2, '0')}`;
 
-export const escapeUrl = (url: string) => url
-	.replaceAll('\\', '%5C')
-	.replaceAll('(', '%28')
-	.replaceAll(')', '%29')
-	.replaceAll(' ', '%20')
+const characterReference = /&(?=(?:#\d{1,7}|#x[\da-f]{1,6}|[a-z][a-z\d]{1,31});)/gi;
+
+export const hasCharacterReference = (text: string) => text.search(characterReference) !== -1;
+
+export const encodeUrlWhitespace = (url: string) => url
 	// eslint-disable-next-line no-control-regex
-	.replaceAll(/[\u0000-\u001F]/g, percentEncode);
+	.replaceAll(/[\u0000-\u0020\u007F]/g, percentEncode);
+
+export const escapeUrl = (url: string) => encodeUrlWhitespace(url
+	.replaceAll('\\', '%5C')
+	.replaceAll(/[()<>]/g, character => `\\${character}`)
+	.replaceAll(characterReference, '&amp;'));

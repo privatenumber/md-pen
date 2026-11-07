@@ -13,14 +13,24 @@ const matchesAt = (pattern: RegExp, text: string, offset: number) => {
 // Keep tags shaped like that output when they pair up; neutralize the rest.
 export const protectDetailsContent = (text: string) => {
 	const preserved = new Set<number>();
-	const openers: number[] = [];
+	// Every opener goes on the stack, so a closer pairs only with the nearest one,
+	// as in HTML. A closer whose nearest opener was rejected stays neutralized
+	// instead of reaching past it to an earlier head, such as one in a code example.
+	const openers: {
+		index: number;
+		live: boolean;
+	}[] = [];
 	for (const { 1: slash, index } of text.matchAll(tag)) {
 		if (!slash) {
-			if ((index === 0 || text[index - 1] === '\n') && matchesAt(opener, text, index)) {
-				openers.push(index);
-			}
+			openers.push({
+				index,
+				live: (index === 0 || text[index - 1] === '\n') && matchesAt(opener, text, index),
+			});
 		} else if (text.slice(index - 2, index) === '\n\n' && openers.length > 0 && matchesAt(closer, text, index)) {
-			preserved.add(openers.pop()!).add(index);
+			const head = openers.pop()!;
+			if (head.live) {
+				preserved.add(head.index).add(index);
+			}
 		}
 	}
 	return text.replaceAll(tag, (match, _slash, offset: number) => (preserved.has(offset) ? match : `<\u200B${match.slice(1)}`));

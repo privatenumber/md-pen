@@ -23,6 +23,19 @@ describe('hr', () => {
 	});
 });
 
+// Live (not neutralized) details tags never close more sections than they open,
+// so no closer ends the outer section early.
+const liveTagsBalance = (markdown: string) => {
+	let depth = 0;
+	for (const { 1: slash } of markdown.matchAll(/<(\/?)details(?=[\s/>]|$)/gi)) {
+		depth += slash ? -1 : 1;
+		if (depth < 0) {
+			return false;
+		}
+	}
+	return depth === 0;
+};
+
 describe('details', () => {
 	test('basic collapsible section', () => {
 		expect(details('Expand', 'Content')).toBe(
@@ -121,11 +134,15 @@ describe('details', () => {
 			...['* ', '+ ', '1) '].map(marker => `${marker}${inner.replaceAll('\n', `\n${' '.repeat(marker.length)}`)}`),
 			'> <details>\n> <summary>inner</summary>\n> \n> content\nlazy continuation\n> \n> </details>',
 			taskList([[false, blockquote(inner)]]),
+			'> <details>\n> <summary>x</summary>\n> \n> x\n\nbreak\n\n> \n> </details>',
+			// A rejected opener's closer must not pair with a head shown in a code example.
+			`${codeBlock('<details>\n<summary>x</summary>\n\n', 'html')}\n\n  ${inner}`,
 		];
 		for (const content of cases) {
 			const markdown = details('outer', `${content}\n\nINSIDE`);
 			expect(markdown).toContain('<\u200Bdetails>');
 			expect(markdown).toContain('<\u200B/details>');
+			expect(liveTagsBalance(markdown)).toBe(true);
 			expect(render(`${markdown}\n\nAFTER`)).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
 		}
 	});

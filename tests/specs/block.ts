@@ -1,10 +1,12 @@
 import { describe, test, expect } from 'manten';
+import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { render } from '../utils/render.ts';
 import { hr, details } from '../../src/block.ts';
 import { escape } from '../../src/escape.ts';
 import { codeBlock } from '../../src/code.ts';
 import { alert, blockquote } from '../../src/blockquote.ts';
 import { ol, taskList, ul } from '../../src/list.ts';
+import { el } from '../../src/misc.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
@@ -23,17 +25,34 @@ describe('hr', () => {
 	});
 });
 
-// Live (not neutralized) details tags never close more sections than they open,
-// so no closer ends the outer section early.
-const liveTagsBalance = (markdown: string) => {
-	let depth = 0;
-	for (const { 1: slash } of markdown.matchAll(/<(\/?)details(?=[\s/>]|$)/gi)) {
-		depth += slash ? -1 : 1;
-		if (depth < 0) {
-			return false;
+const expectContained = (markdown: string) => {
+	const tree = parse(render(`${markdown}\n\nAFTER`));
+	type Node = DefaultTreeAdapterMap['node'];
+	let outer: Node | undefined;
+	const positions: Record<string, Node | undefined> = {};
+	const visit = (node: Node, nearest?: Node) => {
+		if (node.nodeName === '#text' && 'value' in node) {
+			for (const marker of ['INSIDE', 'AFTER']) {
+				if (node.value.includes(marker)) {
+					positions[marker] = nearest;
+				}
+			}
 		}
-	}
-	return depth === 0;
+		if ('tagName' in node && node.tagName === 'details') {
+			outer ??= node;
+			nearest = node;
+		}
+		if ('childNodes' in node) {
+			for (const child of node.childNodes) {
+				visit(child, nearest);
+			}
+		}
+	};
+	visit(tree);
+	expect(outer).toBeDefined();
+	expect(Object.keys(positions).sort()).toStrictEqual(['AFTER', 'INSIDE']);
+	expect(positions.INSIDE).toBe(outer);
+	expect(positions.AFTER).toBeUndefined();
 };
 
 describe('details', () => {
@@ -128,6 +147,7 @@ describe('details', () => {
 			taskList([[false, inner]]),
 			ul([blockquote(inner)]),
 			`paragraph\n2. - ${inner.replaceAll('\n', '\n     ')}`,
+			`paragraph\n2. ${inner.replaceAll('\n', '\n   ')}`,
 			`1234567890. ${inner.replaceAll('\n', '\n            ')}`,
 			'> <details>\n> <summary>inner</summary>\n> \n> content\r# break\n> \n> </details>',
 			'> <details>\n<summary>inner</summary>\n\n</details>',
@@ -142,8 +162,7 @@ describe('details', () => {
 			const markdown = details('outer', `${content}\n\nINSIDE`);
 			expect(markdown).toContain('<\u200Bdetails>');
 			expect(markdown).toContain('<\u200B/details>');
-			expect(liveTagsBalance(markdown)).toBe(true);
-			expect(render(`${markdown}\n\nAFTER`)).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+			expectContained(markdown);
 		}
 	});
 
@@ -152,7 +171,42 @@ describe('details', () => {
 			const markdown = details('outer', `${head}\n\n</details>\n\nINSIDE`);
 			expect(markdown).toContain('<\u200Bdetails');
 			expect(markdown).toContain('<\u200B/details>');
-			expect(render(`${markdown}\n\nAFTER`)).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+			expectContained(markdown);
+		}
+	});
+
+	test('keeps a fenced fake head from pairing with an outer section', () => {
+		const example = codeBlock('<details>\n<summary>x</summary>\n\n<details>\n\n</details>', 'html');
+		const inner = el('details', undefined, `\n<summary>inner</summary>\n\n${example}\n\n`);
+		expectContained(details('outer', `${inner}\n\nINSIDE`));
+	});
+
+	test('neutralizes details tags in top-level fences', () => {
+		for (const fence of ['```html', '~~~html', ' ```html', '  ```html', '   ```html', '~~~x`y']) {
+			const char = fence.trimStart()[0];
+			const example = `${fence}\n<details>\n<summary>x</summary>\n\n<details>\n\n</details>\n${char.repeat(5)}`;
+			const inner = el('details', undefined, `\n<summary>inner</summary>\n\n${example}\n\n`);
+			const markdown = details('outer', `${inner}\n\nINSIDE`);
+			expect(markdown).toContain('<\u200Bdetails>\n<summary>x</summary>');
+			expectContained(markdown);
+		}
+	});
+
+	test('closes an unclosed fence so it cannot swallow the closing tag', () => {
+		for (const fence of ['```', '~~~~']) {
+			const markdown = details('outer', `INSIDE\n\n${fence}\n<details>\n<summary>x</summary>\n\n</details>`);
+			expect(markdown).toContain('<\u200Bdetails>');
+			expect(markdown).toContain('<\u200B/details>');
+			expectContained(markdown);
+		}
+	});
+
+	test('does not start fences on four-space indentation or backticks in the info string', () => {
+		for (const line of ['    ```', '```bad`info']) {
+			const inner = details('inner', 'content');
+			const markdown = details('outer', `${line}\n\n${inner}\n\nINSIDE`);
+			expect(markdown).toContain(inner);
+			expectContained(markdown);
 		}
 	});
 
@@ -304,6 +358,7 @@ describe('details', () => {
 
 describe('details content injection', () => {
 	test('</details> in content does not close block early', () => {
+		expectContained(details('outer', '</details>\n\nINSIDE'));
 		const html = render(details('sum', '</details>\nout'));
 		expect(html.match(/<details>/g)?.length).toBe(1);
 		expect(html.match(/<\/details>/g)?.length).toBe(1);
@@ -311,18 +366,21 @@ describe('details content injection', () => {
 	});
 
 	test('</DETAILS> case-insensitive does not close block early', () => {
+		expectContained(details('outer', '</DETAILS>\n\nINSIDE'));
 		const html = render(details('sum', '</DETAILS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</DeTaIlS> mixed case does not close block early', () => {
+		expectContained(details('outer', '</DeTaIlS>\n\nINSIDE'));
 		const html = render(details('sum', '</DeTaIlS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</details > with space does not close block early', () => {
+		expectContained(details('outer', '</details >\n\nINSIDE'));
 		const html = render(details('sum', '</details >\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');

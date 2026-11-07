@@ -63,6 +63,20 @@ describe('emphasis', () => {
 		expect(bold('snake_case')).toBe('__snake_case__');
 	});
 
+	test('preserves footnote references containing delimiters', () => {
+		const document = `${italic(footnoteRef('a*b'))}\n\n${footnote('a*b', 'note')}`;
+		expect(render(document)).toContain('<em><sup class="footnote-ref"><a href="#fn-a*b"');
+		const struck = `${strikethrough(footnoteRef('a~b'))}\n\n${footnote('a~b', 'note')}`;
+		expect(render(struck)).toContain('<del><sup class="footnote-ref"><a href="#fn-a~b"');
+		expect(render(italic('[^a*b'))).toBe('<p><em>[^a*b</em></p>');
+		expect(render(italic(escape('[^a*b]')))).toBe('<p><em>[^a*b]</em></p>');
+	});
+
+	test('keeps literal and escaped dollar text out of math', () => {
+		expect(render(italic('$5 and $6 *x*'))).toBe('<p><em>$5 and $6 *x*</em></p>');
+		expect(render(italic(escape('$a*b$')))).toBe('<p><em>\u200B$a*b\u200B$</em></p>');
+	});
+
 	test('handles renderer whitespace around delimiters', () => {
 		for (const character of ['\v', '\u0085', '\u2028', '\u2029']) {
 			expect(italic(`${character}x${character}`)).toBe(`${character}*x*${character}`);

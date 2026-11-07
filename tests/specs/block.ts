@@ -4,7 +4,7 @@ import { hr, details } from '../../src/block.ts';
 import { escape } from '../../src/escape.ts';
 import { codeBlock } from '../../src/code.ts';
 import { alert, blockquote } from '../../src/blockquote.ts';
-import { taskList, ul } from '../../src/list.ts';
+import { ol, taskList, ul } from '../../src/list.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
@@ -111,11 +111,14 @@ describe('details', () => {
 			blockquote(inner),
 			alert('note', inner),
 			ul([inner]),
+			ol([inner]),
 			taskList([[false, inner]]),
 			ul([blockquote(inner)]),
 			`paragraph\n2. - ${inner.replaceAll('\n', '\n     ')}`,
 			`1234567890. ${inner.replaceAll('\n', '\n            ')}`,
-			'> <details>\n> <summary>inner</summary>\n> \n> content\rbreak\n> \n> </details>',
+			'> <details>\n> <summary>inner</summary>\n> \n> content\r# break\n> \n> </details>',
+			'> <details>\n<summary>inner</summary>\n\n</details>',
+			...['* ', '+ ', '1) '].map(marker => `${marker}${inner.replaceAll('\n', `\n${' '.repeat(marker.length)}`)}`),
 			'> <details>\n> <summary>inner</summary>\n> \n> content\nlazy continuation\n> \n> </details>',
 			taskList([[false, blockquote(inner)]]),
 		];

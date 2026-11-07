@@ -1,5 +1,6 @@
 const tag = /<(\/?)details(?=[\s/>]|$)/gi;
-// The exact head and tail details() emits; summaries and attributes escape line endings.
+// The head and tail shapes details() emits, matched by shape rather than origin;
+// summaries and attributes escape line endings.
 const opener = /<details(?:[ \t]+[^\s"'<>/=]+="[^"\r\n>]*")*>\n<summary>[^<\r\n]*<\/summary>\n\n/iy;
 const closer = /<\/details>(?:\n|$)/iy;
 

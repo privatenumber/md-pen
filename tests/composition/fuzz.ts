@@ -6,6 +6,10 @@ import { render } from '../utils/render.ts';
 
 type Inline =
 	| {
+		kind: 'sequence';
+		children: Inline[];
+	}
+	| {
 		kind: 'word' | 'literal' | 'code' | 'kbd' | 'math';
 		text: string;
 	}
@@ -27,7 +31,7 @@ type List = {
 	kind: ListKind;
 	items: {
 		checked: boolean;
-		child: Inline;
+		child: Inline | Block;
 		nested?: List;
 	}[];
 };
@@ -36,6 +40,10 @@ type Block =
 	| {
 		kind: 'heading';
 		level: 1 | 2 | 3 | 4 | 5 | 6;
+		child: Inline;
+	}
+	| {
+		kind: 'paragraph';
 		child: Inline;
 	}
 	| {
@@ -67,6 +75,9 @@ type HtmlNode = DefaultTreeAdapterMap['node'];
 
 const seeds = [560_344_811, 800_992_447, 123_456_789, 3_908_954_110];
 const documentCount = Number(process.env.MD_PEN_FUZZ_CASES ?? 1000);
+if (!Number.isSafeInteger(documentCount) || documentCount < 0) {
+	throw new Error('MD_PEN_FUZZ_CASES must be a non-negative safe integer');
+}
 const words = [
 	'alpha',
 	'beta',
@@ -109,11 +120,14 @@ const generator = (seed: number) => {
 		return id;
 	};
 	const choose = <T>(values: readonly T[]): T => values[random(values.length)];
-	const inline = (depth: number, inLink = false): Inline => {
+	const inline = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
 		// Footnote references contain links, which cannot nest inside link text.
-		const options: Inline['kind'][] = ['word', 'literal', 'code', 'kbd', 'math', 'image', ...(inLink ? [] : ['ref' as const])];
+		const options: Exclude<Inline['kind'], 'sequence'>[] = ['word', 'literal', 'code', 'kbd', 'math', 'image', ...(inLink ? [] : ['ref' as const])];
 		if (depth) {
-			options.push('bold', 'italic', 'strike', ...(inLink ? [] : ['link' as const]));
+			options.push(...(['bold', 'italic', 'strike'] as const).filter(kind => !ancestors.includes(kind)));
+			if (!inLink) {
+				options.push('link');
+			}
 		}
 		const kind = choose(options);
 		switch (kind) {
@@ -158,23 +172,98 @@ const generator = (seed: number) => {
 			default: {
 				return {
 					kind,
-					child: inline(depth - 1, inLink || kind === 'link'),
+					child: kind === 'link' && random(2) === 0
+						? sequence(depth - 1, true, [...ancestors, kind])
+						: inline(depth - 1, inLink || kind === 'link', [...ancestors, kind]),
 				};
 			}
 		}
 	};
+	const sequence = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
+		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(4) === 0) {
+			const text = (value: string): Inline => ({
+				kind: 'literal',
+				text: value,
+			});
+			return {
+				kind: 'sequence',
+				children: random(2) === 0
+					? [{
+						kind: 'bold',
+						child: text('x_'),
+					}, {
+						kind: 'italic',
+						child: text('a'),
+					}]
+					: [{
+						kind: 'italic',
+						child: {
+							kind: 'word',
+							text: 'a*b',
+						},
+					}, {
+						kind: 'bold',
+						child: {
+							kind: 'word',
+							text: 'a*b',
+						},
+					}],
+			};
+		}
+		const children: Inline[] = [];
+		const count = 2 + random(3);
+		for (let index = 0; index < count; index += 1) {
+			// A separator prevents delimiter collisions and intraword bold at sibling boundaries.
+			if (index > 0) {
+				children.push({
+					kind: 'word',
+					text: ' ',
+				});
+			}
+			children.push(inline(depth, inLink, ancestors));
+		}
+		return {
+			kind: 'sequence',
+			children,
+		};
+	};
 	const list = (depth: number, kind: ListKind): List => ({
 		kind,
-		items: Array.from({ length: 1 + random(3) }, () => ({
-			checked: Boolean(random(2)),
-			child: inline(Math.max(0, depth - 1)),
-			...(kind !== 'task' && depth > 1 && random(4) === 0 ? { nested: list(depth - 1, kind) } : {}),
-		})),
+		items: Array.from({ length: 1 + random(3) }, () => {
+			const checked = Boolean(random(2));
+			if (kind !== 'task' && random(4) === 0) {
+				const blockKind = choose(['details', 'quote', 'codeBlock'] as const);
+				const child: Block = blockKind === 'codeBlock'
+					? {
+						kind: blockKind,
+						text: 'x\ny',
+					}
+					: {
+						kind: blockKind,
+						child: {
+							kind: 'word',
+							text: 'alpha',
+						},
+					};
+				return {
+					checked,
+					child,
+				};
+			}
+			return {
+				checked,
+				child: sequence(Math.max(0, depth - 1)),
+				...(kind !== 'task' && depth > 1 && random(4) === 0 ? { nested: list(depth - 1, kind) } : {}),
+			};
+		}),
 	});
-	const block = (depth: number): Block => {
-		const types: Block['kind'][] = ['heading', 'table', 'ul', 'ol', 'task', 'codeBlock', 'mathBlock', 'hr', 'footnote'];
+	const block = (depth: number, inContainer = false): Block => {
+		const types: Block['kind'][] = ['paragraph', 'heading', 'table', 'ul', 'ol', 'task', 'codeBlock', 'mathBlock', 'hr', 'footnote'];
 		if (depth) {
-			types.push('quote', 'alert', 'details');
+			types.push('quote', 'details');
+			if (!inContainer) {
+				types.push('alert');
+			}
 		}
 		const kind = choose(types);
 		switch (kind) {
@@ -185,13 +274,19 @@ const generator = (seed: number) => {
 				return {
 					kind,
 					level: choose([1, 2, 3, 4, 5, 6] as const),
-					child: inline(depth),
+					child: sequence(depth),
+				};
+			}
+			case 'paragraph': {
+				return {
+					kind,
+					child: sequence(depth),
 				};
 			}
 			case 'table': {
 				return {
 					kind,
-					cells: Array.from({ length: 2 + random(2) }, () => inline(depth)),
+					cells: Array.from({ length: 2 + random(2) }, () => sequence(depth)),
 				};
 			}
 			case 'codeBlock': {
@@ -219,7 +314,7 @@ const generator = (seed: number) => {
 			default: {
 				return {
 					kind,
-					child: random(2) ? block(depth - 1) : inline(depth - 1),
+					child: random(2) ? block(depth - 1, true) : inline(depth - 1),
 				};
 			}
 		}
@@ -239,6 +334,9 @@ const listItems = (tree: List, references: Set<string>): m.ListItem[] => (
 
 const markdown = (tree: Tree, references: Set<string>): string => {
 	switch (tree.kind) {
+		case 'sequence': {
+			return tree.children.map(child => markdown(child, references)).join('');
+		}
 		case 'word': {
 			return tree.text;
 		}
@@ -278,6 +376,9 @@ const markdown = (tree: Tree, references: Set<string>): string => {
 		}
 		case 'heading': {
 			return m.heading(markdown(tree.child, references), tree.level);
+		}
+		case 'paragraph': {
+			return markdown(tree.child, references);
 		}
 		case 'quote': {
 			return m.blockquote(markdown(tree.child, references));
@@ -331,13 +432,27 @@ const element = (
 		}
 );
 
-const expected = (tree: Tree): Structure[] => {
+const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] => {
 	switch (tree.kind) {
-		case 'word': case 'literal': {
+		case 'sequence': {
+			return tree.children.flatMap(child => expected(child, inTable));
+		}
+		case 'word': {
+			return [tree.text === ' ' ? ' ' : cleanText(tree.text)];
+		}
+		case 'literal': {
+			if (inTable && /[\r\n]/u.test(tree.text)) {
+				return tree.text.split(/\r\n|\r|\n/u).flatMap((part, index) => (
+					index === 0 ? [cleanText(part)] : [element('br', []), cleanText(part)]
+				));
+			}
 			return [cleanText(tree.text)];
 		}
-		case 'code': case 'kbd': case 'math': {
+		case 'code': case 'kbd': {
 			return [element(tree.kind, [cleanText(tree.text)])];
+		}
+		case 'math': {
+			return [element('math', [cleanText(tree.text)], { style: 'inline' })];
 		}
 		case 'image': {
 			return [element('img', [], {
@@ -346,55 +461,64 @@ const expected = (tree: Tree): Structure[] => {
 			})];
 		}
 		case 'ref': {
-			return [element('ref', [])];
+			return [element('ref', [], { href: `#fn-${tree.id}` })];
 		}
 		// Unreferenced definitions are not rendered; the footnote section is excluded below.
 		case 'footnote': {
 			return [];
 		}
 		case 'bold': {
-			return [element('strong', expected(tree.child))];
+			return [element('strong', expected(tree.child, inTable))];
 		}
 		case 'italic': {
-			return [element('em', expected(tree.child))];
+			return [element('em', expected(tree.child, inTable))];
 		}
 		case 'strike': {
-			return [element('del', expected(tree.child))];
+			return [element('del', expected(tree.child, inTable))];
 		}
 		case 'link': {
+			// Link labels normalize line endings before the table sees them.
 			return [element('a', expected(tree.child), { href: '/target' })];
 		}
 		case 'heading': {
 			return [element(`h${tree.level}`, expected(tree.child))];
 		}
+		case 'paragraph': {
+			return expected(tree.child);
+		}
 		case 'quote': {
 			return [element('blockquote', expected(tree.child))];
 		}
 		case 'alert': {
-			return [element('alert', expected(tree.child))];
+			return [element('alert', expected(tree.child), { type: 'note' })];
 		}
 		case 'details': {
 			return [element('details', [element('summary', ['Summary']), ...expected(tree.child)])];
 		}
 		case 'codeBlock': {
-			return [element('pre', [element('code', [cleanText(tree.text)])])];
+			return [element('pre', [element('code', [`${tree.text}\n`], { class: 'language-txt' })])];
 		}
 		case 'mathBlock': {
-			return [element('math', [cleanText(tree.text)])];
+			return [element('math', [cleanText(tree.text)], { style: 'display' })];
 		}
 		case 'hr': {
 			return [element('hr', [])];
 		}
 		case 'table': {
 			return [element('table', [
-				element('thead', [element('tr', [element('th', expected(tree.cells[0]))])]),
-				element('tbody', tree.cells.slice(1).map(cell => element('tr', [element('td', expected(cell))]))),
+				element('thead', [element('tr', [element('th', expected(tree.cells[0], true))])]),
+				element('tbody', tree.cells.slice(1).map(cell => element('tr', [element('td', expected(cell, true))]))),
 			])];
 		}
 		case 'task': case 'ul': case 'ol': {
+			const loose = joinedList || tree.items.some(item => item.child.kind === 'details');
 			return [element(tree.kind === 'task' ? 'ul' : tree.kind, tree.items.map(item => (
-				element('li', [...expected(item.child), ...(item.nested ? expected(item.nested) : [])])
-			)))];
+				element('li', [
+					...(tree.kind === 'task' ? [element('checkbox', [])] : []),
+					...expected(item.child),
+					...(item.nested ? expected(item.nested) : []),
+				], loose && item.child.kind === 'sequence' ? { paragraph: 'true' } : undefined)
+			)), tree.kind === 'ol' ? { start: '1' } : undefined)];
 		}
 		default: {
 			throw new Error('Unknown composition node');
@@ -403,14 +527,17 @@ const expected = (tree: Tree): Structure[] => {
 };
 
 // parse5 decodes HTML entities before the tree reaches this normalizer.
-const normalize = (entry: HtmlNode): Structure[] => {
+const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	if ('value' in entry) {
+		if (inPre) {
+			return [entry.value];
+		}
 		return cleanText(entry.value) ? [cleanText(entry.value)] : [];
 	}
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(normalize);
+	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre')));
 	// Paragraph wrappers vary by context, but their inline content remains meaningful.
 	if (!('tagName' in entry) || entry.tagName === 'p') {
 		return children();
@@ -423,22 +550,34 @@ const normalize = (entry: HtmlNode): Structure[] => {
 		return [];
 	}
 	if (entry.tagName === 'sup' && attributes.class?.includes('footnote-ref')) {
-		return [element('ref', [])];
+		const link = entry.childNodes.find(child => 'tagName' in child && child.tagName === 'a');
+		const href = link && 'attrs' in link ? link.attrs.find(attribute => attribute.name === 'href')?.value : undefined;
+		return [element('ref', [], { href: href ?? '' })];
 	}
-	// Checkbox state is outside this structural oracle.
-	if (entry.tagName === 'input') {
-		return [];
+	// Compare checkbox presence, not its checked state.
+	if (entry.tagName === 'input' && attributes.type === 'checkbox') {
+		return [element('checkbox', [])];
 	}
-	// Treat table line breaks as normalized whitespace, like literal line endings.
+	if (entry.tagName === 'li') {
+		const hasParagraph = entry.childNodes.some(child => 'tagName' in child && child.tagName === 'p');
+		return [element('li', children(), hasParagraph ? { paragraph: 'true' } : undefined)];
+	}
+	// Hard line breaks are structural, including those introduced in table cells.
 	if (entry.tagName === 'br') {
-		return [' '];
+		return [element('br', [])];
 	}
 	if (entry.tagName === 'div' && attributes.class?.includes('markdown-alert')) {
 		// The renderer adds an alert title that is not part of the supplied content.
-		return [element('alert', entry.childNodes.filter(child => !('attrs' in child) || !child.attrs.some(attribute => attribute.name === 'class' && attribute.value.includes('markdown-alert-title'))).flatMap(normalize))];
+		return [element('alert', entry.childNodes.filter(child => !('attrs' in child) || !child.attrs.some(attribute => attribute.name === 'class' && attribute.value.includes('markdown-alert-title'))).flatMap(child => normalize(child)), { type: attributes.class.match(/markdown-alert-(\w+)/u)?.[1] ?? '' })];
 	}
 	if (entry.tagName === 'span' && attributes['data-math-style']) {
-		return [element('math', children())];
+		return [element('math', children(), { style: attributes['data-math-style'] })];
+	}
+	if (entry.tagName === 'ol') {
+		return [element('ol', children(), { start: attributes.start ?? '1' })];
+	}
+	if (entry.tagName === 'code' && attributes.class) {
+		return [element('code', children(), { class: attributes.class })];
 	}
 	if (entry.tagName === 'a') {
 		return [element('a', children(), { href: attributes.href })];
@@ -453,7 +592,7 @@ const normalize = (entry: HtmlNode): Structure[] => {
 	return [element(entry.tagName, children())];
 };
 
-const compact = (entries: Structure[]): Structure[] => {
+const compact = (entries: Structure[], inPre = false): Structure[] => {
 	const result: Structure[] = [];
 	for (const entry of entries) {
 		const previous = result.at(-1);
@@ -467,16 +606,52 @@ const compact = (entries: Structure[]): Structure[] => {
 		}
 		const next = {
 			...entry,
-			children: compact(entry.children),
+			children: compact(entry.children, inPre || entry.tag === 'pre'),
 		};
-		// Adjacent lists of the same kind merge in Markdown, even across a blank line.
-		if (typeof previous === 'object' && ['ul', 'ol'].includes(next.tag) && previous.tag === next.tag) {
-			previous.children.push(...next.children);
+		result.push(next);
+	}
+	return result.map(item => (typeof item === 'string' && !inPre ? cleanText(item) : item)).filter(item => item !== '');
+};
+
+const expectedDocument = (tree: Block[]): Structure[] => {
+	const result: Structure[] = [];
+	let previousList: Element | undefined;
+	const listTag = (block?: Block) => (block?.kind === 'ol'
+		? 'ol'
+		: (block?.kind === 'ul' || block?.kind === 'task' ? 'ul' : undefined));
+	for (const [index, block] of tree.entries()) {
+		const tag = listTag(block);
+		const joinedList = Boolean(tag && (
+			listTag(tree[index - 1]) === tag || listTag(tree[index + 1]) === tag
+		));
+		const nodes = expected(block, false, joinedList);
+		const list = (block.kind === 'ul' || block.kind === 'ol' || block.kind === 'task')
+			? nodes[0] as Element
+			: undefined;
+		// Markdown joins consecutive source lists, but not lists separated by an invisible definition.
+		if (list && previousList?.tag === list.tag) {
+			previousList.children.push(...list.children);
 		} else {
-			result.push(next);
+			result.push(...nodes);
+			previousList = list;
 		}
 	}
-	return result.map(item => (typeof item === 'string' ? cleanText(item) : item)).filter(item => item !== '');
+	return result;
+};
+
+const hasNestedAlert = (node: unknown, inContainer = false): boolean => {
+	if (Array.isArray(node)) {
+		return node.some(child => hasNestedAlert(child, inContainer));
+	}
+	if (!node || typeof node !== 'object') {
+		return false;
+	}
+	const record = node as Record<string, unknown>;
+	if (inContainer && record.kind === 'alert') {
+		return true;
+	}
+	const nested = inContainer || ['quote', 'details', 'alert', 'ul', 'ol', 'task'].includes(String(record.kind));
+	return Object.values(record).some(child => hasNestedAlert(child, nested));
 };
 
 describe('seeded composition', () => {
@@ -487,10 +662,11 @@ describe('seeded composition', () => {
 				+ Number(seedIndex < documentCount % seeds.length);
 			for (let index = 0; index < count; index += 1) {
 				const tree = nextDocument();
+				assert.equal(hasNestedAlert(tree), false, `seed: ${seed}\ndocument: ${index}\nnested alert in tree: ${JSON.stringify(tree)}`);
 				const references = new Set<string>();
 				const body = tree.map(block => markdown(block, references)).join('\n\n');
 				const source = `${body}${[...references].map(id => `\n\n${m.footnote(id, 'footnote')}`).join('')}`;
-				const wanted = compact(tree.flatMap(expected));
+				const wanted = compact(expectedDocument(tree));
 				const actual = compact(normalize(parseFragment(render(source))));
 				assert.deepStrictEqual(actual, wanted, `seed: ${seed}\ndocument: ${index}\ntree: ${JSON.stringify(tree)}\nmarkdown:\n${source}\nexpected: ${JSON.stringify(wanted)}\nactual: ${JSON.stringify(actual)}`);
 			}

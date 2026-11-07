@@ -117,7 +117,7 @@ footnote('1', 'Source text')        // [^1]: Source text
 
 GitHub renders alerts nested inside other elements, including `details()`, lists, and blockquotes, as plain blockquotes with the marker visible.
 
-`details()` escapes the summary and attributes, and its content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
+`details()` escapes the summary and attributes, and its content supports Markdown. Nested `details()` output stays live only when its opening and closing tags start a line of the content. Place nested sections at the top level of the content, not inside `blockquote()`, `alert()`, or list items: there, their tags are neutralized and show as text. Other `<details` and `</details` tokens are also neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
 
 > [!TIP]
 > On GitHub, `details()` renders the content flush against the summary. For extra breathing room, prepend `<br>` to the content:

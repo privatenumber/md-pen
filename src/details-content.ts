@@ -13,9 +13,10 @@ const matchesAt = (pattern: RegExp, text: string, offset: number) => {
 // Keep tags shaped like that output when they pair up; neutralize the rest.
 export const protectDetailsContent = (text: string) => {
 	const preserved = new Set<number>();
-	// Every opener goes on the stack, so a closer pairs only with the nearest one,
-	// as in HTML. A closer whose nearest opener was rejected stays neutralized
-	// instead of reaching past it to an earlier head, such as one in a code example.
+	// Every opener token goes on the stack, so a closer pairs only with the nearest
+	// one, approximating HTML nesting without parsing Markdown context. A closer whose
+	// nearest opener was rejected stays neutralized instead of reaching past it to an
+	// earlier head.
 	const openers: {
 		index: number;
 		live: boolean;

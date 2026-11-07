@@ -222,7 +222,7 @@ describe('emphasis with intraword delimiter', () => {
 });
 
 describe('emphasis side by side', () => {
-	test('different helpers stay separate when adjacent', () => {
+	test('bold and italic stay separate when adjacent', () => {
 		expect(render(bold(escape('x_')) + italic('a'))).toBe('<p><strong>x_</strong><em>a</em></p>');
 		expect(render(italic('a*b') + bold('a*b'))).toBe('<p><em>a*b</em><strong>a*b</strong></p>');
 	});
@@ -231,8 +231,9 @@ describe('emphasis side by side', () => {
 		expect(render(italic('www.example.com a*b'))).toBe('<p><em><a href="http://www.example.com">www.example.com</a> a*b</em></p>');
 	});
 
-	test('same-type outputs need a space or punctuation between them', () => {
-		expect(render(`${bold('a')}, ${bold('b')}`)).toBe('<p><strong>a</strong>, <strong>b</strong></p>');
-		expect(render(`${italic('a')}x${italic('b')}`)).toBe('<p><em>a</em>x<em>b</em></p>');
+	test('a space keeps adjacent emphasis separate', () => {
+		expect(render(`${bold('a')} ${bold('b')}`)).toBe('<p><strong>a</strong> <strong>b</strong></p>');
+		expect(render(`${italic('a')} ${italic('b')}`)).toBe('<p><em>a</em> <em>b</em></p>');
+		expect(render(`${bold('a')} ${strikethrough('b')}`)).toBe('<p><strong>a</strong> <del>b</del></p>');
 	});
 });

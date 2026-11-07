@@ -67,7 +67,7 @@ jobs:
           node bench/compare.ts \
             --base "$RUNNER_TEMP/base-1.json" --base "$RUNNER_TEMP/base-2.json" \
             --head "$RUNNER_TEMP/head-1.json" --head "$RUNNER_TEMP/head-2.json" \
-            >> "$GITHUB_STEP_SUMMARY"
+            | tee -a "$GITHUB_STEP_SUMMARY"
 
   # Keeps a history of results from the default branch as artifacts.
   record:

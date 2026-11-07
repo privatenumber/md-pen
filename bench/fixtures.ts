@@ -51,7 +51,7 @@ export const repeatTo = (pattern: string, size: number) => (
 	pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size)
 );
 
-export const unterminatedAttribute = (size: number) => `<a b="${'x'.repeat(size - 7)}[`;
+export const unterminatedAttribute = (size: number) => `<a b="${repeatTo('<a ', size - 7)}[`;
 
 export const whitespace = (size: number, trailing: boolean) => `x${' '.repeat(size - 2)}${trailing ? ' ' : 'x'}`;
 

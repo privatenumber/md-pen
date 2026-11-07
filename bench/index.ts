@@ -7,7 +7,6 @@ import {
 	type Pattern,
 } from './fixtures.ts';
 import { assertLinear } from './complexity.ts';
-import { writeResults } from './results.ts';
 
 type BenchState = {
 	get: (name: string) => number;
@@ -22,7 +21,7 @@ assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWit
 assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`), 'unclosed image brackets are escaped');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 
-// `--check` runs only the scaling sweeps and writes no files. CI uses it to
+// `--check` runs only the scaling sweeps. CI uses it to
 // catch superlinear regressions without depending on runner speed.
 const check = process.argv.includes('--check');
 
@@ -113,15 +112,8 @@ summary(() => {
 	}).args('rows', [100, 1000, 10_000]);
 });
 
-// `throw` rejects the run when a benchmark fails, so a broken benchmark is
-// never recorded as a result row.
-const benchmarkRun = await run({
-	format: 'quiet',
-	throw: true,
-});
+// `throw` rejects the run when a benchmark fails, so a broken benchmark
+// cannot pass silently.
+const benchmarkRun = await run({ throw: true });
 
 assertLinear(benchmarkRun.benchmarks);
-
-if (!check) {
-	await writeResults(benchmarkRun);
-}

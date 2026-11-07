@@ -14,11 +14,11 @@ The suite has three parts:
 
 Before timing, the script sanity-checks that representative fixtures render as expected. These checks do not prove which internal paths run. Fixtures are built outside the timed loops. The script runs Node with `--expose-gc`, allowing mitata to collect garbage once after warmup by default.
 
-Sweep sizes stop at 128,000 characters on purpose. Beyond about 1 MB of string, V8's allocation cost grows superlinearly even for built-in string methods such as `replaceAll()`, which hides the complexity of the code under test.
+String sweeps stop at 128,000 characters on purpose; the 10,000-row table sweep produces a larger result and measures row scaling, not string length. Beyond about 1 MB of string, V8's allocation cost grows superlinearly even for built-in string methods such as `replaceAll()`, which hides the complexity of the code under test.
 
 Absolute numbers only compare on the same machine with the same Node version. Shared CI runners vary too much for that, which is why CI checks only scaling.
 
 ## Tracking regressions
 
 - **Scaling threshold (CI):** a run fails when a sweep step's measured exponent exceeds 1.5: time grows by more than the input ratio raised to 1.5. The gate catches growth clearly above n^1.5, such as quadratic growth and worse, but can miss n^1.5 or n log n. Linear code has an exponent near 1, and quadratic code near 2. All sizes of a sweep come from the same run. CI runs `pnpm bench:check`, which runs only the sweeps.
-- **Constant-factor changes (by hand):** run `pnpm bench` on both revisions, on the same idle machine, and compare the printed results. Background load can change rows by several times, and sub-microsecond rows can move by more than 10% between identical runs, so repeat a run before treating a change as real.
+- **Constant-factor changes (by hand):** run `pnpm bench` on both revisions, on the same idle machine, and compare the printed results. Revisions before this layout wrote their results to `bench/README.md` instead of printing them, and some sweeps changed size, so compare only rows with the same name and input size. Background load can change rows by several times, and sub-microsecond rows can move by more than 10% between identical runs, so repeat a run before treating a change as real.

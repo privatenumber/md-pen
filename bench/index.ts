@@ -94,6 +94,13 @@ summary(() => {
 	}).args('size', sizes);
 });
 
+summary(() => {
+	bench('escape - leading whitespace $size', function* leadingWhitespace(state: BenchState) {
+		const input = `${repeatTo(' \t', state.get('size') - 1)}x`;
+		yield () => md.escape(input);
+	}).args('size', sizes);
+});
+
 for (const trailing of [true, false]) {
 	summary(() => {
 		bench(`escape - ${trailing ? 'trailing' : 'interior'} whitespace $size`, function* whitespaceSweep(state: BenchState) {

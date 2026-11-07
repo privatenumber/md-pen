@@ -60,6 +60,7 @@ describe('emphasis', () => {
 		expect(render(`${bold(footnoteRef('a__b'))}\n\n${footnote('a__b', 'note')}`)).toContain('<a href="#fn-a__b"');
 		expect(render(bold('$x_{1}$'))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
 		expect(render(strikethrough('$a ~ b$'))).toBe(String.raw`<p><del><span data-math-style="inline">a \~ b</span></del></p>`);
+		expect(render(italic(link('u', '^a*b*c')))).toBe('<p><em><a href="u">^a*b*c</a></em></p>');
 		expect(bold('snake_case')).toBe('__snake_case__');
 	});
 

@@ -14,7 +14,8 @@ const declarationStart = /<![A-Z]+(?=[ \t\n\v\f\r])/y;
 const uriAutolink = /<[a-z][a-z0-9.+-]{1,31}:[^<>\u0000-\u0020]*>/iy;
 const emailAutolink = /<[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*>/iy;
 // footnoteRef() output; isFootnoteId() owns the ID rules.
-const footnoteReference = /\[\^([^\s[\]]{1,999})\]/y;
+// A following `(` or `[` makes it a link label instead.
+const footnoteReference = /\[\^([^\s[\]]{1,999})\](?![([])/y;
 
 const matchEnd = (expression: RegExp, text: string, index: number) => {
 	expression.lastIndex = index;

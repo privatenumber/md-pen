@@ -5,11 +5,12 @@ import { bold, code, table } from '../src/index.ts';
 
 type BenchmarkRun = Awaited<ReturnType<typeof run>>;
 
-type Recorded = {
+export type Recorded = {
 	environment: string;
 	date: string;
 	results: Record<string, {
 		avg: number;
+		p50: number;
 		p75: number;
 		p99: number;
 	}>;
@@ -18,7 +19,7 @@ type Recorded = {
 // A change below this share is within run-to-run noise on one machine.
 const noticeableChange = 0.1;
 
-const formatTime = (nanoseconds: number) => {
+export const formatTime = (nanoseconds: number) => {
 	if (nanoseconds < 1000) {
 		return `${nanoseconds.toFixed(2)} ns`;
 	}
@@ -33,6 +34,30 @@ const round = (nanoseconds: number) => Math.round(nanoseconds * 100) / 100;
 
 const resultsUrl = new URL('results.json', import.meta.url);
 const readmeUrl = new URL('README.md', import.meta.url);
+
+export const collectResults = ({ context, benchmarks }: BenchmarkRun): Recorded => {
+	const { version } = context as { version?: string };
+	const recorded: Recorded = {
+		environment: `${context.runtime} ${version} on ${context.cpu.name ?? 'unknown CPU'} (${context.arch ?? 'unknown arch'})`,
+		date: new Date().toISOString().slice(0, 10),
+		results: {},
+	};
+	for (const benchmark of benchmarks) {
+		for (const result of benchmark.runs) {
+			const { stats } = result;
+			if (!stats) {
+				throw new Error(`Benchmark "${result.name}" produced no statistics`);
+			}
+			recorded.results[result.name] = {
+				avg: round(stats.avg),
+				p50: round(stats.p50),
+				p75: round(stats.p75),
+				p99: round(stats.p99),
+			};
+		}
+	}
+	return recorded;
+};
 
 const readPrevious = async (): Promise<Recorded | undefined> => {
 	try {
@@ -66,41 +91,24 @@ const reportChanges = (previous: Recorded, current: Recorded) => {
 	}
 };
 
-export const writeResults = async ({ context, benchmarks }: BenchmarkRun) => {
-	const { version } = context as { version?: string };
-	const current: Recorded = {
-		environment: `${context.runtime} ${version} on ${context.cpu.name ?? 'unknown CPU'} (${context.arch ?? 'unknown arch'})`,
-		date: new Date().toISOString().slice(0, 10),
-		results: {},
-	};
-	const rows: string[][] = [['Benchmark', 'avg', 'p75', 'p99']];
-	for (const benchmark of benchmarks) {
-		for (const result of benchmark.runs) {
-			const { stats } = result;
-			if (!stats) {
-				throw new Error(`Benchmark "${result.name}" produced no statistics`);
-			}
-			current.results[result.name] = {
-				avg: round(stats.avg),
-				p75: round(stats.p75),
-				p99: round(stats.p99),
-			};
-			rows.push([
-				code(result.name),
-				formatTime(stats.avg),
-				formatTime(stats.p75),
-				formatTime(stats.p99),
-			]);
-		}
-	}
-
+// Updates the README table and results.json, after reporting changes since the stored run.
+export const writeResults = async (current: Recorded) => {
 	const previous = await readPrevious();
 	if (previous) {
 		reportChanges(previous, current);
 	}
 
+	const rows = [
+		['Benchmark', 'avg', 'p75', 'p99'],
+		...Object.entries(current.results).map(([name, { avg, p75, p99 }]) => [
+			code(name),
+			formatTime(avg),
+			formatTime(p75),
+			formatTime(p99),
+		]),
+	];
 	const recorded = [
-		`Measured with ${code(`${context.runtime} ${version}`)} on ${bold(context.cpu.name ?? 'unknown CPU')} (${code(context.arch ?? 'unknown arch')}), ${current.date}.`,
+		`Measured with ${bold(current.environment)}, ${current.date}.`,
 		'',
 		table(rows, { align: ['left', 'right', 'right', 'right'] }),
 	].join('\n');

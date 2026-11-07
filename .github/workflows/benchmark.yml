@@ -1,0 +1,104 @@
+name: Benchmark
+
+on:
+  pull_request:
+  push:
+    branches: [develop]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: benchmark-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  # Benchmarks the base and head revisions on the same runner and reports the
+  # difference in the job summary. Report-only: runner noise makes a hard
+  # threshold unreliable, and `pnpm bench:check` already gates scaling.
+  compare:
+    name: Compare with base
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      # The head's benchmark files run against the base's source, so both sides
+      # measure the same benchmarks.
+      - name: Prepare base
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -euo pipefail
+          git worktree add "$RUNNER_TEMP/base" "$BASE_SHA"
+          rm -rf "$RUNNER_TEMP/base/bench"
+          cp -R bench "$RUNNER_TEMP/base/bench"
+          pnpm --dir "$RUNNER_TEMP/base" install --frozen-lockfile
+
+      # Alternating base and head spreads slow periods of the runner across both.
+      - name: Benchmark
+        run: |
+          set -euo pipefail
+          for round in 1 2; do
+            (cd "$RUNNER_TEMP/base" && node --expose-gc bench/index.ts --output "$RUNNER_TEMP/base-$round.json")
+            node --expose-gc bench/index.ts --output "$RUNNER_TEMP/head-$round.json"
+          done
+
+      - name: Report
+        run: |
+          set -euo pipefail
+          node bench/compare.ts \
+            --base "$RUNNER_TEMP/base-1.json" --base "$RUNNER_TEMP/base-2.json" \
+            --head "$RUNNER_TEMP/head-1.json" --head "$RUNNER_TEMP/head-2.json" \
+            >> "$GITHUB_STEP_SUMMARY"
+
+  # Keeps a history of results from the default branch as artifacts.
+  record:
+    name: Record results
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          persist-credentials: false
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Benchmark
+        run: node --expose-gc bench/index.ts --output "$RUNNER_TEMP/results.json"
+
+      - name: Upload results
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: benchmark-results-${{ github.sha }}
+          path: ${{ runner.temp }}/results.json
+          retention-days: 90

@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { writeFile } from 'node:fs/promises';
+import { parseArgs } from 'node:util';
 import { bench, run, summary } from 'mitata';
 import * as md from '../src/index.ts';
 import {
@@ -7,7 +9,7 @@ import {
 	type Pattern,
 } from './fixtures.ts';
 import { assertLinear } from './complexity.ts';
-import { writeResults } from './results.ts';
+import { collectResults, writeResults } from './results.ts';
 
 type BenchState = {
 	get: (name: string) => number;
@@ -23,9 +25,16 @@ assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`)
 assert.ok(md.bold(`_${adversarial['unterminated attributes']}`).startsWith(String.raw`__\_`), 'emphasis scanner runs');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 
-// `--check` runs only the scaling sweeps and writes no files. CI uses it to
-// catch superlinear regressions without depending on runner speed.
-const check = process.argv.includes('--check');
+const { values: { check, output } } = parseArgs({
+	options: {
+		// Runs only the scaling sweeps and writes no files. CI uses it to catch
+		// superlinear regressions without depending on runner speed.
+		check: { type: 'boolean' },
+		// Writes the results to this JSON file instead of updating bench/README.md
+		// and bench/results.json. CI uses it to compare base and head revisions.
+		output: { type: 'string' },
+	},
+});
 
 // Typical calls with short inputs. Rows use different inputs, so compare each
 // row with its own earlier runs, not with other rows.
@@ -126,6 +135,8 @@ const benchmarkRun = await run({
 
 assertLinear(benchmarkRun.benchmarks);
 
-if (!check) {
-	await writeResults(benchmarkRun);
+if (output) {
+	await writeFile(output, JSON.stringify(collectResults(benchmarkRun)));
+} else if (!check) {
+	await writeResults(collectResults(benchmarkRun));
 }

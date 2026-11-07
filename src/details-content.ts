@@ -3,11 +3,11 @@ const tag = /<(\/?)details(?=[\s/>]|$)/gi;
 // blockquote(), alert(), and the list helpers prefix each line of nested
 // details() output with the same quote markers and indentation, and its first
 // line with a list or task marker.
-const firstLine = /^(?:[ \t]*>)*[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ x]\][ \t]+)?)?$/i;
+const firstLine = /^(?: |> |- (?:\[[ x]\] )?|\d+\. )*$/;
 
 // The exact head details() emits, capturing the container prefix of its later
 // lines. Summaries are HTML-escaped, so they contain no `<` or line ending.
-const opener = /<details(?:[ \t]+[^\s"'<>/=]+="[^">]*")*>\n((?:[ \t]*>)*[ \t]*)<summary>[^<\n]*<\/summary>\n\1\n/iy;
+const opener = /<details(?:[ \t]+[^\s"'<>/=]+="[^"\r\n>]*")*>\n((?:[ \t]*>)*[ \t]*)<summary>[^<\r\n]*<\/summary>\n\1\n/iy;
 const closer = /<\/details>(?:\n|$)/iy;
 
 // Nested details() calls already neutralized their own content.
@@ -18,7 +18,7 @@ export const protectDetailsContent = (text: string) => {
 		index: number;
 		prefix: string;
 	}[] = [];
-	// Track line boundaries forward, so each tag finds its line in constant time.
+	// Scan line boundaries forward once for all tags.
 	let previousLineStart = -1;
 	let lineStart = 0;
 	let lineEnd = text.indexOf('\n');
@@ -28,6 +28,10 @@ export const protectDetailsContent = (text: string) => {
 			previousLineStart = lineStart;
 			lineStart = lineEnd + 1;
 			lineEnd = text.indexOf('\n', lineStart);
+			// A line without an open head's prefix ends that head's container.
+			while (openers.length > 0 && !text.startsWith(openers.at(-1)!.prefix, lineStart)) {
+				openers.pop();
+			}
 		}
 		// Only a line's first tag can follow a pure prefix; skipping the rest keeps this linear.
 		if (lastTagLine === lineStart) {
@@ -38,7 +42,8 @@ export const protectDetailsContent = (text: string) => {
 		if (!slash) {
 			opener.lastIndex = index;
 			const head = opener.exec(text);
-			if (head && firstLine.test(text.slice(lineStart, index))) {
+			const prefix = text.slice(lineStart, index);
+			if (head && firstLine.test(prefix) && prefix.replaceAll(/- (?:\[[ x]\] )?|\d+\. /g, marker => ' '.repeat(marker.startsWith('- ') ? 2 : marker.length)) === head[1]) {
 				openers.push({
 					index,
 					prefix: head[1],

@@ -144,6 +144,37 @@ describe('details', () => {
 		}
 	});
 
+	test('keeps content inside when a quoted opener has an unquoted summary', () => {
+		const content = '> <details>\n<summary>x</summary>\n\n</details>\n\nINSIDE';
+		const html = render(`${details('outer', content)}\n\nAFTER`);
+		expect(html).toContain('\u200B');
+		expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+	});
+
+	test('does not pair tags across separate blockquotes', () => {
+		const content = '> <details>\n> <summary>x</summary>\n> \n> x\n\nbreak\n\n> \n> </details>\n\nINSIDE';
+		const html = render(`${details('outer', content)}\n\nAFTER`);
+		expect(html).toContain('\u200B');
+		expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+	});
+
+	test('neutralizes heads containing raw line endings', () => {
+		for (const head of ['<details>\n<summary>x\ry</summary>', '<details a="x\ry">\n<summary>x</summary>', '<details a="x\ny">\n<summary>x</summary>', '<details>\n<summary>x\ny</summary>']) {
+			const content = `${head}\n\n</details>\n\nINSIDE`;
+			const html = render(`${details('outer', content)}\n\nAFTER`);
+			expect(html).toContain('\u200B');
+			expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+		}
+	});
+
+	test('preserves details after multiple opening container markers', () => {
+		for (const content of [ul([blockquote(details('inner', 'content'))]), ul([ul([details('inner', 'content')])])]) {
+			const html = render(`${details('outer', `${content}\n\nINSIDE`)}\n\nAFTER`);
+			expect(html).toContain('<details>\n<summary>inner</summary>\n<p>content</p>\n</details>');
+			expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+		}
+	});
+
 	test('keeps an unfinished closer visible without swallowing the wrapper', () => {
 		const html = render(`${details('S', '<br>\n</details')}\n\nAFTER`);
 		expect(html).toContain('<br>\n<\u200B/details\n</details>\n<p>AFTER</p>');

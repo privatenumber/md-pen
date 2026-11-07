@@ -206,3 +206,19 @@ describe('emphasis with intraword delimiter', () => {
 		expect(html).not.toMatch(/<\/strong>b/);
 	});
 });
+
+describe('emphasis side by side', () => {
+	test('different helpers stay separate when adjacent', () => {
+		expect(render(bold(escape('x_')) + italic('a'))).toBe('<p><strong>x_</strong><em>a</em></p>');
+		expect(render(italic('a*b') + bold('a*b'))).toBe('<p><em>a*b</em><strong>a*b</strong></p>');
+	});
+
+	test('bare URLs stay autolinked inside escaped emphasis', () => {
+		expect(render(italic('www.example.com a*b'))).toBe('<p><em><a href="http://www.example.com">www.example.com</a> a*b</em></p>');
+	});
+
+	test('same-type outputs need a space or punctuation between them', () => {
+		expect(render(`${bold('a')}, ${bold('b')}`)).toBe('<p><strong>a</strong>, <strong>b</strong></p>');
+		expect(render(`${italic('a')}x${italic('b')}`)).toBe('<p><em>a</em>x<em>b</em></p>');
+	});
+});

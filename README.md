@@ -74,9 +74,9 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
-Because each helper escapes its own delimiter characters in content, it cannot nest inside the same helper, directly or through other helpers: `bold(bold(x))` and `italic(bold(italic(x)))` show the inner delimiters. Two outputs of the same helper must be separated by text or a space; `italic('a') + italic('b')` merges into one span.
+`italic()` and `strikethrough()` escape their delimiter characters in content, and `bold()` escapes `_` at the content edges, so a helper cannot nest inside the same helper, directly or through other helpers: `bold(bold(x))` and `italic(bold(italic(x)))` show the inner delimiters. Two outputs of the same helper next to each other merge into one span, as in `italic('a') + italic('b')`. Separate them with a space or punctuation; for `bold()`, a letter or digit between them is not enough. Use `escape()` for literal content: `bold('a __b__ c')` renders `b` as nested bold.
 
-The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, angle brackets, or character-reference-shaped text such as `&amp;`.
 
 #### `link(url, text?, options?)`
 
@@ -387,7 +387,7 @@ escape('**not bold**') // \*\*not bold\*\*
 
 ## Composition
 
-Functions return plain strings. Bold uses `__` and italic uses `*`, so they compose without delimiter collision:
+Functions return plain strings. Bold uses `__` and italic uses `*`, so they compose without delimiter collision, except for italic content ending in `_` inside bold (see [`bold()`](#boldtext)):
 
 ```ts
 bold(italic('text'))

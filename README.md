@@ -60,7 +60,7 @@ code('a `b` c') // `` a `b` c ``
 bold('important') // __important__
 ```
 
-Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case. Nested italic content ending in `_` may also prevent bold from rendering.
+Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case.
 
 #### `italic(text)`
 
@@ -74,7 +74,7 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
-The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, or angle brackets.
+Emphasis content is Markdown. Use `escape()` for literal text. When delimiters would collide with content, bold uses `**` or `<strong>`, italic uses `<em>`, and strikethrough uses `<del>`. Empty input returns an empty string; whitespace-only input stays unchanged. Boundary whitespace moves outside the delimiters, preserving line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it.
 
 #### `link(url, text?, options?)`
 
@@ -383,7 +383,7 @@ escape('**not bold**') // \*\*not bold\*\*
 
 ## Composition
 
-Functions return plain strings. Bold uses `__` and italic uses `*`, so they compose without delimiter collision:
+Functions return plain strings. Bold and italic normally use different delimiters and choose alternate wrappers when their content contains the same delimiter:
 
 ```ts
 bold(italic('text'))

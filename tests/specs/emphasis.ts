@@ -61,6 +61,7 @@ describe('emphasis', () => {
 		expect(render(bold('$x_{1}$'))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
 		expect(render(strikethrough('$a ~ b$'))).toBe(String.raw`<p><del><span data-math-style="inline">a \~ b</span></del></p>`);
 		expect(render(italic(link('u', '^a*b*c')))).toBe('<p><em><a href="u">^a*b*c</a></em></p>');
+		expect(italic(footnoteRef('a*b') + footnoteRef('c'))).toBe('*[^a*b][^c]*');
 		expect(bold('snake_case')).toBe('__snake_case__');
 	});
 

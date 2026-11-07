@@ -256,6 +256,8 @@ taskList([
 
 Types: `'note'`, `'tip'`, `'important'`, `'warning'`, `'caution'`
 
+On GitHub, alerts cannot be nested inside other elements. Inside `details()`, lists, or blockquotes, they render as plain blockquotes with the alert marker visible.
+
 ```ts
 alert('warning', 'Be careful') // eslint-disable-line no-alert
 // > [!WARNING]

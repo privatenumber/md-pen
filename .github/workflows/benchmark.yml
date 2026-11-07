@@ -13,9 +13,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Benchmarks the base and head revisions on the same runner and reports the
-  # difference in the job summary. Report-only: runner noise makes a hard
-  # threshold unreliable, and `pnpm bench:check` already gates scaling.
+  # Benchmarks the base and head revisions on the same runner, reports the
+  # difference in the job summary, and fails when a benchmark slowed down by
+  # 30% or more (see bench/compare.ts for how the threshold was chosen).
   compare:
     name: Compare with base
     if: github.event_name == 'pull_request'

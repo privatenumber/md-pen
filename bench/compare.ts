@@ -1,5 +1,6 @@
 // Compares benchmark runs of a base and a head revision, made on the same
-// machine, and prints a Markdown report. Usage:
+// machine, and prints a Markdown report. Exits with failure when a benchmark
+// slowed down by the regression threshold or more. Usage:
 //   node bench/compare.ts --base a.json --base b.json --head c.json --head d.json
 import { readFile } from 'node:fs/promises';
 import { parseArgs } from 'node:util';
@@ -8,6 +9,10 @@ import { formatTime, type Recorded } from './results.ts';
 
 // A change below this share is treated as noise in the report.
 const noticeableChange = 0.1;
+
+// Comparisons of identical code on GitHub-hosted runners moved by up to 14%, so
+// the threshold leaves about twice that margin.
+const regressionThreshold = 0.3;
 
 const { values } = parseArgs({
 	options: {
@@ -72,3 +77,12 @@ console.log([
 		{ align: ['left', 'right', 'right', 'right'] },
 	),
 ].join('\n'));
+
+const regressions = rows.filter(({ change }) => change >= regressionThreshold);
+if (regressions.length > 0) {
+	console.error(`Slowed down by ${regressionThreshold * 100}% or more:`);
+	for (const { name, change } of regressions) {
+		console.error(`  ${formatChange(change)}  ${name}`);
+	}
+	process.exitCode = 1;
+}

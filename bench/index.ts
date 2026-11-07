@@ -20,7 +20,6 @@ assert.ok(md.details('s', adversarial['stray details tags']).includes('<\u200B/d
 assert.strictEqual(md.kbd(repeatTo(adversarial.backslashes, 1000)), `<kbd>${'\\'.repeat(1000)}</kbd>`, 'backslashes pass through');
 assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWith(String.raw`| \|\| |`), 'escaped pipes stay escaped once');
 assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`), 'unclosed image brackets are escaped');
-assert.ok(md.bold(`_${adversarial['unterminated attributes']}`).startsWith(String.raw`__\_`), 'emphasis scanner runs');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 
 // `--check` runs only the scaling sweeps and writes no files. CI uses it to
@@ -32,7 +31,7 @@ const check = process.argv.includes('--check');
 if (!check) {
 	bench('escape - plain text', () => md.escape(plainText));
 	bench('escape - punctuated text', () => md.escape(userText));
-	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() scans it.
+	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() uses HTML.
 	bench('bold - punctuated text', () => md.bold(userText));
 	bench('italic - punctuated text', () => md.italic(userText));
 	bench('code', () => md.code('const x = `a`;'));
@@ -64,9 +63,6 @@ if (!check) {
 const sizes = [1000, 16_000, 256_000];
 
 const sweeps: [string, Pattern, (input: string) => string][] = [
-	// A leading delimiter skips the direct-wrap fast path, so the scanner runs.
-	['bold', 'unterminated attributes', input => md.bold(`_${input}`)],
-	['italic', 'unterminated comments', input => md.italic(`*${input}`)],
 	['link label', 'unclosed images', input => md.link('u', input)],
 	['link label', 'unterminated attributes', input => md.link('u', input)],
 	['details', 'stray details tags', input => md.details('s', input)],

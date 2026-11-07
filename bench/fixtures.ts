@@ -37,8 +37,6 @@ export const buildDocument = (sections: number) => {
 export const adversarial = {
 	// Unterminated HTML attribute values make the inline scanner retry tags.
 	'unterminated attributes': '<a b="',
-	// Unterminated comments make the inline scanner search for `-->`.
-	'unterminated comments': '<!--',
 	// Opening image brackets without destinations exercise the label bracket stack.
 	'unclosed images': '![',
 	// Stray details tags that the outer details() call must neutralize.

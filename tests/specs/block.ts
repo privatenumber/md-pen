@@ -3,6 +3,8 @@ import { render } from '../utils/render.ts';
 import { hr, details } from '../../src/block.ts';
 import { escape } from '../../src/escape.ts';
 import { codeBlock } from '../../src/code.ts';
+import { alert, blockquote } from '../../src/blockquote.ts';
+import { ol, taskList, ul } from '../../src/list.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
@@ -100,6 +102,45 @@ describe('details', () => {
 			expect(html.match(/<details>/g)?.length).toBe(2);
 			expect(html.match(/<\/details>/g)?.length).toBe(2);
 			expect(html).toContain(content.startsWith('-') ? '<li>first</li>' : '<blockquote>');
+		}
+	});
+
+	test('preserves nested details inside blockquotes, alerts, and list items', () => {
+		const inner = details('inner', 'content');
+		for (const content of [blockquote(inner), alert('note', inner), ul([inner]), ol([inner]), ol([...Array.from({ length: 9 }, () => 'x'), inner]), taskList([[true, inner]]), taskList([[false, inner]])]) {
+			const html = render(details('outer', content));
+			expect(html.match(/<details>/g)?.length).toBe(2);
+			expect(html.match(/<\/details>/g)?.length).toBe(2);
+			expect(html).not.toContain('\u200B');
+		}
+	});
+
+	test('preserves details nested through multiple containers', () => {
+		const inner = details('middle', blockquote(details('inner', 'content')));
+		const html = render(details('outer', blockquote(ul([inner]))));
+		expect(html.match(/<details>/g)?.length).toBe(3);
+		expect(html.match(/<\/details>/g)?.length).toBe(3);
+		expect(html).not.toContain('\u200B');
+	});
+
+	test('neutralizes unpaired closers in containers', () => {
+		for (const content of [blockquote('</details>'), ul(['</details>']), alert('note', '</details>')]) {
+			const html = render(`${details('outer', `${content}\n\nINSIDE`)}\n\nAFTER`);
+			expect(html.match(/<\/details>/g)?.length).toBe(1);
+			expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
+		}
+	});
+
+	test('neutralizes pairs with inconsistent container prefixes', () => {
+		const cases = [
+			'> <details>\n> <summary>x</summary>\n> \n> x\n\n</details>',
+			'> <details>\n<summary>x</summary>\n> \n> x\n> \n> </details>',
+			'> <details>\n> <summary>x\ny</summary>\n> \n> x\n> \n> </details>',
+		];
+		for (const content of cases) {
+			const result = details('outer', content);
+			expect(result).toContain('<\u200Bdetails>');
+			expect(result).toContain('<\u200B/details>');
 		}
 	});
 

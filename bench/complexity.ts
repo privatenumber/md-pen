@@ -10,7 +10,7 @@ const maximumExponent = 1.5;
 const inputSize = (args: Record<string, unknown>) => Number(Object.values(args)[0]);
 
 /**
- * Fails when a sweep grows faster than linearly. All sizes of a sweep come
+ * Fails when a sweep exceeds the exponent threshold. All sizes of a sweep come
  * from the same run, so the check holds on any machine without stored baselines.
  */
 export const assertLinear = (benchmarks: Benchmarks) => {

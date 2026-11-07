@@ -62,7 +62,8 @@ export const distinctBacktickRuns = (size: number) => {
 	for (let length = 2; result.length + length + 2 <= size; length += 1) {
 		result += `${'`'.repeat(length)}a `;
 	}
-	return result;
+	// Pad to the exact size so the sweep's input ratio is exact.
+	return result.padEnd(size, 'a');
 };
 
 export const nestedDetails = (depth: number) => {

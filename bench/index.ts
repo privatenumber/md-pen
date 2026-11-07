@@ -49,7 +49,9 @@ if (!check) {
 	bench('link - URL label', () => md.link('/docs/guide a b'));
 	bench('image', () => md.image('https://example.com/badge.svg', 'badge'));
 	bench('heading', () => md.h2(userText));
-	bench('ul - 10 items', () => md.ul(listItems));
+	// Renamed when the array moved out of the timed callback, so older results
+	// are not compared by name.
+	bench('ul - 10 prebuilt items', () => md.ul(listItems));
 	bench('table - 100 object rows', () => md.table(tableRows));
 	bench('details', () => md.details('Summary', userText));
 	bench('math', () => md.math('x^2 + y_1'));
@@ -75,8 +77,14 @@ const sweeps: [string, Pattern, (input: string) => string][] = [
 	['details', 'stray details tags', input => md.details('s', input)],
 	['kbd', 'backslashes', md.kbd],
 	['escape', 'backslashes', md.escape],
-	['table cell', 'escaped pipes', input => md.table([['h'], [input]])],
 ];
+
+summary(() => {
+	bench('table cell - escaped pipes $size', function* tableCell(state: BenchState) {
+		const rows = [['h'], [repeatTo(adversarial['escaped pipes'], state.get('size'))]];
+		yield () => md.table(rows);
+	}).args('size', sizes);
+});
 
 for (const [name, pattern, format] of sweeps) {
 	summary(() => {

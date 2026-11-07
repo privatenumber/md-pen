@@ -6,6 +6,10 @@ type Benchmarks = Awaited<ReturnType<typeof run>>['benchmarks'];
 // measure up to about 1.1, so the margin absorbs noise and allocation effects.
 const maximumExponent = 1.5;
 
+// Below this time, fixed per-call overhead and timer noise dominate the ratio
+// between sizes. Superlinear code exceeds it at the larger sizes anyway.
+const minimumNanoseconds = 1000;
+
 // Each sweep has one argument, proportional to the input length.
 const inputSize = (args: Record<string, unknown>) => Number(Object.values(args)[0]);
 
@@ -19,6 +23,9 @@ export const assertLinear = (benchmarks: Benchmarks) => {
 		for (let index = 1; index < runs.length; index += 1) {
 			const previous = runs[index - 1];
 			const current = runs[index];
+			if (previous.stats!.p50 < minimumNanoseconds) {
+				continue;
+			}
 			const sizeRatio = inputSize(current.args) / inputSize(previous.args);
 			const timeRatio = current.stats!.p50 / previous.stats!.p50;
 			const exponent = Math.log(timeRatio) / Math.log(sizeRatio);

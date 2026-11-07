@@ -1,3 +1,28 @@
+import { createInlineScanner } from './inline-constructs.ts';
+
+const escapeContent = (text: string, delimiter: string) => {
+	const { protectedEnd } = createInlineScanner(text, { footnotes: true });
+	let result = '';
+	for (let index = 0; index < text.length; index += 1) {
+		const character = text[index];
+		const end = protectedEnd(index);
+		if (end !== -1) {
+			result += text.slice(index, end);
+			index = end - 1;
+			continue;
+		}
+		if (character === delimiter[0] && (delimiter !== '__' || index === 0 || index === text.length - 1)) {
+			result += '\\';
+		}
+		result += character;
+	}
+	let trailingBackslashes = 0;
+	while (result[result.length - trailingBackslashes - 1] === '\\') {
+		trailingBackslashes += 1;
+	}
+	return trailingBackslashes % 2 ? `${result}\\` : result;
+};
+
 const normalizeBoundary = (text: string) => {
 	const lastLineEnding = Math.max(text.lastIndexOf('\r'), text.lastIndexOf('\n')) + 1;
 	return text.slice(0, lastLineEnding) + text.slice(lastLineEnding).replaceAll(/[\t\n\f\r ]+/g, ' ');
@@ -17,22 +42,6 @@ const hasTrailingHardBreak = (text: string, end: number) => {
 const canWrapDirectly = (text: string, delimiter: string) => {
 	const boundaryWhitespace = /[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]/u;
 	return !text.includes(delimiter[0]) && !text.endsWith('\\') && !boundaryWhitespace.test(text[0]) && !boundaryWhitespace.test(text.at(-1)!);
-};
-
-const wrapContent = (content: string, delimiter: string) => {
-	let backslashes = 0;
-	while (content[content.length - backslashes - 1] === '\\') {
-		backslashes += 1;
-	}
-	const escaped = backslashes % 2 ? `${content}\\` : content;
-	if (!content.includes(delimiter[0])) {
-		return `${delimiter}${escaped}${delimiter}`;
-	}
-	if (delimiter === '__' && !content.includes('*')) {
-		return `**${escaped}**`;
-	}
-	const tag = delimiter === '__' ? 'strong' : (delimiter === '*' ? 'em' : 'del');
-	return `<${tag}>${escaped}</${tag}>`;
 };
 
 const emphasize = (text: string, delimiter: string) => {
@@ -60,7 +69,7 @@ const emphasize = (text: string, delimiter: string) => {
 	if (!content) {
 		return `${prefix}${normalizeBoundary(suffix)}`;
 	}
-	return `${prefix}${wrapContent(content, delimiter)}${normalizeBoundary(suffix)}`;
+	return `${prefix}${delimiter}${escapeContent(content, delimiter)}${delimiter}${normalizeBoundary(suffix)}`;
 };
 
 export const bold = (text: string) => emphasize(text, '__');

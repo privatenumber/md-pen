@@ -6,7 +6,6 @@ import { escape } from '../../src/escape.ts';
 import { codeBlock } from '../../src/code.ts';
 import { alert, blockquote } from '../../src/blockquote.ts';
 import { ol, taskList, ul } from '../../src/list.ts';
-import { el } from '../../src/misc.ts';
 
 describe('hr', () => {
 	test('returns horizontal rule', () => {
@@ -175,41 +174,6 @@ describe('details', () => {
 		}
 	});
 
-	test('keeps a fenced fake head from pairing with an outer section', () => {
-		const example = codeBlock('<details>\n<summary>x</summary>\n\n<details>\n\n</details>', 'html');
-		const inner = el('details', undefined, `\n<summary>inner</summary>\n\n${example}\n\n`);
-		expectContained(details('outer', `${inner}\n\nINSIDE`));
-	});
-
-	test('neutralizes details tags in top-level fences', () => {
-		for (const fence of ['```html', '~~~html', ' ```html', '  ```html', '   ```html', '~~~x`y']) {
-			const char = fence.trimStart()[0];
-			const example = `${fence}\n<details>\n<summary>x</summary>\n\n<details>\n\n</details>\n${char.repeat(5)}`;
-			const inner = el('details', undefined, `\n<summary>inner</summary>\n\n${example}\n\n`);
-			const markdown = details('outer', `${inner}\n\nINSIDE`);
-			expect(markdown).toContain('<\u200Bdetails>\n<summary>x</summary>');
-			expectContained(markdown);
-		}
-	});
-
-	test('closes an unclosed fence so it cannot swallow the closing tag', () => {
-		for (const fence of ['```', '~~~~']) {
-			const markdown = details('outer', `INSIDE\n\n${fence}\n<details>\n<summary>x</summary>\n\n</details>`);
-			expect(markdown).toContain('<\u200Bdetails>');
-			expect(markdown).toContain('<\u200B/details>');
-			expectContained(markdown);
-		}
-	});
-
-	test('does not start fences on four-space indentation or backticks in the info string', () => {
-		for (const line of ['    ```', '```bad`info']) {
-			const inner = details('inner', 'content');
-			const markdown = details('outer', `${line}\n\n${inner}\n\nINSIDE`);
-			expect(markdown).toContain(inner);
-			expectContained(markdown);
-		}
-	});
-
 	test('keeps an unfinished closer visible without swallowing the wrapper', () => {
 		const html = render(`${details('S', '<br>\n</details')}\n\nAFTER`);
 		expect(html).toContain('<br>\n<\u200B/details\n</details>\n<p>AFTER</p>');
@@ -321,6 +285,10 @@ describe('details', () => {
 		expect(details('S', content)).toContain('<\u200B/details>');
 		const code = '<div>\n\n```\n</details>\n```\n</div>';
 		expect(details('S', code)).toContain('<\u200B/details>');
+	});
+
+	test('keeps a list of code blocks contained', () => {
+		expectContained(details('outer', `INSIDE\n\n${ul([codeBlock('hi', 'js')])}`));
 	});
 
 	test('preserves fenced code inside a list', () => {

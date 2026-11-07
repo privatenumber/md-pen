@@ -20,35 +20,18 @@ export const protectDetailsContent = (text: string) => {
 		index: number;
 		live: boolean;
 	}[] = [];
-	let fence = '';
-	for (const { 0: line, index: start } of text.matchAll(/[^\r\n]*(?:\r\n|\r|\n|$)/g)) {
-		const marker = /^ {0,3}(`{3,}|~{3,})([^\r\n]*)/.exec(line);
-		if (fence) {
-			if (marker && marker[1][0] === fence[0] && marker[1].length >= fence.length && /^[ \t]*$/.test(marker[2])) {
-				fence = '';
-			}
-			continue;
-		}
-		if (marker && (marker[1][0] === '~' || !marker[2].includes('`'))) {
-			fence = marker[1];
-			continue;
-		}
-		for (const { 1: slash, index: offset } of line.matchAll(tag)) {
-			const index = start + offset;
-			if (!slash) {
-				openers.push({
-					index,
-					live: (index === 0 || text[index - 1] === '\n') && matchesAt(opener, text, index),
-				});
-			} else if (text.slice(index - 2, index) === '\n\n' && openers.length > 0 && matchesAt(closer, text, index)) {
-				const head = openers.pop()!;
-				if (head.live) {
-					preserved.add(head.index).add(index);
-				}
+	for (const { 1: slash, index } of text.matchAll(tag)) {
+		if (!slash) {
+			openers.push({
+				index,
+				live: (index === 0 || text[index - 1] === '\n') && matchesAt(opener, text, index),
+			});
+		} else if (text.slice(index - 2, index) === '\n\n' && openers.length > 0 && matchesAt(closer, text, index)) {
+			const head = openers.pop()!;
+			if (head.live) {
+				preserved.add(head.index).add(index);
 			}
 		}
 	}
-	const result = text.replaceAll(tag, (match, _slash, offset: number) => (preserved.has(offset) ? match : `<\u200B${match.slice(1)}`));
-	// An unclosed fence would run past the content and swallow the closing tag.
-	return fence ? `${result}\n${fence}` : result;
+	return text.replaceAll(tag, (match, _slash, offset: number) => (preserved.has(offset) ? match : `<\u200B${match.slice(1)}`));
 };

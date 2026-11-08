@@ -1,7 +1,7 @@
 import { createInlineScanner } from './inline-constructs.ts';
 
 const escapeContent = (text: string, delimiter: string) => {
-	const { protectedEnd } = createInlineScanner(text);
+	const { protectedEnd } = createInlineScanner(text, { footnotes: true });
 	let result = '';
 	for (let index = 0; index < text.length; index += 1) {
 		const character = text[index];

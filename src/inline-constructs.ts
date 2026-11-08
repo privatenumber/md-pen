@@ -1,3 +1,5 @@
+import { isFootnoteId } from './footnote.ts';
+
 // Raw HTML grammar uses the ASCII whitespace recognized by commonmark.js 0.31.2.
 // Declarations match cmark-gfm and comrak.
 // https://github.com/commonmark/commonmark.js/blob/0.31.2/lib/common.js#L10-L32
@@ -11,6 +13,9 @@ const declarationStart = /<![A-Z]+(?=[ \t\n\v\f\r])/y;
 // eslint-disable-next-line no-control-regex
 const uriAutolink = /<[a-z][a-z0-9.+-]{1,31}:[^<>\u0000-\u0020]*>/iy;
 const emailAutolink = /<[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*>/iy;
+// footnoteRef() output; isFootnoteId() owns the ID rules.
+// A following `(` makes it an inline link label instead.
+const footnoteReference = /\[\^([^\s[\]]{1,999})\](?!\()/y;
 
 const matchEnd = (expression: RegExp, text: string, index: number) => {
 	expression.lastIndex = index;
@@ -164,8 +169,17 @@ const angleEnd = (
 	return text[afterSpace] === '>' ? afterSpace + 1 : -1;
 };
 
+const footnoteEnd = (text: string, index: number) => {
+	footnoteReference.lastIndex = index;
+	const match = footnoteReference.exec(text);
+	return match && isFootnoteId(match[1]) ? index + match[0].length : -1;
+};
+
 // Call at each unconsumed position; the result is an exclusive end or -1.
-export const createInlineScanner = (text: string, options: { angle?: boolean } = {}) => {
+export const createInlineScanner = (text: string, options: {
+	angle?: boolean;
+	footnotes?: boolean;
+} = {}) => {
 	const backticks = nextBackticks(text);
 	const htmlCache = new Map<number, number>();
 	const last = new Map<string, number>();
@@ -175,6 +189,9 @@ export const createInlineScanner = (text: string, options: { angle?: boolean } =
 		}
 		if (text[index] === '<' && options.angle !== false) {
 			return angleEnd(text, index, htmlCache, last);
+		}
+		if (text[index] === '[' && options.footnotes) {
+			return footnoteEnd(text, index);
 		}
 		if (text[index] !== '`') {
 			return -1;

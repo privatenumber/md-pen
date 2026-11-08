@@ -60,7 +60,24 @@ describe('emphasis', () => {
 		expect(render(`${bold(footnoteRef('a__b'))}\n\n${footnote('a__b', 'note')}`)).toContain('<a href="#fn-a__b"');
 		expect(render(bold('$x_{1}$'))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
 		expect(render(strikethrough('$a ~ b$'))).toBe(String.raw`<p><del><span data-math-style="inline">a \~ b</span></del></p>`);
+		expect(render(italic(link('u', '^a*b*c')))).toBe('<p><em><a href="u">^a*b*c</a></em></p>');
+		expect(italic(footnoteRef('a*b') + footnoteRef('c'))).toBe('*[^a*b][^c]*');
+		expect(italic(footnoteRef('a*b') + link('u', 'site'))).toBe('*[^a*b][site](u)*');
 		expect(bold('snake_case')).toBe('__snake_case__');
+	});
+
+	test('preserves footnote references containing delimiters', () => {
+		const document = `${italic(footnoteRef('a*b'))}\n\n${footnote('a*b', 'note')}`;
+		expect(render(document)).toContain('<em><sup class="footnote-ref"><a href="#fn-a*b"');
+		const struck = `${strikethrough(footnoteRef('a~b'))}\n\n${footnote('a~b', 'note')}`;
+		expect(render(struck)).toContain('<del><sup class="footnote-ref"><a href="#fn-a~b"');
+		expect(render(italic('[^a*b'))).toBe('<p><em>[^a*b</em></p>');
+		expect(render(italic(escape('[^a*b]')))).toBe('<p><em>[^a*b]</em></p>');
+	});
+
+	test('keeps literal and escaped dollar text out of math', () => {
+		expect(render(italic('$5 and $6 *x*'))).toBe('<p><em>$5 and $6 *x*</em></p>');
+		expect(render(italic(escape('$a*b$')))).toBe('<p><em>\u200B$a*b\u200B$</em></p>');
 	});
 
 	test('handles renderer whitespace around delimiters', () => {
@@ -204,5 +221,22 @@ describe('emphasis with intraword delimiter', () => {
 		const html = render(bold('a_b'));
 		expect(html).toContain('<strong>');
 		expect(html).not.toMatch(/<\/strong>b/);
+	});
+});
+
+describe('emphasis side by side', () => {
+	test('bold and italic stay separate when adjacent', () => {
+		expect(render(bold(escape('x_')) + italic('a'))).toBe('<p><strong>x_</strong><em>a</em></p>');
+		expect(render(italic('a*b') + bold('a*b'))).toBe('<p><em>a*b</em><strong>a*b</strong></p>');
+	});
+
+	test('bare URLs stay autolinked inside escaped emphasis', () => {
+		expect(render(italic('www.example.com a*b'))).toBe('<p><em><a href="http://www.example.com">www.example.com</a> a*b</em></p>');
+	});
+
+	test('a space keeps adjacent emphasis separate', () => {
+		expect(render(`${bold('a')} ${bold('b')}`)).toBe('<p><strong>a</strong> <strong>b</strong></p>');
+		expect(render(`${italic('a')} ${italic('b')}`)).toBe('<p><em>a</em> <em>b</em></p>');
+		expect(render(`${bold('a')} ${strikethrough('b')}`)).toBe('<p><strong>a</strong> <del>b</del></p>');
 	});
 });

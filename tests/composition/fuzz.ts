@@ -232,7 +232,7 @@ const generator = (seed: number) => {
 		items: Array.from({ length: 1 + random(3) }, () => {
 			const checked = Boolean(random(2));
 			if (kind !== 'task' && random(4) === 0) {
-				const blockKind = choose(['details', 'quote', 'codeBlock'] as const);
+				const blockKind = choose(['quote', 'codeBlock'] as const);
 				const child: Block = blockKind === 'codeBlock'
 					? {
 						kind: blockKind,
@@ -257,10 +257,14 @@ const generator = (seed: number) => {
 			};
 		}),
 	});
-	const block = (depth: number, inContainer = false): Block => {
+	const block = (depth: number, inContainer = false, insideQuote = false): Block => {
 		const types: Block['kind'][] = ['paragraph', 'heading', 'table', 'ul', 'ol', 'task', 'codeBlock', 'mathBlock', 'hr', 'footnote'];
 		if (depth) {
-			types.push('quote', 'details');
+			types.push('quote');
+			// README's details() limit excludes details nested through quotes, alerts, or list items.
+			if (!insideQuote) {
+				types.push('details');
+			}
 			if (!inContainer) {
 				types.push('alert');
 			}
@@ -314,7 +318,9 @@ const generator = (seed: number) => {
 			default: {
 				return {
 					kind,
-					child: random(2) ? block(depth - 1, true) : inline(depth - 1),
+					child: random(2)
+						? block(depth - 1, true, insideQuote || kind === 'quote' || kind === 'alert')
+						: inline(depth - 1),
 				};
 			}
 		}

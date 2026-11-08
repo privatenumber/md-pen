@@ -420,7 +420,7 @@ italic('a') + italic('b')
 // *a**b*: one italic span
 ```
 
-Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. This applies to two emphasis outputs of different kinds too: `bold('a') + strikethrough('b')` shows the underscores. Links, `kbd()`, and `code()` next to emphasis can touch.
+Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. This applies to two emphasis outputs of different kinds too: `bold('a') + strikethrough('b')` shows the underscores. Links, `kbd()`, and `code()` next to emphasis can touch when their content has no unpaired delimiters; for example, `code('a') + italic('b')` renders a code span followed by italic text. Use `escape()` for literal text, because an unpaired delimiter in one output's Markdown content can pair with the next output.
 
 ## Escaping Strategy
 

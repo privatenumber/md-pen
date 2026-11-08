@@ -37,6 +37,7 @@ describe('math', () => {
 
 	test('uses backtick delimiters for LaTeX environments', () => {
 		expect(math(String.raw`\begin{pmatrix}a\end{pmatrix}`)).toBe('$`\\begin{pmatrix}a\\end{pmatrix}`$');
+		expect(math(String.raw`\begin {pmatrix}a\end{pmatrix}`)).toBe('$`\\begin {pmatrix}a\\end{pmatrix}`$');
 	});
 
 	// GitHub /markdown for `$a<c>b$`; protected characters may be active in other contexts.
@@ -157,6 +158,11 @@ describe('mathBlock', () => {
 		for (const line of [' ', '- b', '+ b', '> b', '# b', '1. b', '1) b', '    code', '\tcode', '---', '-- --', '- -\t-', '===', '<b>', '```', '~~~']) {
 			expect(mathBlock(`a\n${line}`)).toMatch(/^`{3,}math\n/);
 		}
+	});
+
+	test('detects thematic breaks only on Markdown lines', () => {
+		expect(mathBlock('a\u2028-- --')).toBe('$$\na\u2028-- --\n$$');
+		expect(() => mathBlock(`${'-'.repeat(3_400_000)} -x`)).not.toThrow();
 	});
 
 	test('uses fences for table delimiter rows', () => {

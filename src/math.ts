@@ -36,7 +36,8 @@ const indentedCode = /^(?: {0,3}\t| {4})/m;
 const blockMarker = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))/m;
 const headingOrTableDelimiter = /^ {0,3}(?:=+|:?-+:?)[ \t]*$/m;
 // Spaced hyphens such as `-- --` form a thematic break; `*` and `_` already select a fence.
-const thematicBreak = /^ {0,3}(?:-[ \t]*){3,}$/m;
+// Anchors use `\n` rather than the `m` flag, which also matches at U+2028 and U+2029.
+const thematicBreak = /(?:^|\n) {0,3}-[ \t]*-[ \t]*-[- \t]*(?=\n|$)/;
 const blockStartPatterns = [
 	blankLine,
 	indentedCode,
@@ -51,7 +52,7 @@ export const math = (expression: string) => {
 		return '';
 	}
 	// GitHub does not render LaTeX environments in dollar-delimited inline math.
-	if (hasMarkdownSyntax(singleLine) || singleLine.includes(String.raw`\begin{`)) {
+	if (hasMarkdownSyntax(singleLine) || /\\begin\s*\{/.test(singleLine)) {
 		const delimiter = backtickDelimiter(singleLine, 1);
 		const padding = singleLine.includes('`') ? ' ' : '';
 		return `$${delimiter}${padding}${singleLine}${padding}${delimiter}$`;

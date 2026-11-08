@@ -11,17 +11,15 @@ const hasClass = (node: HtmlNode, name: string) => (
 );
 
 // parse5 decodes HTML entities before the tree reaches this normalizer.
-export const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
+// Text stays raw here; compact() owns whitespace collapsing.
+export const normalize = (entry: HtmlNode): Structure[] => {
 	if ('value' in entry) {
-		if (inPre) {
-			return [entry.value];
-		}
-		return [entry.value.replaceAll(/[\t\n\f\r ]+/gu, ' ')];
+		return [entry.value];
 	}
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || isTag(entry, 'pre') || isTag(entry, 'code')));
+	const children = () => entry.childNodes.flatMap(child => normalize(child));
 	if (!('tagName' in entry)) {
 		return children();
 	}

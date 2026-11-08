@@ -15,5 +15,5 @@ describe('md-pen', () => {
 	import('./specs/misc.ts');
 	import('./rendering/rendering.ts');
 	import('./composition/nesting.ts');
-	import('./composition/fuzz.ts');
+	import('./composition/fuzz/index.ts');
 });

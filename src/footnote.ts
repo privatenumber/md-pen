@@ -29,6 +29,14 @@ const isValidId = (id: string) => id.length > 0
 	&& id.length <= 999
 	&& new TextEncoder().encode(id).length <= 1000;
 
+// What normalizeId() emits: allowed ASCII, percent-encoded bytes, and other non-control characters.
+// eslint-disable-next-line no-control-regex
+const normalizedShape = /^(?:[\w!"#'()*+,./;=?@~-]|%[\da-f]{2}|[^\u0000-\u009F\s])+$/u;
+
+export const isFootnoteId = (id: string) => (
+	id.isWellFormed() && normalizedShape.test(id) && isValidId(id)
+);
+
 export const footnoteRef = (id: string) => {
 	const normalized = normalizeId(id);
 	if (!isValidId(normalized)) {

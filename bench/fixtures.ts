@@ -35,6 +35,10 @@ export const buildDocument = (sections: number) => {
 // Adversarial inputs for the scanners. Each repeats a pattern that a naive
 // implementation would rescan, so it shows up as superlinear growth.
 export const adversarial = {
+	// Unterminated HTML attribute values make the inline scanner retry tags.
+	'unterminated attributes': '<a b="',
+	// Unterminated comments make the inline scanner search for `-->`.
+	'unterminated comments': '<!--',
 	// Opening image brackets without destinations exercise the label bracket stack.
 	'unclosed images': '![',
 	// Stray details tags that the outer details() call must neutralize.

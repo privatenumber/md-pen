@@ -18,6 +18,7 @@ assert.ok(md.details('s', adversarial['stray details tags']).includes('<\u200B/d
 assert.strictEqual(md.kbd(repeatTo(adversarial.backslashes, 1000)), `<kbd>${'\\'.repeat(1000)}</kbd>`, 'backslashes pass through');
 assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWith(String.raw`| \|\| |`), 'escaped pipes stay escaped once');
 assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`), 'unclosed image brackets are escaped');
+assert.ok(md.bold(`_${adversarial['unterminated attributes']}`).startsWith(String.raw`__\_`), 'emphasis scanner runs');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 // The whole run must reach the trailing-whitespace step: collapsing it there
 // is the only way escape() returns a single space.
@@ -39,7 +40,7 @@ if (!check) {
 	const listItems = Array.from({ length: 10 }, (_, index) => `item ${index}`);
 	bench('escape - plain text', () => md.escape(plainText));
 	bench('escape - punctuated text', () => md.escape(userText));
-	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() uses HTML.
+	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() scans it.
 	bench('bold - punctuated text', () => md.bold(userText));
 	bench('italic - punctuated text', () => md.italic(userText));
 	bench('code', () => md.code('const x = `a`;'));
@@ -73,6 +74,9 @@ if (!check) {
 const sizes = [8000, 32_000, 128_000];
 
 const sweeps: [string, Pattern, (input: string) => string][] = [
+	// A leading delimiter skips the direct-wrap fast path, so the scanner runs.
+	['bold', 'unterminated attributes', input => md.bold(`_${input}`)],
+	['italic', 'unterminated comments', input => md.italic(`*${input}`)],
 	['link label', 'unclosed images', input => md.link('u', input)],
 	['details', 'stray details tags', input => md.details('s', input)],
 	['kbd', 'backslashes', md.kbd],

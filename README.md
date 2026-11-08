@@ -420,7 +420,7 @@ italic('a') + italic('b')
 // *a**b*: one italic span
 ```
 
-Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. md-pen does not guarantee that touching inline outputs render separately, even when their delimiters differ: `bold('a') + strikethrough('b')` shows the underscores.
+Put a space between them where the text allows one: `` `${code('a')} ${code('b')}` `` renders two code spans. md-pen does not guarantee that touching inline outputs render separately, even when their delimiters differ: `bold('a') + strikethrough('b')` shows the underscores.
 
 ## Escaping Strategy
 

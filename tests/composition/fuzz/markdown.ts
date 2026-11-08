@@ -69,7 +69,7 @@ export const markdown = (tree: Tree, references: Set<string>): string => {
 			return m.hr();
 		}
 		case 'table': {
-			return m.table(tree.cells.map(cell => [markdown(cell, references)]));
+			return m.table(tree.rows.map(row => row.map(cell => markdown(cell, references))));
 		}
 		case 'task': {
 			return m.taskList(tree.items.map(item => [item.checked, markdown(item.child, references)]));

@@ -38,8 +38,11 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 			}
 			return [literalText(tree.text)];
 		}
-		case 'code': case 'kbd': {
-			return [element(tree.kind, [cleanText(tree.text)])];
+		case 'code': {
+			return [element('code', [tree.text.replaceAll(/\r\n|\r|\n/gu, ' ')])];
+		}
+		case 'kbd': {
+			return [element('kbd', [cleanText(tree.text)])];
 		}
 		case 'math': {
 			return [element('math', [cleanText(tree.text)], { style: 'inline' })];
@@ -90,8 +93,8 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 		}
 		case 'table': {
 			return [element('table', [
-				element('thead', [element('tr', [element('th', expected(tree.cells[0], true))])]),
-				element('tbody', tree.cells.slice(1).map(cell => element('tr', [element('td', expected(cell, true))]))),
+				element('thead', [element('tr', tree.rows[0].map(cell => element('th', expected(cell, true))))]),
+				element('tbody', tree.rows.slice(1).map(row => element('tr', row.map(cell => element('td', expected(cell, true)))))),
 			])];
 		}
 		case 'task': case 'ul': case 'ol': {

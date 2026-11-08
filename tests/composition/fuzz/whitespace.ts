@@ -1,7 +1,7 @@
 import type { Structure } from './tree.ts';
 
 const blockTags = new Set(['p', 'blockquote', 'alert', 'details', 'summary', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'th', 'td', 'ul', 'ol', 'pre', 'table', 'thead', 'tbody', 'tr', 'hr']);
-const atomicTags = new Set(['img', 'br', 'ref', 'checkbox']);
+const atomicTags = new Set(['img', 'br', 'ref', 'checkbox', 'code']);
 const trimTrailingInlineSpace = (entries: Structure[]): boolean => {
 	for (let index = entries.length - 1; index >= 0; index -= 1) {
 		const entry = entries[index];
@@ -53,6 +53,7 @@ export const compact = (
 			continue;
 		}
 		// A hard break ends a line like a block does, so the space before it is not rendered either.
+		// A nested leading <br> can cause a false mismatch; generated table breaks are mid-text.
 		if (!inPre && (blockTags.has(entry.tag) || entry.tag === 'br')) {
 			trimTrailingInlineSpace(result);
 		}
@@ -60,13 +61,13 @@ export const compact = (
 		if (isBlock) {
 			state.pending = true;
 		} else if (atomicTags.has(entry.tag)) {
-			// Atomic nodes interrupt a run without contributing text children.
+			// Atomic nodes interrupt a run; code spans count because their spaces render.
 			// A hard break starts a new line, so its leading space is not rendered.
 			state.pending = entry.tag === 'br';
 		}
 		const next = {
 			...entry,
-			children: compact(entry.children, inPre || entry.tag === 'pre', isBlock, isBlock ? undefined : state),
+			children: compact(entry.children, inPre || entry.tag === 'pre' || entry.tag === 'code', isBlock, isBlock ? undefined : state),
 		};
 		if (isBlock) {
 			state.pending = true;

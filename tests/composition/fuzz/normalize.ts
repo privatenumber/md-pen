@@ -21,7 +21,7 @@ export const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || isTag(entry, 'pre')));
+	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || isTag(entry, 'pre') || isTag(entry, 'code')));
 	if (!('tagName' in entry)) {
 		return children();
 	}

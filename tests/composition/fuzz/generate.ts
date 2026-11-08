@@ -191,9 +191,12 @@ export const generator = (seed: number) => {
 				};
 			}
 			case 'table': {
+				const columns = 2 + random(2);
 				return {
 					kind,
-					cells: Array.from({ length: 2 + random(2) }, () => sequence(depth)),
+					rows: Array.from({ length: 2 + random(2) }, () => (
+						Array.from({ length: columns }, () => sequence(depth))
+					)),
 				};
 			}
 			case 'codeBlock': {

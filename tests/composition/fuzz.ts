@@ -526,7 +526,16 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 };
 
 // parse5 decodes HTML entities before the tree reaches this normalizer.
-const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
+const normalize = (
+	entry: HtmlNode,
+	inPre = false,
+	footnotes?: { definitions: Set<string>;
+		references: string[]; },
+): Structure[] => {
+	const state = footnotes ?? {
+		definitions: new Set<string>(),
+		references: [],
+	};
 	if ('value' in entry) {
 		if (inPre) {
 			return [entry.value];
@@ -536,21 +545,39 @@ const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre')));
+	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre'), state));
 	if (!('tagName' in entry)) {
-		return children();
+		const result = children();
+		for (const href of state.references) {
+			assert.ok(href.startsWith('#') && state.definitions.has(href.slice(1)), `Unresolved footnote: ${href}`);
+		}
+		return result;
 	}
 	const attributes = Object.fromEntries(
 		entry.attrs.map(attribute => [attribute.name, attribute.value]),
 	);
-	// The reference marker is checked, but the generated definition section is not.
+	// Collect definition IDs without comparing their contents.
 	if (entry.tagName === 'section' && attributes.class?.includes('footnotes')) {
+		const list = entry.childNodes.find(child => 'tagName' in child && child.tagName === 'ol');
+		if (list && 'childNodes' in list) {
+			for (const child of list.childNodes) {
+				if ('tagName' in child && child.tagName === 'li') {
+					const id = child.attrs.find(attribute => attribute.name === 'id')?.value;
+					if (id) {
+						state.definitions.add(id);
+					}
+				}
+			}
+		}
 		return [];
 	}
 	if (entry.tagName === 'sup' && attributes.class?.includes('footnote-ref')) {
 		const link = entry.childNodes.find(child => 'tagName' in child && child.tagName === 'a');
 		const href = link && 'attrs' in link ? link.attrs.find(attribute => attribute.name === 'href')?.value : undefined;
-		return [element('ref', [], { href: href ?? '' })];
+		const marker = link && 'childNodes' in link ? link.childNodes.flatMap(child => normalize(child, false, state)) : [];
+		assert.ok(marker.some(child => typeof child === 'string' && child.trim()), 'Empty footnote marker');
+		state.references.push(href ?? '');
+		return [element('ref', marker, { href: href ?? '' })];
 	}
 	// Compare checkbox presence, not its checked state.
 	if (entry.tagName === 'input' && attributes.type === 'checkbox') {
@@ -570,21 +597,24 @@ const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	}
 	if (entry.tagName === 'div' && attributes.class?.includes('markdown-alert')) {
 		// The renderer adds an alert title that is not part of the supplied content.
-		return [element('alert', entry.childNodes.filter(child => !('attrs' in child) || !child.attrs.some(attribute => attribute.name === 'class' && attribute.value.includes('markdown-alert-title'))).flatMap(child => normalize(child)), { type: attributes.class.match(/markdown-alert-(\w+)/u)?.[1] ?? '' })];
+		return [element('alert', entry.childNodes.filter(child => !('attrs' in child) || !child.attrs.some(attribute => attribute.name === 'class' && attribute.value.includes('markdown-alert-title'))).flatMap(child => normalize(child, false, state)), { type: attributes.class.match(/markdown-alert-(\w+)/u)?.[1] ?? '' })];
 	}
 	if (entry.tagName === 'span' && attributes['data-math-style']) {
 		return [element('math', children(), { style: attributes['data-math-style'] })];
 	}
 	if (entry.tagName === 'ol') {
+		// HTML ordered lists start at 1 when the start attribute is absent.
 		return [element('ol', children(), { start: attributes.start ?? '1' })];
 	}
 	if (entry.tagName === 'code' && attributes.class) {
 		return [element('code', children(), { class: attributes.class })];
 	}
 	if (entry.tagName === 'a') {
+		// Compare link destinations, not renderer-added attributes.
 		return [element('a', children(), { href: attributes.href })];
 	}
 	if (entry.tagName === 'img') {
+		// Compare the image destination and alt text, not renderer-added attributes.
 		return [element('img', [], {
 			src: attributes.src,
 			alt: attributes.alt,
@@ -699,6 +729,24 @@ const expectedDocument = (tree: Block[]): Structure[] => {
 			previousList = list;
 		}
 	}
+	const numbers = new Map<string, string>();
+	const numberReferences = (entries: Structure[]) => {
+		for (const entry of entries) {
+			if (typeof entry === 'string') {
+				continue;
+			}
+			if (entry.tag === 'ref') {
+				const { href } = (entry.attributes!);
+				if (!numbers.has(href)) {
+					numbers.set(href, String(numbers.size + 1));
+				}
+				entry.children = [numbers.get(href)!];
+			} else {
+				numberReferences(entry.children);
+			}
+		}
+	};
+	numberReferences(result);
 	return result;
 };
 
@@ -740,20 +788,34 @@ describe('seeded composition', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));
 		assert.notDeepStrictEqual(structure('<ul><li><p>a b</p></li></ul>'), structure('<ul><li><p>a</p><p>b</p></li></ul>'));
 	});
+	test('requires visible footnote references to resolve', () => {
+		const reference = '<sup class="footnote-ref"><a href="#fn-f0">1</a></sup>';
+		const section = '<section class="footnotes"><ol><li id="fn-f0">footnote</li></ol></section>';
+		assert.deepStrictEqual(normalize(parseFragment(reference + section)), [element('ref', ['1'], { href: '#fn-f0' })]);
+		assert.throws(() => normalize(parseFragment(reference)), /Unresolved footnote/u);
+		assert.throws(() => normalize(parseFragment(reference.replace('>1</a>', '></a>') + section)), /Empty footnote marker/u);
+	});
 	for (const [seedIndex, seed] of seeds.entries()) {
 		test(`seed ${seed}`, () => {
 			const nextDocument = generator(seed);
 			const count = Math.floor(documentCount / seeds.length)
 				+ Number(seedIndex < documentCount % seeds.length);
 			for (let index = 0; index < count; index += 1) {
-				const tree = nextDocument();
-				assert.equal(hasNestedAlert(tree), false, `seed: ${seed}\ndocument: ${index}\nnested alert in tree: ${JSON.stringify(tree)}`);
-				const references = new Set<string>();
-				const body = tree.map(block => markdown(block, references)).join('\n\n');
-				const source = `${body}${[...references].map(id => `\n\n${m.footnote(id, 'footnote')}`).join('')}`;
-				const wanted = compact(expectedDocument(tree));
-				const actual = compact(normalize(parseFragment(render(source))));
-				assert.deepStrictEqual(actual, wanted, `seed: ${seed}\ndocument: ${index}\ntree: ${JSON.stringify(tree)}\nmarkdown:\n${source}\nexpected: ${JSON.stringify(wanted)}\nactual: ${JSON.stringify(actual)}`);
+				let tree: Block[] | undefined;
+				let source: string | undefined;
+				const context = () => `seed: ${seed}\ndocument: ${index}\ntree: ${JSON.stringify(tree)}\nmarkdown:\n${source ?? '(unavailable)'}`;
+				try {
+					tree = nextDocument();
+					assert.equal(hasNestedAlert(tree), false, 'Nested alert in tree');
+					const references = new Set<string>();
+					const body = tree.map(block => markdown(block, references)).join('\n\n');
+					source = `${body}${[...references].map(id => `\n\n${m.footnote(id, 'footnote')}`).join('')}`;
+					const wanted = compact(expectedDocument(tree));
+					const actual = compact(normalize(parseFragment(render(source))));
+					assert.deepStrictEqual(actual, wanted, `expected: ${JSON.stringify(wanted)}\nactual: ${JSON.stringify(actual)}`);
+				} catch (error) {
+					throw new Error(context(), { cause: error });
+				}
 			}
 		});
 	}

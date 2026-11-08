@@ -407,6 +407,8 @@ ul([
 // - [Link B](https://b.com)
 ```
 
+When joining outputs side by side, put a space between two outputs that use the same delimiter. Without one, the delimiters merge: `code('a') + code('b')` renders one code span containing ``` a``b ```, `math('a') + math('b')` renders the second expression as text, and `italic('a') + italic('b')` renders one italic span. Outputs with different delimiters, such as `code('a') + bold('b')` or two links, can touch.
+
 ## Escaping Strategy
 
 Each function escapes only what would break its own syntax:

@@ -646,7 +646,8 @@ const compact = (
 			}
 			continue;
 		}
-		if (!inPre && blockTags.has(entry.tag)) {
+		// A hard break ends a line like a block does, so the space before it is not rendered either.
+		if (!inPre && (blockTags.has(entry.tag) || entry.tag === 'br')) {
 			trimTrailingInlineSpace(result);
 		}
 		const isBlock = blockTags.has(entry.tag) || (entry.tag === 'math' && entry.attributes?.style === 'display');
@@ -733,6 +734,7 @@ describe('seeded composition', () => {
 		assert.deepStrictEqual(structure('<p>a<em>b </em></p>'), structure('<p>a<em>b</em></p>'));
 		assert.deepStrictEqual(structure('<p>a<em> </em></p>'), structure('<p>a<em></em></p>'));
 		assert.deepStrictEqual(structure('<p>a<br>b</p>'), structure('<p>a<br> b</p>'));
+		assert.deepStrictEqual(structure('<p>a<br>b</p>'), structure('<p>a <br>b</p>'));
 	});
 	test('retains list item paragraph boundaries', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));

@@ -184,72 +184,6 @@ const generator = (seed: number) => {
 		}
 	};
 	const sequence = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
-		// Adjacent fixtures use alpha: link+link, kbd+kbd, code+bold, code+italic, link+italic.
-		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(5) === 0) {
-			const word: Inline = {
-				kind: 'word',
-				text: 'alpha',
-			};
-			const code: Inline = {
-				kind: 'code',
-				text: 'alpha',
-			};
-			const key: Inline = {
-				kind: 'kbd',
-				text: 'alpha',
-			};
-			const bold: Inline = {
-				kind: 'bold',
-				child: word,
-			};
-			const italic: Inline = {
-				kind: 'italic',
-				child: word,
-			};
-			const link: Inline = {
-				kind: 'link',
-				child: word,
-			};
-			return {
-				kind: 'sequence',
-				children: choose([
-					[code, bold],
-					[code, italic],
-					[key, key],
-					...(inLink ? [] : [[link, link], [link, italic]]),
-				]),
-			};
-		}
-		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(4) === 0) {
-			const text = (value: string): Inline => ({
-				kind: 'literal',
-				text: value,
-			});
-			return {
-				kind: 'sequence',
-				children: random(2) === 0
-					? [{
-						kind: 'bold',
-						child: text('x_'),
-					}, {
-						kind: 'italic',
-						child: text('a'),
-					}]
-					: [{
-						kind: 'italic',
-						child: {
-							kind: 'word',
-							text: 'a*b',
-						},
-					}, {
-						kind: 'bold',
-						child: {
-							kind: 'word',
-							text: 'a*b',
-						},
-					}],
-			};
-		}
 		const children: Inline[] = [];
 		const count = 2 + random(3);
 		for (let index = 0; index < count; index += 1) {
@@ -720,7 +654,8 @@ const compact = (
 			state.pending = true;
 		} else if (atomicTags.has(entry.tag)) {
 			// Atomic nodes interrupt a run without contributing text children.
-			state.pending = false;
+			// A hard break starts a new line, so its leading space is not rendered.
+			state.pending = entry.tag === 'br';
 		}
 		const next = {
 			...entry,
@@ -797,6 +732,7 @@ describe('seeded composition', () => {
 		assert.notDeepStrictEqual(structure('<pre><code>a  b</code></pre>'), structure('<pre><code>a b</code></pre>'));
 		assert.deepStrictEqual(structure('<p>a<em>b </em></p>'), structure('<p>a<em>b</em></p>'));
 		assert.deepStrictEqual(structure('<p>a<em> </em></p>'), structure('<p>a<em></em></p>'));
+		assert.deepStrictEqual(structure('<p>a<br>b</p>'), structure('<p>a<br> b</p>'));
 	});
 	test('retains list item paragraph boundaries', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));

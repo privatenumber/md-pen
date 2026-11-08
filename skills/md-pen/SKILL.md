@@ -143,7 +143,7 @@ mention('octocat')   // @octocat
 emoji('rocket')      // :rocket:
 ```
 
-Math uses dollar delimiters for Markdown-safe expressions and GitHub's backtick-delimited or fenced forms otherwise. Use `\lt` and `\gt` instead of literal `<` and `>` in inline math on GitHub. GitHub can expand issue references and emoji shortcodes in either inline form. Fenced display math does not render directly after a task-list checkbox on GitHub or comrak; GitHub also does not render `$$` display math there.
+Math uses dollar delimiters for Markdown-safe expressions and GitHub's backtick-delimited or fenced forms otherwise. Use `\lt` and `\gt` instead of literal `<` and `>` in inline math on GitHub. GitHub can expand issue references and emoji shortcodes in inline and display math. Fenced display math does not render directly after a task-list checkbox on GitHub or comrak; GitHub also does not render `$$` display math there.
 
 ### Generic HTML Element
 

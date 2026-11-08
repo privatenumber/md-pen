@@ -35,6 +35,10 @@ describe('math', () => {
 		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
 	});
 
+	test('uses backtick delimiters for LaTeX environments', () => {
+		expect(math(String.raw`\begin{pmatrix}a\end{pmatrix}`)).toBe('$`\\begin{pmatrix}a\\end{pmatrix}`$');
+	});
+
 	// GitHub /markdown for `$a<c>b$`; protected characters may be active in other contexts.
 	const punctuation: [character: string, alternate: boolean, githubBare: string][] = [
 		['!', false, 'same'],
@@ -150,7 +154,7 @@ describe('mathBlock', () => {
 	});
 
 	test('uses fences for lines that start Markdown blocks', () => {
-		for (const line of [' ', '- b', '+ b', '> b', '# b', '1. b', '1) b', '    code', '\tcode', '---', '===', '<b>', '```', '~~~']) {
+		for (const line of [' ', '- b', '+ b', '> b', '# b', '1. b', '1) b', '    code', '\tcode', '---', '-- --', '- -\t-', '===', '<b>', '```', '~~~']) {
 			expect(mathBlock(`a\n${line}`)).toMatch(/^`{3,}math\n/);
 		}
 	});

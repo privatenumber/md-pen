@@ -35,11 +35,14 @@ const blankLine = /^[ \t]*$/m;
 const indentedCode = /^(?: {0,3}\t| {4})/m;
 const blockMarker = /^ {0,3}(?:#{1,6}(?:[ \t]|$)|>|[-+](?:[ \t]|$)|\d{1,9}[.)](?:[ \t]|$))/m;
 const headingOrTableDelimiter = /^ {0,3}(?:=+|:?-+:?)[ \t]*$/m;
+// Spaced hyphens such as `-- --` form a thematic break; `*` and `_` already select a fence.
+const thematicBreak = /^ {0,3}(?:-[ \t]*){3,}$/m;
 const blockStartPatterns = [
 	blankLine,
 	indentedCode,
 	blockMarker,
 	headingOrTableDelimiter,
+	thematicBreak,
 ];
 
 export const math = (expression: string) => {
@@ -47,7 +50,8 @@ export const math = (expression: string) => {
 	if (singleLine === '') {
 		return '';
 	}
-	if (hasMarkdownSyntax(singleLine)) {
+	// GitHub does not render LaTeX environments in dollar-delimited inline math.
+	if (hasMarkdownSyntax(singleLine) || singleLine.includes(String.raw`\begin{`)) {
 		const delimiter = backtickDelimiter(singleLine, 1);
 		const padding = singleLine.includes('`') ? ' ' : '';
 		return `$${delimiter}${padding}${singleLine}${padding}${delimiter}$`;

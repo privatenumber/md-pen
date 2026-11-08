@@ -407,7 +407,20 @@ ul([
 // - [Link B](https://b.com)
 ```
 
-When joining outputs side by side, put a space between two outputs that use the same delimiter. Without one, the delimiters merge: `code('a') + code('b')` renders one code span containing ``` a``b ```, `math('a') + math('b')` renders the second expression as text, and `italic('a') + italic('b')` renders one italic span. Outputs with different delimiters, such as `code('a') + bold('b')` or two links, can touch.
+Two outputs that use the same delimiter merge when nothing separates them:
+
+```ts
+code('a') + code('b')
+// `a``b`: one code span containing a``b
+
+math('a') + math('b')
+// $a$$b$: the second expression renders as text
+
+italic('a') + italic('b')
+// *a**b*: one italic span
+```
+
+Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. Outputs with different delimiters can touch: `code('a') + bold('b')` renders a code span followed by bold text.
 
 ## Escaping Strategy
 

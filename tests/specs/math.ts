@@ -160,7 +160,7 @@ describe('mathBlock', () => {
 		}
 	});
 
-	test('detects thematic breaks only on Markdown lines', () => {
+	test('detects spaced-hyphen thematic breaks only on Markdown lines', () => {
 		expect(mathBlock('a\u2028-- --')).toBe('$$\na\u2028-- --\n$$');
 		expect(() => mathBlock(`${'-'.repeat(3_400_000)} -x`)).not.toThrow();
 	});

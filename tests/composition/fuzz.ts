@@ -104,7 +104,11 @@ const words = [
 ];
 
 const generator = (seed: number) => {
-	let state = seed;
+	/* eslint-disable no-bitwise -- Mix the seed before initializing xorshift. */
+	let state = Math.imul(seed ^ (seed >>> 16), 0x85_EB_CA_6B);
+	state = Math.imul(state ^ (state >>> 13), 0xC2_B2_AE_35);
+	state = (state ^ (state >>> 16)) || 1;
+	/* eslint-enable no-bitwise */
 	let footnoteId = 0;
 	const random = (maximum: number) => {
 		/* eslint-disable no-bitwise -- Xorshift is defined by bitwise operations. */
@@ -180,7 +184,7 @@ const generator = (seed: number) => {
 		}
 	};
 	const sequence = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
-		// README Composition: same-delimiter outputs need a separator; different delimiters may touch.
+		// Adjacent fixtures use alpha: link+link, kbd+kbd, code+bold, code+italic, link+italic.
 		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(5) === 0) {
 			const word: Inline = {
 				kind: 'word',
@@ -572,13 +576,14 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 		}
 		case 'task': case 'ul': case 'ol': {
 			const loose = joinedList || tree.items.some(item => item.child.kind === 'details');
-			return [element(tree.kind === 'task' ? 'ul' : tree.kind, tree.items.map(item => (
-				element('li', [
+			return [element(tree.kind === 'task' ? 'ul' : tree.kind, tree.items.map((item) => {
+				const content = expected(item.child);
+				return element('li', [
 					...(tree.kind === 'task' ? [element('checkbox', [])] : []),
-					...expected(item.child),
+					...(loose && item.child.kind === 'sequence' ? [element('p', content)] : content),
 					...(item.nested ? expected(item.nested) : []),
-				], loose && item.child.kind === 'sequence' ? { paragraph: 'true' } : undefined)
-			)), tree.kind === 'ol' ? { start: '1' } : undefined)];
+				]);
+			}), tree.kind === 'ol' ? { start: '1' } : undefined)];
 		}
 		default: {
 			throw new Error('Unknown composition node');
@@ -587,7 +592,7 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 };
 
 // parse5 decodes HTML entities before the tree reaches this normalizer.
-const normalize = (entry: HtmlNode, inPre = false, parentTag = ''): Structure[] => {
+const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	if ('value' in entry) {
 		if (inPre) {
 			return [entry.value];
@@ -597,9 +602,8 @@ const normalize = (entry: HtmlNode, inPre = false, parentTag = ''): Structure[] 
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre'), 'tagName' in entry ? entry.tagName : ''));
-	// Loose list paragraphs are represented by the list item's paragraph attribute.
-	if (!('tagName' in entry) || (entry.tagName === 'p' && parentTag === 'li')) {
+	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre')));
+	if (!('tagName' in entry)) {
 		return children();
 	}
 	const attributes = Object.fromEntries(
@@ -619,13 +623,12 @@ const normalize = (entry: HtmlNode, inPre = false, parentTag = ''): Structure[] 
 		return [element('checkbox', [])];
 	}
 	if (entry.tagName === 'li') {
-		const hasParagraph = entry.childNodes.some(child => 'tagName' in child && child.tagName === 'p');
 		const content = children();
 		// Comrak inserts a separator after a task checkbox, outside the item label.
 		if (typeof content[0] === 'object' && content[0].tag === 'checkbox' && typeof content[1] === 'string') {
 			content[1] = content[1].replace(/^ /u, '');
 		}
-		return [element('li', content, hasParagraph ? { paragraph: 'true' } : undefined)];
+		return [element('li', content)];
 	}
 	// Hard line breaks are structural, including those introduced in table cells.
 	if (entry.tagName === 'br') {
@@ -658,12 +661,33 @@ const normalize = (entry: HtmlNode, inPre = false, parentTag = ''): Structure[] 
 };
 
 const blockTags = new Set(['p', 'blockquote', 'alert', 'details', 'summary', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'th', 'td', 'ul', 'ol', 'pre', 'table', 'thead', 'tbody', 'tr', 'hr']);
+const atomicTags = new Set(['img', 'br', 'ref', 'checkbox']);
+const trimTrailingInlineSpace = (entries: Structure[]): boolean => {
+	for (let index = entries.length - 1; index >= 0; index -= 1) {
+		const entry = entries[index];
+		if (typeof entry === 'string') {
+			entries[index] = entry.replace(/ +$/u, '');
+			if (entries[index]) {
+				return true;
+			}
+			entries.splice(index, 1);
+		} else if (
+			blockTags.has(entry.tag)
+			|| atomicTags.has(entry.tag)
+			|| trimTrailingInlineSpace(entry.children)
+		) {
+			return true;
+		}
+	}
+	return false;
+};
 const compact = (
 	entries: Structure[],
 	inPre = false,
 	boundary = true,
 	whitespace?: { pending: boolean },
 ): Structure[] => {
+	// Inline descendants share pending space; each block starts a new sequence.
 	const state = whitespace ?? { pending: boundary };
 	const result: Structure[] = [];
 	for (const entry of entries) {
@@ -688,13 +712,14 @@ const compact = (
 			}
 			continue;
 		}
-		if (!inPre && blockTags.has(entry.tag) && typeof previous === 'string') {
-			result[result.length - 1] = previous.replace(/ +$/u, '');
+		if (!inPre && blockTags.has(entry.tag)) {
+			trimTrailingInlineSpace(result);
 		}
 		const isBlock = blockTags.has(entry.tag) || (entry.tag === 'math' && entry.attributes?.style === 'display');
 		if (isBlock) {
 			state.pending = true;
-		} else if (['img', 'br', 'ref', 'checkbox'].includes(entry.tag)) {
+		} else if (atomicTags.has(entry.tag)) {
+			// Atomic nodes interrupt a run without contributing text children.
 			state.pending = false;
 		}
 		const next = {
@@ -710,10 +735,7 @@ const compact = (
 		if (typeof result[0] === 'string') {
 			result[0] = result[0].replace(/^ +/u, '');
 		}
-		const last = result.length - 1;
-		if (typeof result[last] === 'string') {
-			result[last] = result[last].replace(/ +$/u, '');
-		}
+		trimTrailingInlineSpace(result);
 	}
 	return result.filter(item => item !== '');
 };
@@ -773,6 +795,12 @@ describe('seeded composition', () => {
 		);
 		assert.notDeepStrictEqual(structure('<p>a&nbsp;b</p>'), structure('<p>a b</p>'));
 		assert.notDeepStrictEqual(structure('<pre><code>a  b</code></pre>'), structure('<pre><code>a b</code></pre>'));
+		assert.deepStrictEqual(structure('<p>a<em>b </em></p>'), structure('<p>a<em>b</em></p>'));
+		assert.deepStrictEqual(structure('<p>a<em> </em></p>'), structure('<p>a<em></em></p>'));
+	});
+	test('retains list item paragraph boundaries', () => {
+		const structure = (html: string) => compact(normalize(parseFragment(html)));
+		assert.notDeepStrictEqual(structure('<ul><li><p>a b</p></li></ul>'), structure('<ul><li><p>a</p><p>b</p></li></ul>'));
 	});
 	for (const [seedIndex, seed] of seeds.entries()) {
 		test(`seed ${seed}`, () => {

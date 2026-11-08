@@ -41,7 +41,6 @@
 	"devDependencies": {
 		"@types/node": "^25.5.0",
 		"clean-pkg-json": "^1.4.1",
-		"comment-mark": "^2.2.0",
 		"comrak": "0.48.0-rc.0",
 		"expect-type": "^1.4.0",
 		"lintroll": "^1.30.1",

@@ -47,8 +47,6 @@ export const adversarial = {
 	backslashes: '\\',
 	// Escaped pipes exercise the table cell backslash parity scan.
 	'escaped pipes': String.raw`\|`,
-	// Whitespace runs exercise trailing-whitespace and indentation handling.
-	whitespace: ' \t',
 } as const;
 
 export type Pattern = keyof typeof adversarial;
@@ -57,14 +55,19 @@ export const repeatTo = (pattern: string, size: number) => (
 	pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size)
 );
 
-// Backtick runs of increasing length up to `size` characters, so every run is
-// distinct and a code-span matcher cannot reuse earlier closers.
+export const unterminatedAttribute = (size: number) => `<a b="${repeatTo('<a ', size - 7)}[`;
+
+export const whitespace = (size: number, trailing: boolean) => `x${' '.repeat(size - 2)}${trailing ? ' ' : 'x'}`;
+
+// After one matched pair, backtick runs increase in length without matching.
 export const distinctBacktickRuns = (size: number) => {
-	let result = '';
-	for (let length = 1; result.length < size; length += 1) {
+	// The matching single-backtick pair protects the bracket; later runs are distinct.
+	let result = '`[` ';
+	for (let length = 2; result.length + length + 2 <= size; length += 1) {
 		result += `${'`'.repeat(length)}a `;
 	}
-	return result;
+	// Pad to the exact size so the sweep's input ratio is exact.
+	return result.padEnd(size, 'a');
 };
 
 export const nestedDetails = (depth: number) => {

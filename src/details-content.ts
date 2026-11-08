@@ -1,63 +1,37 @@
 const tag = /<(\/?)details(?=[\s/>]|$)/gi;
-
-// blockquote(), alert(), and the list helpers prefix each line of nested
-// details() output with the same quote markers and indentation, and its first
-// line with a list or task marker.
-const firstLine = /^(?:[ \t]*>)*[ \t]*(?:(?:[-*+]|\d{1,9}[.)])[ \t]+(?:\[[ x]\][ \t]+)?)?$/i;
-
-// The exact head details() emits, capturing the container prefix of its later
-// lines. Summaries are HTML-escaped, so they contain no `<` or line ending.
-const opener = /<details(?:[ \t]+[^\s"'<>/=]+="[^">]*")*>\n((?:[ \t]*>)*[ \t]*)<summary>[^<\n]*<\/summary>\n\1\n/iy;
+// The head and tail shapes details() emits, matched by shape rather than origin;
+// summaries and attributes escape line endings.
+const opener = /<details(?:[ \t]+[^\s"'<>/=]+="[^"\r\n>]*")*>\n<summary>[^<\r\n]*<\/summary>\n\n/iy;
 const closer = /<\/details>(?:\n|$)/iy;
+
+const matchesAt = (pattern: RegExp, text: string, offset: number) => {
+	pattern.lastIndex = offset;
+	return pattern.test(text);
+};
 
 // Nested details() calls already neutralized their own content.
 // Keep tags shaped like that output when they pair up; neutralize the rest.
 export const protectDetailsContent = (text: string) => {
 	const preserved = new Set<number>();
+	// Every opener token goes on the stack, so a closer pairs only with the nearest
+	// one, approximating HTML nesting without parsing Markdown context. A closer whose
+	// nearest opener was rejected stays neutralized instead of reaching past it to an
+	// earlier head.
 	const openers: {
 		index: number;
-		prefix: string;
+		live: boolean;
 	}[] = [];
-	// Track line boundaries forward, so each tag finds its line in constant time.
-	let previousLineStart = -1;
-	let lineStart = 0;
-	let lineEnd = text.indexOf('\n');
-	let lastTagLine = -1;
 	for (const { 1: slash, index } of text.matchAll(tag)) {
-		while (lineEnd !== -1 && lineEnd < index) {
-			previousLineStart = lineStart;
-			lineStart = lineEnd + 1;
-			lineEnd = text.indexOf('\n', lineStart);
-		}
-		// Only a line's first tag can follow a pure prefix; skipping the rest keeps this linear.
-		if (lastTagLine === lineStart) {
-			continue;
-		}
-		lastTagLine = lineStart;
-
 		if (!slash) {
-			opener.lastIndex = index;
-			const head = opener.exec(text);
-			if (head && firstLine.test(text.slice(lineStart, index))) {
-				openers.push({
-					index,
-					prefix: head[1],
-				});
+			openers.push({
+				index,
+				live: (index === 0 || text[index - 1] === '\n') && matchesAt(opener, text, index),
+			});
+		} else if (text.slice(index - 2, index) === '\n\n' && openers.length > 0 && matchesAt(closer, text, index)) {
+			const head = openers.pop()!;
+			if (head.live) {
+				preserved.add(head.index).add(index);
 			}
-			continue;
-		}
-
-		// A closer pairs only inside its head's container, after the blank line details() emits.
-		const prefix = openers.at(-1)?.prefix;
-		closer.lastIndex = index;
-		if (
-			prefix !== undefined
-			&& text.slice(lineStart, index) === prefix
-			&& previousLineStart !== -1
-			&& text.slice(previousLineStart, lineStart - 1) === prefix
-			&& closer.test(text)
-		) {
-			preserved.add(openers.pop()!.index).add(index);
 		}
 	}
 	return text.replaceAll(tag, (match, _slash, offset: number) => (preserved.has(offset) ? match : `<\u200B${match.slice(1)}`));

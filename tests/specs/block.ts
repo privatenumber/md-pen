@@ -1,4 +1,5 @@
 import { describe, test, expect } from 'manten';
+import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { render } from '../utils/render.ts';
 import { hr, details } from '../../src/block.ts';
 import { escape } from '../../src/escape.ts';
@@ -22,6 +23,36 @@ describe('hr', () => {
 		expect(render(`- ${hr()}\n  text`)).toBe('<ul>\n<li>\n<hr />\ntext</li>\n</ul>');
 	});
 });
+
+const expectContained = (markdown: string) => {
+	const tree = parse(render(`${markdown}\n\nAFTER`));
+	type Node = DefaultTreeAdapterMap['node'];
+	let outer: Node | undefined;
+	const positions: Record<string, Node | undefined> = {};
+	const visit = (node: Node, nearest?: Node) => {
+		if (node.nodeName === '#text' && 'value' in node) {
+			for (const marker of ['INSIDE', 'AFTER']) {
+				if (node.value.includes(marker)) {
+					positions[marker] = nearest;
+				}
+			}
+		}
+		if ('tagName' in node && node.tagName === 'details') {
+			outer ??= node;
+			nearest = node;
+		}
+		if ('childNodes' in node) {
+			for (const child of node.childNodes) {
+				visit(child, nearest);
+			}
+		}
+	};
+	visit(tree);
+	expect(outer).toBeDefined();
+	expect(Object.keys(positions).sort()).toStrictEqual(['AFTER', 'INSIDE']);
+	expect(positions.INSIDE).toBe(outer);
+	expect(positions.AFTER).toBeUndefined();
+};
 
 describe('details', () => {
 	test('basic collapsible section', () => {
@@ -105,42 +136,41 @@ describe('details', () => {
 		}
 	});
 
-	test('preserves nested details inside blockquotes, alerts, and list items', () => {
+	test('neutralizes nested sections in containers', () => {
 		const inner = details('inner', 'content');
-		for (const content of [blockquote(inner), alert('note', inner), ul([inner]), ol([inner]), ol([...Array.from({ length: 9 }, () => 'x'), inner]), taskList([[true, inner]]), taskList([[false, inner]])]) {
-			const html = render(details('outer', content));
-			expect(html.match(/<details>/g)?.length).toBe(2);
-			expect(html.match(/<\/details>/g)?.length).toBe(2);
-			expect(html).not.toContain('\u200B');
-		}
-	});
-
-	test('preserves details nested through multiple containers', () => {
-		const inner = details('middle', blockquote(details('inner', 'content')));
-		const html = render(details('outer', blockquote(ul([inner]))));
-		expect(html.match(/<details>/g)?.length).toBe(3);
-		expect(html.match(/<\/details>/g)?.length).toBe(3);
-		expect(html).not.toContain('\u200B');
-	});
-
-	test('neutralizes unpaired closers in containers', () => {
-		for (const content of [blockquote('</details>'), ul(['</details>']), alert('note', '</details>')]) {
-			const html = render(`${details('outer', `${content}\n\nINSIDE`)}\n\nAFTER`);
-			expect(html.match(/<\/details>/g)?.length).toBe(1);
-			expect(html).toContain('<p>INSIDE</p>\n</details>\n<p>AFTER</p>');
-		}
-	});
-
-	test('neutralizes pairs with inconsistent container prefixes', () => {
 		const cases = [
-			'> <details>\n> <summary>x</summary>\n> \n> x\n\n</details>',
-			'> <details>\n<summary>x</summary>\n> \n> x\n> \n> </details>',
-			'> <details>\n> <summary>x\ny</summary>\n> \n> x\n> \n> </details>',
+			blockquote(inner),
+			alert('note', inner),
+			ul([inner]),
+			ol([inner]),
+			taskList([[false, inner]]),
+			ul([blockquote(inner)]),
+			`paragraph\n2. - ${inner.replaceAll('\n', '\n     ')}`,
+			`paragraph\n2. ${inner.replaceAll('\n', '\n   ')}`,
+			`1234567890. ${inner.replaceAll('\n', '\n            ')}`,
+			'> <details>\n> <summary>inner</summary>\n> \n> content\r# break\n> \n> </details>',
+			'> <details>\n<summary>inner</summary>\n\n</details>',
+			...['* ', '+ ', '1) '].map(marker => `${marker}${inner.replaceAll('\n', `\n${' '.repeat(marker.length)}`)}`),
+			'> <details>\n> <summary>inner</summary>\n> \n> content\nlazy continuation\n> \n> </details>',
+			taskList([[false, blockquote(inner)]]),
+			'> <details>\n> <summary>x</summary>\n> \n> x\n\nbreak\n\n> \n> </details>',
+			// A rejected opener's closer must not pair with a head shown in a code example.
+			`${codeBlock('<details>\n<summary>x</summary>\n\n', 'html')}\n\n  ${inner}`,
 		];
 		for (const content of cases) {
-			const result = details('outer', content);
-			expect(result).toContain('<\u200Bdetails>');
-			expect(result).toContain('<\u200B/details>');
+			const markdown = details('outer', `${content}\n\nINSIDE`);
+			expect(markdown).toContain('<\u200Bdetails>');
+			expect(markdown).toContain('<\u200B/details>');
+			expectContained(markdown);
+		}
+	});
+
+	test('neutralizes heads with raw line endings', () => {
+		for (const head of ['<details>\n<summary>x\ry</summary>', '<details a="x\ry">\n<summary>x</summary>', '<details a="x\ny">\n<summary>x</summary>', '<details>\n<summary>x\ny</summary>']) {
+			const markdown = details('outer', `${head}\n\n</details>\n\nINSIDE`);
+			expect(markdown).toContain('<\u200Bdetails');
+			expect(markdown).toContain('<\u200B/details>');
+			expectContained(markdown);
 		}
 	});
 
@@ -257,6 +287,10 @@ describe('details', () => {
 		expect(details('S', code)).toContain('<\u200B/details>');
 	});
 
+	test('keeps a list of code blocks contained', () => {
+		expectContained(details('outer', `INSIDE\n\n${ul([codeBlock('hi', 'js')])}`));
+	});
+
 	test('preserves fenced code inside a list', () => {
 		const html = render(details('S', '- ```html\n  </details>\n  ```'));
 		expect(html).toContain('<code class="language-html">&lt;\u200B/details&gt;\n</code>');
@@ -292,6 +326,7 @@ describe('details', () => {
 
 describe('details content injection', () => {
 	test('</details> in content does not close block early', () => {
+		expectContained(details('outer', '</details>\n\nINSIDE'));
 		const html = render(details('sum', '</details>\nout'));
 		expect(html.match(/<details>/g)?.length).toBe(1);
 		expect(html.match(/<\/details>/g)?.length).toBe(1);
@@ -299,18 +334,21 @@ describe('details content injection', () => {
 	});
 
 	test('</DETAILS> case-insensitive does not close block early', () => {
+		expectContained(details('outer', '</DETAILS>\n\nINSIDE'));
 		const html = render(details('sum', '</DETAILS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</DeTaIlS> mixed case does not close block early', () => {
+		expectContained(details('outer', '</DeTaIlS>\n\nINSIDE'));
 		const html = render(details('sum', '</DeTaIlS>\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');
 	});
 
 	test('</details > with space does not close block early', () => {
+		expectContained(details('outer', '</details >\n\nINSIDE'));
 		const html = render(details('sum', '</details >\nout'));
 		expect(html.match(/<\/details>/gi)?.length).toBe(1);
 		expect(html).toContain('out</p>\n</details>');

@@ -277,7 +277,7 @@ footnote('1', 'Source') // [^1]: Source
 
 #### `details(summary, content, options?)`
 
-Collapsible section. The summary and attributes are HTML-escaped, and content supports Markdown. Nested `details()` output stays live; other `<details` and `</details` tokens are neutralized with an invisible zero-width space. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
+Collapsible section. The summary and attributes are HTML-escaped, and content supports Markdown. Nested `details()` output stays live only when its opening and closing tags start a line of the content. Place nested sections at the top level of the content, not inside `blockquote()`, `alert()`, or list items: there, their tags are neutralized and show as text. Other `<details` and `</details` tokens are also neutralized with an invisible zero-width space. Matching is by shape, not Markdown context, so a hand-written pair formatted exactly like `details()` output is left unmodified too; inside a code block it still renders as code. The same limit means a `details()`-shaped head shown in a code example can pair with a hand-written closing tag and end the section early, and a literal `<details>` in inline code can disable a hand-written nested section. They look unchanged in code, but copied code contains the space. Use `escape()` for untrusted Markdown text. Malformed raw HTML in content can still break the document.
 
 ```ts
 details('Click to expand', 'Hidden **markdown** here')

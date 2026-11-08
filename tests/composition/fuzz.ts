@@ -74,7 +74,7 @@ type Structure = string | Element;
 type HtmlNode = DefaultTreeAdapterMap['node'];
 
 const seeds = [560_344_811, 800_992_447, 123_456_789, 3_908_954_110];
-const documentCount = Number(process.env.MD_PEN_FUZZ_CASES ?? 1000);
+const documentCount = Number(process.env.MD_PEN_FUZZ_CASES?.trim() || 1000);
 if (!Number.isSafeInteger(documentCount) || documentCount < 0) {
 	throw new Error('MD_PEN_FUZZ_CASES must be a non-negative safe integer');
 }
@@ -180,6 +180,42 @@ const generator = (seed: number) => {
 		}
 	};
 	const sequence = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
+		// README Composition: same-delimiter outputs need a separator; different delimiters may touch.
+		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(5) === 0) {
+			const word: Inline = {
+				kind: 'word',
+				text: 'alpha',
+			};
+			const code: Inline = {
+				kind: 'code',
+				text: 'alpha',
+			};
+			const key: Inline = {
+				kind: 'kbd',
+				text: 'alpha',
+			};
+			const bold: Inline = {
+				kind: 'bold',
+				child: word,
+			};
+			const italic: Inline = {
+				kind: 'italic',
+				child: word,
+			};
+			const link: Inline = {
+				kind: 'link',
+				child: word,
+			};
+			return {
+				kind: 'sequence',
+				children: choose([
+					[code, bold],
+					[code, italic],
+					[key, key],
+					...(inLink ? [] : [[link, link], [link, italic]]),
+				]),
+			};
+		}
 		if (depth > 0 && !ancestors.includes('bold') && !ancestors.includes('italic') && random(4) === 0) {
 			const text = (value: string): Inline => ({
 				kind: 'literal',
@@ -227,12 +263,12 @@ const generator = (seed: number) => {
 			children,
 		};
 	};
-	const list = (depth: number, kind: ListKind): List => ({
+	const list = (depth: number, kind: ListKind, insideDetails: boolean): List => ({
 		kind,
 		items: Array.from({ length: 1 + random(3) }, () => {
 			const checked = Boolean(random(2));
 			if (kind !== 'task' && random(4) === 0) {
-				const blockKind = choose(['quote', 'codeBlock'] as const);
+				const blockKind = choose(insideDetails ? ['quote', 'codeBlock'] as const : ['details', 'quote', 'codeBlock'] as const);
 				const child: Block = blockKind === 'codeBlock'
 					? {
 						kind: blockKind,
@@ -253,16 +289,21 @@ const generator = (seed: number) => {
 			return {
 				checked,
 				child: sequence(Math.max(0, depth - 1)),
-				...(kind !== 'task' && depth > 1 && random(4) === 0 ? { nested: list(depth - 1, kind) } : {}),
+				...(kind !== 'task' && depth > 1 && random(4) === 0 ? { nested: list(depth - 1, kind, insideDetails) } : {}),
 			};
 		}),
 	});
-	const block = (depth: number, inContainer = false, insideQuote = false): Block => {
+	const block = (
+		depth: number,
+		inContainer = false,
+		insideDetails = false,
+		afterContainer = false,
+	): Block => {
 		const types: Block['kind'][] = ['paragraph', 'heading', 'table', 'ul', 'ol', 'task', 'codeBlock', 'mathBlock', 'hr', 'footnote'];
 		if (depth) {
 			types.push('quote');
-			// README's details() limit excludes details nested through quotes, alerts, or list items.
-			if (!insideQuote) {
+			// README's details() limit applies when a container separates two details sections.
+			if (!afterContainer) {
 				types.push('details');
 			}
 			if (!inContainer) {
@@ -272,7 +313,7 @@ const generator = (seed: number) => {
 		const kind = choose(types);
 		switch (kind) {
 			case 'ul': case 'ol': case 'task': {
-				return list(depth, kind);
+				return list(depth, kind, insideDetails);
 			}
 			case 'heading': {
 				return {
@@ -319,7 +360,7 @@ const generator = (seed: number) => {
 				return {
 					kind,
 					child: random(2)
-						? block(depth - 1, true, insideQuote || kind === 'quote' || kind === 'alert')
+						? block(depth - 1, true, insideDetails || kind === 'details', afterContainer || (insideDetails && (kind === 'quote' || kind === 'alert')))
 						: inline(depth - 1),
 				};
 			}
@@ -419,8 +460,16 @@ const markdown = (tree: Tree, references: Set<string>): string => {
 	}
 };
 
-// Whitespace layout and invisible GitHub guards do not change the visible text.
-const cleanText = (value: string) => value.replaceAll('\u200B', '').replaceAll(/\s+/gu, ' ').trim();
+const cleanText = (value: string) => value.replaceAll(/[\t\n\f\r ]+/gu, ' ').replaceAll(/^ | $/gu, '');
+const literalText = (text: string): string => {
+	const collect = (node: HtmlNode): string => {
+		if ('value' in node) {
+			return node.value;
+		}
+		return 'childNodes' in node ? node.childNodes.map(collect).join('') : '';
+	};
+	return cleanText(collect(parseFragment(render(m.escape(text)))));
+};
 const element = (
 	tag: string,
 	children: Structure[],
@@ -438,6 +487,7 @@ const element = (
 		}
 );
 
+const inlineKinds = new Set(['sequence', 'word', 'literal', 'code', 'kbd', 'math', 'image', 'ref', 'bold', 'italic', 'strike', 'link']);
 const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] => {
 	switch (tree.kind) {
 		case 'sequence': {
@@ -449,10 +499,10 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 		case 'literal': {
 			if (inTable && /[\r\n]/u.test(tree.text)) {
 				return tree.text.split(/\r\n|\r|\n/u).flatMap((part, index) => (
-					index === 0 ? [cleanText(part)] : [element('br', []), cleanText(part)]
+					index === 0 ? [literalText(part)] : [element('br', []), literalText(part)]
 				));
 			}
-			return [cleanText(tree.text)];
+			return [literalText(tree.text)];
 		}
 		case 'code': case 'kbd': {
 			return [element(tree.kind, [cleanText(tree.text)])];
@@ -490,22 +540,26 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 			return [element(`h${tree.level}`, expected(tree.child))];
 		}
 		case 'paragraph': {
-			return expected(tree.child);
+			return [element('p', expected(tree.child))];
 		}
 		case 'quote': {
-			return [element('blockquote', expected(tree.child))];
+			const content = expected(tree.child);
+			return [element('blockquote', inlineKinds.has(tree.child.kind) ? [element('p', content)] : content)];
 		}
 		case 'alert': {
-			return [element('alert', expected(tree.child), { type: 'note' })];
+			const content = expected(tree.child);
+			return [element('alert', inlineKinds.has(tree.child.kind) ? [element('p', content)] : content, { type: 'note' })];
 		}
 		case 'details': {
-			return [element('details', [element('summary', ['Summary']), ...expected(tree.child)])];
+			const content = expected(tree.child);
+			const children = inlineKinds.has(tree.child.kind) ? [element('p', content)] : content;
+			return [element('details', [element('summary', ['Summary']), ...children])];
 		}
 		case 'codeBlock': {
 			return [element('pre', [element('code', [`${tree.text}\n`], { class: 'language-txt' })])];
 		}
 		case 'mathBlock': {
-			return [element('math', [cleanText(tree.text)], { style: 'display' })];
+			return [element('p', [element('math', [cleanText(tree.text)], { style: 'display' })])];
 		}
 		case 'hr': {
 			return [element('hr', [])];
@@ -533,19 +587,19 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 };
 
 // parse5 decodes HTML entities before the tree reaches this normalizer.
-const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
+const normalize = (entry: HtmlNode, inPre = false, parentTag = ''): Structure[] => {
 	if ('value' in entry) {
 		if (inPre) {
 			return [entry.value];
 		}
-		return cleanText(entry.value) ? [cleanText(entry.value)] : [];
+		return [entry.value.replaceAll(/[\t\n\f\r ]+/gu, ' ')];
 	}
 	if (!('childNodes' in entry)) {
 		return [];
 	}
-	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre')));
-	// Paragraph wrappers vary by context, but their inline content remains meaningful.
-	if (!('tagName' in entry) || entry.tagName === 'p') {
+	const children = () => entry.childNodes.flatMap(child => normalize(child, inPre || ('tagName' in entry && entry.tagName === 'pre'), 'tagName' in entry ? entry.tagName : ''));
+	// Loose list paragraphs are represented by the list item's paragraph attribute.
+	if (!('tagName' in entry) || (entry.tagName === 'p' && parentTag === 'li')) {
 		return children();
 	}
 	const attributes = Object.fromEntries(
@@ -566,7 +620,12 @@ const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 	}
 	if (entry.tagName === 'li') {
 		const hasParagraph = entry.childNodes.some(child => 'tagName' in child && child.tagName === 'p');
-		return [element('li', children(), hasParagraph ? { paragraph: 'true' } : undefined)];
+		const content = children();
+		// Comrak inserts a separator after a task checkbox, outside the item label.
+		if (typeof content[0] === 'object' && content[0].tag === 'checkbox' && typeof content[1] === 'string') {
+			content[1] = content[1].replace(/^ /u, '');
+		}
+		return [element('li', content, hasParagraph ? { paragraph: 'true' } : undefined)];
 	}
 	// Hard line breaks are structural, including those introduced in table cells.
 	if (entry.tagName === 'br') {
@@ -594,29 +653,69 @@ const normalize = (entry: HtmlNode, inPre = false): Structure[] => {
 			alt: attributes.alt,
 		})];
 	}
-	// Ignore renderer-generated attributes other than link and image destinations.
+	// Retain list starts, code language, math style, alert type, and link and image attributes above.
 	return [element(entry.tagName, children())];
 };
 
-const compact = (entries: Structure[], inPre = false): Structure[] => {
+const blockTags = new Set(['p', 'blockquote', 'alert', 'details', 'summary', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'th', 'td', 'ul', 'ol', 'pre', 'table', 'thead', 'tbody', 'tr', 'hr']);
+const compact = (
+	entries: Structure[],
+	inPre = false,
+	boundary = true,
+	whitespace?: { pending: boolean },
+): Structure[] => {
+	const state = whitespace ?? { pending: boundary };
 	const result: Structure[] = [];
 	for (const entry of entries) {
 		const previous = result.at(-1);
 		if (typeof entry === 'string') {
+			let text = !inPre && typeof previous === 'object' && blockTags.has(previous.tag)
+				? entry.replace(/^ +/u, '')
+				: entry;
+			if (!inPre) {
+				text = text.replaceAll(/[\t\n\f\r ]+/gu, ' ');
+				if (state.pending && text.startsWith(' ')) {
+					text = text.slice(1);
+				}
+				if (text) {
+					state.pending = text.endsWith(' ');
+				}
+			}
 			if (typeof previous === 'string') {
-				result[result.length - 1] = previous + entry;
+				result[result.length - 1] = previous + text;
 			} else {
-				result.push(entry);
+				result.push(text);
 			}
 			continue;
 		}
+		if (!inPre && blockTags.has(entry.tag) && typeof previous === 'string') {
+			result[result.length - 1] = previous.replace(/ +$/u, '');
+		}
+		const isBlock = blockTags.has(entry.tag) || (entry.tag === 'math' && entry.attributes?.style === 'display');
+		if (isBlock) {
+			state.pending = true;
+		} else if (['img', 'br', 'ref', 'checkbox'].includes(entry.tag)) {
+			state.pending = false;
+		}
 		const next = {
 			...entry,
-			children: compact(entry.children, inPre || entry.tag === 'pre'),
+			children: compact(entry.children, inPre || entry.tag === 'pre', isBlock, isBlock ? undefined : state),
 		};
+		if (isBlock) {
+			state.pending = true;
+		}
 		result.push(next);
 	}
-	return result.map(item => (typeof item === 'string' && !inPre ? cleanText(item) : item)).filter(item => item !== '');
+	if (boundary && !inPre) {
+		if (typeof result[0] === 'string') {
+			result[0] = result[0].replace(/^ +/u, '');
+		}
+		const last = result.length - 1;
+		if (typeof result[last] === 'string') {
+			result[last] = result[last].replace(/ +$/u, '');
+		}
+	}
+	return result.filter(item => item !== '');
 };
 
 const expectedDocument = (tree: Block[]): Structure[] => {
@@ -661,6 +760,20 @@ const hasNestedAlert = (node: unknown, inContainer = false): boolean => {
 };
 
 describe('seeded composition', () => {
+	test('collapses whitespace across inline element boundaries', () => {
+		const structure = (html: string) => compact(normalize(parseFragment(html)));
+		const original = structure('<p>a <em><strong>b</strong></em></p>');
+		const extraWhitespace = structure('<p>a <em> <strong>b</strong></em></p>');
+		const missingWhitespace = structure('<p>a<em><strong>b</strong></em></p>');
+		assert.deepStrictEqual(extraWhitespace, original);
+		assert.notDeepStrictEqual(missingWhitespace, original);
+		assert.deepStrictEqual(
+			structure('<p>a<em> </em><strong> b</strong></p>'),
+			structure('<p>a<em> </em><strong>b</strong></p>'),
+		);
+		assert.notDeepStrictEqual(structure('<p>a&nbsp;b</p>'), structure('<p>a b</p>'));
+		assert.notDeepStrictEqual(structure('<pre><code>a  b</code></pre>'), structure('<pre><code>a b</code></pre>'));
+	});
 	for (const [seedIndex, seed] of seeds.entries()) {
 		test(`seed ${seed}`, () => {
 			const nextDocument = generator(seed);
@@ -676,6 +789,6 @@ describe('seeded composition', () => {
 				const actual = compact(normalize(parseFragment(render(source))));
 				assert.deepStrictEqual(actual, wanted, `seed: ${seed}\ndocument: ${index}\ntree: ${JSON.stringify(tree)}\nmarkdown:\n${source}\nexpected: ${JSON.stringify(wanted)}\nactual: ${JSON.stringify(actual)}`);
 			}
-		}, 30_000);
+		});
 	}
 });

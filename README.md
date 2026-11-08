@@ -407,6 +407,21 @@ ul([
 // - [Link B](https://b.com)
 ```
 
+Inline outputs placed directly next to each other can merge, because each helper sees only its own content:
+
+```ts
+code('a') + code('b')
+// `a``b`: one code span containing a``b
+
+math('a') + math('b')
+// $a$$b$: on GitHub, the second expression renders as text
+
+italic('a') + italic('b')
+// *a**b*: one italic span
+```
+
+Put a space between them where the text allows one: `` `${code('a')} ${code('b')}` `` renders two code spans. md-pen does not guarantee that touching inline outputs render separately, even when their delimiters differ: `bold('a') + strikethrough('b')` shows the underscores.
+
 ## Escaping Strategy
 
 Each function escapes only what would break its own syntax:

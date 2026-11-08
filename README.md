@@ -60,7 +60,7 @@ code('a `b` c') // `` a `b` c ``
 bold('important') // __important__
 ```
 
-Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case.
+Underscore delimiters cannot apply bold inside a word. Use `el('strong', undefined, 'text')` for that case. Nested italic content in which `_` ends the text or comes before punctuation, such as `italic('a_!')`, may also prevent bold from rendering.
 
 #### `italic(text)`
 
@@ -74,7 +74,9 @@ italic('emphasis') // *emphasis*
 strikethrough('no') // ~~no~~
 ```
 
-Emphasis content is Markdown. Use `escape()` for literal text. When delimiters would collide with content, bold uses `**` or `<strong>`, italic uses `<em>`, and strikethrough uses `<del>`. Empty input returns an empty string; whitespace-only input stays unchanged. Boundary whitespace moves outside the delimiters, preserving line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it.
+`italic()` and `strikethrough()` escape their delimiter characters anywhere in content outside code spans, autolinks, raw HTML, and `footnoteRef()` references (in renderers without footnote support, a reference containing the delimiter can end the emphasis), so they cannot nest inside themselves, even through other helpers: `italic(bold(italic(x)))` shows the inner asterisks. `bold()` escapes `_` only at the content edges, so `bold(bold(x))` shows the inner underscores, while `bold('a __b__ c')` renders `b` as nested bold. Use `escape()` for literal content. Separate adjacent emphasis outputs with a space: without one, `italic('a') + italic('b')` merges into one span, and `bold('a') + strikethrough('b')` shows the underscores. Inline math inside emphasis can break where the helper escapes its delimiter in the expression: `italic('$a*b$')` breaks on GitHub, while `bold('$x_{1}$')` renders, because bold escapes only edge underscores.
+
+The emphasis functions return an empty string for empty input and leave whitespace-only input unchanged. They move boundary whitespace outside the delimiters and preserve line endings. Content must stay within one paragraph: blank lines and lines that start a block, such as `- item`, end it. Backticks in Markdown link destinations or titles can pair with a later code span. Bare URLs inside emphasis content may be altered; `link(url)` without a label generates a protected angle-bracket autolink for lowercase `http://` or `https://` URLs without spaces, control characters, angle brackets, or character-reference-shaped text such as `&amp;`.
 
 #### `link(url, text?, options?)`
 
@@ -385,7 +387,7 @@ escape('**not bold**') // \*\*not bold\*\*
 
 ## Composition
 
-Functions return plain strings. Bold and italic normally use different delimiters and choose alternate wrappers when their content contains the same delimiter:
+Functions return plain strings. Bold uses `__` and italic uses `*`, so they compose without delimiter collision, except for some italic content containing `_` inside bold (see [`bold()`](#boldtext)):
 
 ```ts
 bold(italic('text'))

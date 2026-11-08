@@ -5,10 +5,6 @@ import { escape } from '../../src/escape.ts';
 import { link } from '../../src/link.ts';
 import { createInlineScanner } from '../../src/inline-constructs.ts';
 import { footnote, footnoteRef } from '../../src/footnote.ts';
-import { heading } from '../../src/heading.ts';
-import { ul } from '../../src/list.ts';
-import { blockquote } from '../../src/blockquote.ts';
-import { table } from '../../src/table.ts';
 import {
 	bold, italic, strikethrough,
 } from '../../src/emphasis.ts';
@@ -63,8 +59,25 @@ describe('emphasis', () => {
 		expect(render(bold('Email a__b@example.com'))).toBe('<p><strong>Email <a href="mailto:a__b@example.com">a__b@example.com</a></strong></p>');
 		expect(render(`${bold(footnoteRef('a__b'))}\n\n${footnote('a__b', 'note')}`)).toContain('<a href="#fn-a__b"');
 		expect(render(bold('$x_{1}$'))).toBe('<p><strong><span data-math-style="inline">x_{1}</span></strong></p>');
-		expect(render(strikethrough('$a ~ b$'))).toBe('<p><del><span data-math-style="inline">a ~ b</span></del></p>');
-		expect(render(bold('snake_case'))).toBe('<p><strong>snake_case</strong></p>');
+		expect(render(strikethrough('$a ~ b$'))).toBe(String.raw`<p><del><span data-math-style="inline">a \~ b</span></del></p>`);
+		expect(render(italic(link('u', '^a*b*c')))).toBe('<p><em><a href="u">^a*b*c</a></em></p>');
+		expect(italic(footnoteRef('a*b') + footnoteRef('c'))).toBe('*[^a*b][^c]*');
+		expect(italic(footnoteRef('a*b') + link('u', 'site'))).toBe('*[^a*b][site](u)*');
+		expect(bold('snake_case')).toBe('__snake_case__');
+	});
+
+	test('preserves footnote references containing delimiters', () => {
+		const document = `${italic(footnoteRef('a*b'))}\n\n${footnote('a*b', 'note')}`;
+		expect(render(document)).toContain('<em><sup class="footnote-ref"><a href="#fn-a*b"');
+		const struck = `${strikethrough(footnoteRef('a~b'))}\n\n${footnote('a~b', 'note')}`;
+		expect(render(struck)).toContain('<del><sup class="footnote-ref"><a href="#fn-a~b"');
+		expect(render(italic('[^a*b'))).toBe('<p><em>[^a*b</em></p>');
+		expect(render(italic(escape('[^a*b]')))).toBe('<p><em>[^a*b]</em></p>');
+	});
+
+	test('keeps literal and escaped dollar text out of math', () => {
+		expect(render(italic('$5 and $6 *x*'))).toBe('<p><em>$5 and $6 *x*</em></p>');
+		expect(render(italic(escape('$a*b$')))).toBe('<p><em>\u200B$a*b\u200B$</em></p>');
 	});
 
 	test('handles renderer whitespace around delimiters', () => {
@@ -83,11 +96,8 @@ describe('emphasis', () => {
 		expect(render(strikethrough(code('~x~')))).toBe('<p><del><code>~x~</code></del></p>');
 	});
 
-	test('interprets Markdown in malformed declarations', () => {
-		expect(render(italic('<!FOO*hi*>'))).toBe('<p><em>&lt;!FOO<em>hi</em>&gt;</em></p>');
-		expect(render(italic(escape('<!FOO*hi*>')))).toBe('<p><em>&lt;!FOO*hi*&gt;</em></p>');
-		expect(render(italic('a*b*c'))).toBe('<p><em>a<em>b</em>c</em></p>');
-		expect(render(italic(escape('a*b*c')))).toBe('<p><em>a*b*c</em></p>');
+	test('escapes delimiters in malformed declarations', () => {
+		expect(render(italic('<!FOO*hi*>'))).toBe('<p><em>&lt;!FOO*hi*&gt;</em></p>');
 	});
 
 	test('scanner can skip code and escapes without skipping angle constructs', () => {
@@ -134,31 +144,10 @@ describe('emphasis', () => {
 		expect(render(italic('<a x="*"x>ok'))).toBe('<p><em>&lt;a x=&quot;*&quot;x&gt;ok</em></p>');
 	});
 
-	test('uses alternate delimiters at text edges', () => {
-		expect(bold('x_')).toBe('**x_**');
-		expect(italic('*x')).toBe('<em>*x</em>');
-		expect(strikethrough('~x')).toBe('<del>~x</del>');
-	});
-
-	test('nests repeated emphasis and other inline content', () => {
-		expect(render(bold(bold('x')))).toBe('<p><strong><strong>x</strong></strong></p>');
-		expect(render(italic(italic('x')))).toBe('<p><em><em>x</em></em></p>');
-		expect(render(strikethrough(strikethrough('x')))).toBe('<p><del><del>x</del></del></p>');
-		expect(render(italic(bold(italic('x'))))).toBe('<p><em><strong><em>x</em></strong></em></p>');
-		expect(render(bold(italic(bold(code('x')))))).toBe('<p><strong><em><strong><code>x</code></strong></em></strong></p>');
-		expect(render(`foo${italic('a*b')}bar`)).toBe('<p>foo<em>a*b</em>bar</p>');
-		expect(render(link('u', italic('a*b')))).toBe('<p><a href="u"><em>a*b</em></a></p>');
-	});
-
-	test('HTML fallback composes in Markdown containers', () => {
-		const content = italic('a*b');
-		expect(render(heading(content))).toBe('<h1><em>a*b</em></h1>');
-		expect(render(ul([content]))).toBe('<ul>\n<li><em>a*b</em></li>\n</ul>');
-		expect(render(blockquote(content))).toBe('<blockquote>\n<p><em>a*b</em></p>\n</blockquote>');
-		expect(render(table([['h'], [italic('a|*b')]]))).toContain('<td><em>a|*b</em></td>');
-		expect(render(`${footnoteRef('a')}\n\n${footnote('a', content)}`)).toContain('<p><em>a*b</em>');
-		expect(render(italic('*\na'))).toBe('<p><em>*\na</em></p>');
-		expect(render(italic('x*\\'))).toBe(String.raw`<p><em>x*\</em></p>`);
+	test('escapes delimiter chars at text edges', () => {
+		expect(bold('x_')).toBe(String.raw`__x\___`);
+		expect(italic('*x')).toBe(String.raw`*\*x*`);
+		expect(strikethrough('~x')).toBe(String.raw`~~\~x~~`);
 	});
 
 	test('bold and italic compose naturally', () => {
@@ -232,5 +221,22 @@ describe('emphasis with intraword delimiter', () => {
 		const html = render(bold('a_b'));
 		expect(html).toContain('<strong>');
 		expect(html).not.toMatch(/<\/strong>b/);
+	});
+});
+
+describe('emphasis side by side', () => {
+	test('bold and italic stay separate when adjacent', () => {
+		expect(render(bold(escape('x_')) + italic('a'))).toBe('<p><strong>x_</strong><em>a</em></p>');
+		expect(render(italic('a*b') + bold('a*b'))).toBe('<p><em>a*b</em><strong>a*b</strong></p>');
+	});
+
+	test('bare URLs stay autolinked inside escaped emphasis', () => {
+		expect(render(italic('www.example.com a*b'))).toBe('<p><em><a href="http://www.example.com">www.example.com</a> a*b</em></p>');
+	});
+
+	test('a space keeps adjacent emphasis separate', () => {
+		expect(render(`${bold('a')} ${bold('b')}`)).toBe('<p><strong>a</strong> <strong>b</strong></p>');
+		expect(render(`${italic('a')} ${italic('b')}`)).toBe('<p><em>a</em> <em>b</em></p>');
+		expect(render(`${bold('a')} ${strikethrough('b')}`)).toBe('<p><strong>a</strong> <del>b</del></p>');
 	});
 });

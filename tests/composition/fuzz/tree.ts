@@ -59,7 +59,7 @@ export type Block =
 	}
 	| {
 		kind: 'table';
-		cells: Inline[];
+		rows: Inline[][];
 	}
 	| {
 		kind: 'codeBlock' | 'mathBlock';

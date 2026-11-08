@@ -38,6 +38,32 @@ describe('seeded composition', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));
 		assert.notDeepStrictEqual(structure('<ul><li><p>a b</p></li></ul>'), structure('<ul><li><p>a</p><p>b</p></li></ul>'));
 	});
+	test('preserves table columns and inline code spaces', () => {
+		const tree: Block[] = [{
+			kind: 'table',
+			rows: [
+				[{
+					kind: 'word',
+					text: 'command',
+				}, {
+					kind: 'word',
+					text: 'description',
+				}],
+				[{
+					kind: 'code',
+					text: 'a  b',
+				}, {
+					kind: 'code',
+					text: ' a\r\nb ',
+				}],
+			],
+		}];
+		const source = markdown(tree[0], new Set());
+		const structure = (html: string) => compact(normalize(parseFragment(html)));
+		const html = render(source);
+		assert.deepStrictEqual(structure(html), compact(expectedDocument(tree)));
+		assert.notDeepStrictEqual(structure(html.replace('<code>a  b</code>', '<code>a b</code>')), structure(html));
+	});
 	test('requires visible footnote references to resolve', () => {
 		const reference = '<sup class="footnote-ref"><a href="#fn-f0">1</a></sup>';
 		const section = '<section class="footnotes"><ol><li id="fn-f0">footnote</li></ol></section>';

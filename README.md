@@ -407,20 +407,20 @@ ul([
 // - [Link B](https://b.com)
 ```
 
-Two outputs that use the same delimiter merge when nothing separates them:
+Adjacent code, math, and emphasis outputs can merge when nothing separates them:
 
 ```ts
 code('a') + code('b')
 // `a``b`: one code span containing a``b
 
 math('a') + math('b')
-// $a$$b$: the second expression renders as text
+// $a$$b$: on GitHub, the second expression renders as text
 
 italic('a') + italic('b')
 // *a**b*: one italic span
 ```
 
-Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. Outputs with different delimiters can touch: `code('a') + bold('b')` renders a code span followed by bold text.
+Put a space between them: `` `${code('a')} ${code('b')}` `` renders two code spans. This applies to two emphasis outputs of different kinds too: `bold('a') + strikethrough('b')` shows the underscores. Links, `kbd()`, and `code()` next to emphasis can touch.
 
 ## Escaping Strategy
 

@@ -2,18 +2,19 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
 import { el, kbd, sub } from '../../src/misc.ts';
-import { escapeText as escape } from '../../src/text.ts';
 import { code } from '../../src/code.ts';
 import { math } from '../../src/math.ts';
+import { bold } from '../../src/emphasis.ts';
+import { footnoteRef } from '../../src/footnote.ts';
 
 describe('link', () => {
 	test('autolinks http URL without text', () => {
-		expect(link('https://x.com')).toBe('<https://x.com>');
+		expect(String(link('https://x.com'))).toBe('<https://x.com>');
 	});
 
 	test('autolinks http URL with protocol variations', () => {
-		expect(link('http://example.com')).toBe('<http://example.com>');
-		expect(link('https://x.com/?a=1&b=2')).toBe('<https://x.com/?a=1&b=2>');
+		expect(String(link('http://example.com'))).toBe('<http://example.com>');
+		expect(String(link('https://x.com/?a=1&b=2'))).toBe('<https://x.com/?a=1&b=2>');
 	});
 
 	test('uses markdown link for non-http URL without text', () => {
@@ -26,51 +27,51 @@ describe('link', () => {
 	});
 
 	test('creates markdown link with text', () => {
-		expect(link('https://x.com', 'click')).toBe('[click](https://x.com)');
+		expect(String(link('https://x.com', 'click'))).toBe('[click](https://x.com)');
 	});
 
 	test('creates markdown link with title only', () => {
-		expect(link('https://x.com', 'click', { title: 'T' })).toBe('[click](https://x.com "T")');
+		expect(String(link('https://x.com', 'click', { title: 'T' }))).toBe('[click](https://x.com "T")');
 	});
 
 	test('falls back to HTML when options go beyond title', () => {
-		expect(link('https://x.com', 'click', {
+		expect(String(link('https://x.com', 'click', {
 			title: 'T',
 			target: '_blank',
-		})).toBe(
+		}))).toBe(
 			'<a title="T" target="_blank" href="https://x.com">click</a>',
 		);
 	});
 
 	test('falls back to HTML with only non-title options', () => {
-		expect(link('https://x.com', 'click', { target: '_blank' })).toBe(
+		expect(String(link('https://x.com', 'click', { target: '_blank' }))).toBe(
 			'<a target="_blank" href="https://x.com">click</a>',
 		);
 	});
 
 	test('escapes parentheses in URLs', () => {
-		expect(link('https://en.wikipedia.org/wiki/Foo_(bar)', 'link')).toBe(
+		expect(String(link('https://en.wikipedia.org/wiki/Foo_(bar)', 'link'))).toBe(
 			String.raw`[link](https://en.wikipedia.org/wiki/Foo_\(bar\))`,
 		);
 	});
 
 	test('escapes spaces in URLs', () => {
-		expect(link('/path/to/my file', 'link')).toBe(
+		expect(String(link('/path/to/my file', 'link'))).toBe(
 			'[link](/path/to/my%20file)',
 		);
 	});
 
-	test('HTML fallback passes text through for composition', () => {
-		expect(link('https://x.com', '<kbd>Enter</kbd>', { target: '_blank' })).toBe(
+	test('HTML fallback preserves node labels', () => {
+		expect(String(link('https://x.com', kbd('Enter'), { target: '_blank' }))).toBe(
 			'<a target="_blank" href="https://x.com"><kbd>Enter</kbd></a>',
 		);
 	});
 
 	test('escapes HTML in attribute values in HTML mode', () => {
-		expect(link('https://x.com', 'click', {
+		expect(String(link('https://x.com', 'click', {
 			title: 'a"b',
 			target: '_blank',
-		})).toBe(
+		}))).toBe(
 			'<a title="a&quot;b" target="_blank" href="https://x.com">click</a>',
 		);
 	});
@@ -80,7 +81,7 @@ describe('link', () => {
 	});
 
 	test('uses url as text in HTML fallback when no text', () => {
-		expect(link('https://x.com', undefined, { target: '_blank' })).toBe(
+		expect(String(link('https://x.com', undefined, { target: '_blank' }))).toBe(
 			'<a target="_blank" href="https://x.com">https&#58;&#47;&#47;x&#46;com</a>',
 		);
 	});
@@ -95,14 +96,14 @@ describe('link', () => {
 	test('HTML fallback display text works inside a raw HTML block', () => {
 		const result = link('https://example.com/a_b', undefined, { target: '_blank' });
 		expect(render(result)).toContain('>https://example.com/a_b</a>');
-		expect(render(el('div', undefined, result))).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
+		expect(render(el('div', undefined, String(result)))).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
 	});
 
 	test('HTML fallback displays literal URL punctuation in both contexts', () => {
 		for (const url of ['http://example.com/a_b?x=1&y=2', 'www.example.com/@user', 'https://example.com/$5$/`code`', 'foo@example.com', 'https://example.com/&#35;<x>"']) {
 			const expected = url.replaceAll('$', '\u200B$').replaceAll('@', '@\u200B');
 			const result = link(url, undefined, { target: '_blank' });
-			for (const markdown of [result, el('div', undefined, result)]) {
+			for (const markdown of [result, el('div', undefined, String(result))]) {
 				const html = render(markdown);
 				const content = html.match(/>([^<]*)<\/a>/)?.[1];
 				const entities: Record<string, string> = {
@@ -124,7 +125,7 @@ describe('link', () => {
 		const optionsList: Record<string, string>[] = [{ title: 'T' }, { target: '_blank' }];
 		for (const options of optionsList) {
 			const result = link('https://x.test/$5$', undefined, options);
-			for (const markdown of [result, el('div', undefined, result)]) {
+			for (const markdown of [result, el('div', undefined, String(result))]) {
 				const html = render(markdown);
 				expect(html).not.toContain('<math');
 				if (markdown === result) {
@@ -146,7 +147,7 @@ describe('link', () => {
 	test('composes Markdown labels without changing code or escaping', () => {
 		expect(render(link('u', code('a[0]')))).toBe('<p><a href="u"><code>a[0]</code></a></p>');
 		expect(render(link('u', code('a]b[')))).toBe('<p><a href="u"><code>a]b[</code></a></p>');
-		expect(render(link('u', escape('*x*')))).toBe('<p><a href="u">*x*</a></p>');
+		expect(render(link('u', '*x*'))).toBe('<p><a href="u">*x*</a></p>');
 		expect(render(link('/x', image('/cat.png', 'cat')))).toBe('<p><a href="/x"><img src="/cat.png" alt="cat" /></a></p>');
 	});
 
@@ -154,8 +155,8 @@ describe('link', () => {
 		expect(render(`${link('/outer', 'hello [world]')}\n\n[world]: /inner`)).toBe('<p><a href="/outer">hello [world]</a></p>');
 	});
 
-	test('preserves raw HTML attributes and code spans in labels', () => {
-		const label = `${kbd('key', { title: '`' })} ] ${code('x')}`;
+	test('preserves HTML and code nodes in labels', () => {
+		const label = [kbd('key', { title: '`' }), ' ] ', code('x')];
 		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><kbd title="`">key</kbd> ] <code>x</code></a></p>');
 		const htmlImage = image('cat.png', 'cat', {
 			title: 'See [details',
@@ -167,11 +168,11 @@ describe('link', () => {
 	test('preserves inline images with escaped destinations and titles', () => {
 		const nested = image('/cat(1).png', 'cat', { title: 'a(b' });
 		expect(render(link('/outer', nested))).toBe('<p><a href="/outer"><img src="/cat(1).png" alt="cat" title="a(b" /></a></p>');
-		expect(render(`${link('/outer', '![hello [world]](cat.png)')}\n\n[world]: /inner`)).toBe('<p><a href="/outer"><img src="cat.png" alt="hello [world]" /></a></p>');
+		expect(render(`${link('/outer', '![hello [world]](cat.png)')}\n\n[world]: /inner`)).toBe('<p><a href="/outer">![hello [world]](cat.png)</a></p>');
 	});
 
 	test('preserves consecutive images with backticks in their titles', () => {
-		const label = `${image('/a.png', 'a', { title: '`' })} ${image('/b.png', 'b', { title: '`' })}`;
+		const label = [image('/a.png', 'a', { title: '`' }), ' ', image('/b.png', 'b', { title: '`' })];
 		expect(render(link('/outer', label))).toBe('<p><a href="/outer"><img src="/a.png" alt="a" title="`" /> <img src="/b.png" alt="b" title="`" /></a></p>');
 	});
 
@@ -200,12 +201,6 @@ describe('link', () => {
 		expect(render(result)).toContain('href="/outer"');
 	});
 
-	test('balances brackets around escaped and unequal backtick runs', () => {
-		expect(render(link('u', '\\`[`a]`'))).toBe('<p><a href="u">`[<code>a]</code></a></p>');
-		expect(render(link('u', '``[`]``'))).toBe('<p><a href="u"><code>[`]</code></a></p>');
-		expect(render(link('u', '\\``]`[`'))).toBe('<p><a href="u">`<code>]</code>[`</a></p>');
-	});
-
 	test('preserves entity-like URL text in destinations', () => {
 		for (const reference of ['&#35;', '&copy;', '&amp;']) {
 			const url = `https://x.test/?a=1${reference}z`;
@@ -219,7 +214,7 @@ describe('link', () => {
 	test('neutralizes overlong numeric references in destinations', () => {
 		const url = 'https://x.test/?a=&#00000065;&b=&#x00000041;';
 		for (const markdown of [link(url), link(url, 'x'), image(url, 'i')]) {
-			expect(markdown).toContain('(https://x.test/?a=&amp;#00000065;&b=&amp;#x00000041;)');
+			expect(String(markdown)).toContain('(https://x.test/?a=&amp;#00000065;&b=&amp;#x00000041;)');
 		}
 	});
 
@@ -234,61 +229,61 @@ describe('link', () => {
 
 describe('image', () => {
 	test('creates image with no alt text', () => {
-		expect(image('cat.png')).toBe('![](cat.png)');
+		expect(String(image('cat.png'))).toBe('![](cat.png)');
 	});
 
 	test('creates image with alt text', () => {
-		expect(image('cat.png', 'A cat')).toBe('![A cat](cat.png)');
+		expect(String(image('cat.png', 'A cat'))).toBe('![A cat](cat.png)');
 	});
 
 	test('creates image with title only', () => {
-		expect(image('cat.png', 'A cat', { title: 'T' })).toBe('![A cat](cat.png "T")');
+		expect(String(image('cat.png', 'A cat', { title: 'T' }))).toBe('![A cat](cat.png "T")');
 	});
 
 	test('falls back to HTML with width', () => {
-		expect(image('cat.png', 'A cat', { width: 200 })).toBe(
+		expect(String(image('cat.png', 'A cat', { width: 200 }))).toBe(
 			'<img width="200" src="cat.png" alt="A cat" />',
 		);
 	});
 
 	test('falls back to HTML with title and width', () => {
-		expect(image('cat.png', 'A cat', {
+		expect(String(image('cat.png', 'A cat', {
 			title: 'T',
 			width: 200,
-		})).toBe(
+		}))).toBe(
 			'<img title="T" width="200" src="cat.png" alt="A cat" />',
 		);
 	});
 
 	test('falls back to HTML with width and height', () => {
-		expect(image('cat.png', 'A cat', {
+		expect(String(image('cat.png', 'A cat', {
 			width: 200,
 			height: 100,
-		})).toBe(
+		}))).toBe(
 			'<img width="200" height="100" src="cat.png" alt="A cat" />',
 		);
 	});
 
 	test('omits alt attribute in HTML when alt is undefined', () => {
-		expect(image('cat.png', undefined, { width: 200 })).toBe(
+		expect(String(image('cat.png', undefined, { width: 200 }))).toBe(
 			'<img width="200" src="cat.png" />',
 		);
 	});
 
 	test('escapes parentheses in image URLs', () => {
-		expect(image('photo (1).png', 'Photo')).toBe(String.raw`![Photo](photo%20\(1\).png)`);
+		expect(String(image('photo (1).png', 'Photo'))).toBe(String.raw`![Photo](photo%20\(1\).png)`);
 	});
 
 	test('escapes spaces in image URLs', () => {
-		expect(image('my photo.png', 'Photo')).toBe('![Photo](my%20photo.png)');
+		expect(String(image('my photo.png', 'Photo'))).toBe('![Photo](my%20photo.png)');
 	});
 
 	test('title-only options with no alt', () => {
-		expect(image('cat.png', undefined, { title: 'T' })).toBe('![](cat.png "T")');
+		expect(String(image('cat.png', undefined, { title: 'T' }))).toBe('![](cat.png "T")');
 	});
 
-	test('preserves escaped Markdown in alt text', () => {
-		expect(render(image('u', escape('a_b_c')))).toBe('<p><img src="u" alt="a_b_c" /></p>');
+	test('treats alt text as literal', () => {
+		expect(render(image('u', 'a_b_c'))).toBe('<p><img src="u" alt="a_b_c" /></p>');
 	});
 
 	test('preserves a leading angle bracket in the destination', () => {
@@ -305,26 +300,33 @@ describe('image', () => {
 
 describe('edge cases', () => {
 	test('empty options object treated as no options', () => {
-		expect(link('https://x.com', 'click', {})).toBe('[click](https://x.com)');
+		expect(String(link('https://x.com', 'click', {}))).toBe('[click](https://x.com)');
 	});
 
 	test('escapes newlines in URLs', () => {
-		expect(link('https://x.com/\npath', 'text')).toBe('[text](https://x.com/%0Apath)');
+		expect(String(link('https://x.com/\npath', 'text'))).toBe('[text](https://x.com/%0Apath)');
 	});
 
 	test('image with empty options treated as no options', () => {
-		expect(image('cat.png', 'A cat', {})).toBe('![A cat](cat.png)');
+		expect(String(image('cat.png', 'A cat', {}))).toBe('![A cat](cat.png)');
 	});
 
 	test('image escapes newlines in URLs', () => {
-		expect(image('cat\n.png', 'A cat')).toBe('![A cat](cat%0A.png)');
+		expect(String(image('cat\n.png', 'A cat'))).toBe('![A cat](cat%0A.png)');
 	});
 });
 
 describe('composition', () => {
 	test('link with formatted text', () => {
-		const bold = (text: string) => `**${text}**`;
-		expect(link('https://x.com', bold('text'))).toBe('[**text**](https://x.com)');
+		expect(String(link('https://x.com', bold('text')))).toBe('[**text**](https://x.com)');
+	});
+	test('renders arrays of inline nodes and literal labels', () => {
+		expect(render(link('/u', [code('x'), ' docs']))).toBe('<p><a href="/u"><code>x</code> docs</a></p>');
+		expect(render(link('/u', '**text**'))).toBe('<p><a href="/u">**text**</a></p>');
+	});
+	test('rejects links and footnote references inside a link label', () => {
+		expect(() => String(link('/u', link('/v', 'v')))).toThrow(TypeError);
+		expect(() => String(link('/u', footnoteRef('a')))).toThrow(TypeError);
 	});
 });
 
@@ -450,7 +452,7 @@ describe('link empty string text', () => {
 	test('link(url, "") creates markdown link with empty text', () => {
 		const md = link('https://example.com', '');
 		// Should be [](url), not autolink <url>
-		expect(md).toBe('[](https://example.com)');
+		expect(String(md)).toBe('[](https://example.com)');
 	});
 
 	test('link(url, "") is consistent with link(url, "", {title})', () => {
@@ -458,8 +460,8 @@ describe('link empty string text', () => {
 		const withoutTitle = link('https://example.com', '');
 		const withTitle = link('https://example.com', '', { title: 't' });
 		// Both should start with []
-		expect(withoutTitle.startsWith('[')).toBe(true);
-		expect(withTitle.startsWith('[')).toBe(true);
+		expect(String(withoutTitle).startsWith('[')).toBe(true);
+		expect(String(withTitle).startsWith('[')).toBe(true);
 	});
 });
 
@@ -534,8 +536,8 @@ describe('title with blank lines', () => {
 describe('empty attribute name', () => {
 	test('attribute with all-invalid-char name is omitted', () => {
 		const md = link('https://x.com', 'x', { '"': 'v' } as Record<string, string>);
-		expect(md).not.toContain('=""');
-		expect(md).not.toContain('="v"');
+		expect(String(md)).not.toContain('=""');
+		expect(String(md)).not.toContain('="v"');
 	});
 });
 
@@ -558,8 +560,8 @@ describe('options cannot override destination', () => {
 			target: '_blank',
 			href: 'https://evil.example',
 		} as Record<string, string>);
-		expect(md).toContain('href="https://safe.example"');
-		expect(md).not.toContain('evil.example');
+		expect(String(md)).toContain('href="https://safe.example"');
+		expect(String(md)).not.toContain('evil.example');
 	});
 
 	test('image src option does not override url parameter', () => {
@@ -567,8 +569,8 @@ describe('options cannot override destination', () => {
 			src: 'evil.png',
 			width: 200,
 		} as Record<string, string | number>);
-		expect(md).toContain('src="safe.png"');
-		expect(md).not.toContain('evil.png');
+		expect(String(md)).toContain('src="safe.png"');
+		expect(String(md)).not.toContain('evil.png');
 	});
 
 	test('image alt option does not override alt parameter', () => {
@@ -576,8 +578,8 @@ describe('options cannot override destination', () => {
 			alt: 'overridden',
 			width: 200,
 		} as Record<string, string | number>);
-		expect(md).toContain('alt="correct"');
-		expect(md).not.toContain('overridden');
+		expect(String(md)).toContain('alt="correct"');
+		expect(String(md)).not.toContain('overridden');
 	});
 });
 
@@ -594,17 +596,17 @@ describe('www and email autolinks', () => {
 
 	test('www with title option uses http:// href', () => {
 		const md = link('www.commonmark.org', undefined, { title: 'site' });
-		expect(md).toContain('http://www.commonmark.org');
+		expect(String(md)).toContain('http://www.commonmark.org');
 	});
 
 	test('email with HTML fallback options uses mailto: href', () => {
 		const md = link('foo@bar.baz', undefined, { target: '_blank' });
-		expect(md).toContain('mailto:foo@bar.baz');
+		expect(String(md)).toContain('mailto:foo@bar.baz');
 	});
 
 	test('email with + before @ IS auto-linked per cmark-gfm', () => {
 		const md = link('hello+xyz@mail.example');
-		expect(md).toContain('mailto:');
+		expect(String(md)).toContain('mailto:');
 	});
 
 	test('email HTML fallback does not produce nested anchors', () => {
@@ -622,37 +624,37 @@ describe('www and email autolinks', () => {
 
 	test('www with underscore in last two domain segments is not auto-linked', () => {
 		const md = link('www.foo.bar_baz');
-		expect(md).not.toContain('http://');
+		expect(String(md)).not.toContain('http://');
 	});
 
 	test('www with underscore in first segment IS auto-linked', () => {
 		const md = link('www.foo_bar.example.com');
-		expect(md).toContain('http://');
+		expect(String(md)).toContain('http://');
 	});
 
 	test('www with underscore in path IS auto-linked', () => {
 		const md = link('www.google.com/search?q=a_b');
-		expect(md).toContain('http://');
+		expect(String(md)).toContain('http://');
 	});
 
 	test('www with underscore in path segment IS auto-linked', () => {
 		const md = link('www.google.com/path_with_underscore');
-		expect(md).toContain('http://');
+		expect(String(md)).toContain('http://');
 	});
 
 	test('www with underscore in query IS auto-linked', () => {
-		expect(link('www.google.com?q=a_b')).toContain('http://');
+		expect(String(link('www.google.com?q=a_b'))).toContain('http://');
 	});
 
 	test('www with underscore in fragment IS auto-linked', () => {
-		expect(link('www.google.com#frag_underscore')).toContain('http://');
+		expect(String(link('www.google.com#frag_underscore'))).toContain('http://');
 	});
 
 	test('email ending with _ is not auto-linked', () => {
-		expect(link('a@b.c_')).not.toContain('mailto:');
+		expect(String(link('a@b.c_'))).not.toContain('mailto:');
 	});
 
 	test('email with consecutive dots is not auto-linked', () => {
-		expect(link('a@b..c')).not.toContain('mailto:');
+		expect(String(link('a@b..c'))).not.toContain('mailto:');
 	});
 });

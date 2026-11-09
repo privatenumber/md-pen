@@ -1,7 +1,14 @@
 import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
 
+// Every character or prefix that a rule below can rewrite; update it with any new rule.
+// Most literal runs are plain words, so testing once avoids running each rule.
+// A single trailing space cannot form a hard break, and leading spaces matter only before
+// a block marker or at code-block indentation; tabs are always escapable.
+const escapable = /[\r\n\t:#@$\\*`[\]<>~&_]|gh-|(?:https?|ftp):|www\.| {2}$|^(?: *[\d+=-]| {4})/i;
+
 // Escape literal text, not Markdown that has already been serialized.
 export const escapeText = (input: string, lineStart = true): string => {
+	if (!escapable.test(input)) { return input; }
 	let text = normalizeLineEndings(input)
 		.replaceAll(/(^|[ \t\n(]):[\w:+-]+/g, match => match.replaceAll(/:([\w+-]+)(?=:)/g, (shortcode, name: string) => (
 			/^\d+$/.test(name) && name !== '100' && name !== '1234' ? shortcode : `:\u200B${name}`

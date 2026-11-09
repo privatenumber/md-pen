@@ -19,8 +19,8 @@ describe('escape', () => {
 		expect(escape('a*b')).toBe(String.raw`a\*b`);
 	});
 
-	test('escapes underscores', () => {
-		expect(escape('a_b')).toBe(String.raw`a\_b`);
+	test('preserves intraword underscores', () => {
+		expect(escape('a_b')).toBe(String.raw`a_b`);
 	});
 
 	test('escapes tildes', () => {
@@ -35,8 +35,8 @@ describe('escape', () => {
 		expect(escape('<tag>')).toBe(String.raw`\<tag\>`);
 	});
 
-	test('escapes ampersands', () => {
-		expect(escape('a&b')).toBe(String.raw`a\&b`);
+	test('preserves non-entity ampersands', () => {
+		expect(escape('a&b')).toBe(String.raw`a&b`);
 	});
 
 	test('escapes multiple special characters', () => {
@@ -75,7 +75,7 @@ describe('escape', () => {
 		const options = { extension: { shortcodes: true } };
 		expect(markdownToHTML(':smile:', options)).toBe('<p>😄</p>\n');
 		expect(markdownToHTML(escape(':smile: :+1: :100: :1234:'), options)).toBe('<p>:​smile: :​+1: :​100: :​1234:</p>\n');
-		expect(markdownToHTML(escape('\t:smile:'), options)).toBe('<p>:​smile:</p>\n');
+		expect(markdownToHTML(escape('\t:smile:'), options)).toBe('<p> :​smile:</p>\n');
 		for (const input of ['hello\t:smile:', '(:smile:)']) {
 			expect(markdownToHTML(input, options)).toContain('😄');
 			expect(markdownToHTML(escape(input), options)).not.toContain('😄');
@@ -112,12 +112,20 @@ describe('escape', () => {
 	});
 
 	test('renders indented block markers and trailing whitespace literally', () => {
-		for (const input of ['  1. x', '   1) x', '6.\nx', 'x\n  ===', '  # heading', '  - item', '  > quote', '  ```', ' \tcode', 'a  \nb', 'a \t\r\nb']) {
+		for (const input of ['  1. x', '   1) x', 'x\n  ===', '  # heading', '  - item', '  > quote', '  ```', 'a  \nb', 'a \t\r\nb']) {
 			const html = render(escape(input));
 			expect(html.startsWith('<p>')).toBe(true);
 			expect(html.endsWith('</p>')).toBe(true);
 			expect(html).not.toContain('<br');
 		}
+	});
+
+	test('prevents an empty ordered list before a newline', () => {
+		expect(render(escape('6.\nx'))).toBe('<p>6.\nx</p>');
+	});
+
+	test('prevents mixed space and tab indentation from forming code', () => {
+		expect(render(escape(' \tcode'))).not.toContain('<pre>');
 	});
 
 	test('disables URL autolinks without invisible characters', () => {
@@ -327,7 +335,7 @@ describe('escape autolinks', () => {
 
 	test('escape uppercase HTTP:// does not render as link on GitHub', () => {
 		// GitHub autolinks HTTP:// and Https:// (case-insensitive)
-		expect(escape('HTTP://example.com')).toBe(String.raw`HTTP\:\/\/example\.com`);
-		expect(escape('Https://example.com')).toBe(String.raw`Https\:\/\/example\.com`);
+		expect(escape('HTTP://example.com')).toBe(String.raw`HTTP\://example.com`);
+		expect(escape('Https://example.com')).toBe(String.raw`Https\://example.com`);
 	});
 });

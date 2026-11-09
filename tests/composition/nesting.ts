@@ -19,7 +19,7 @@ import {
 describe('inline in inline', () => {
 	test('bold(italic()) composes naturally', () => {
 		const md = bold(italic('text'));
-		expect(md).toBe('__*text*__');
+		expect(String(md)).toBe('***text***');
 		const html = render(md);
 		expect(html).toContain('<strong>');
 		expect(html).toContain('<em>');
@@ -27,7 +27,7 @@ describe('inline in inline', () => {
 
 	test('italic(bold()) composes naturally', () => {
 		const md = italic(bold('text'));
-		expect(md).toBe('*__text__*');
+		expect(String(md)).toBe('***text***');
 		const html = render(md);
 		expect(html).toContain('<em>');
 		expect(html).toContain('<strong>');
@@ -35,7 +35,7 @@ describe('inline in inline', () => {
 
 	test('bold(code())', () => {
 		const md = bold(code('x'));
-		expect(md).toBe('__`x`__');
+		expect(String(md)).toBe('**`x`**');
 		const html = render(md);
 		expect(html).toContain('<strong>');
 		expect(html).toContain('<code>');
@@ -43,7 +43,7 @@ describe('inline in inline', () => {
 
 	test('bold(link())', () => {
 		const md = bold(link('https://x.com', 'click'));
-		expect(md).toBe('__[click](https://x.com)__');
+		expect(String(md)).toBe('**[click](https://x.com)**');
 		const html = render(md);
 		expect(html).toContain('<strong>');
 		expect(html).toContain('<a href="https://x.com">');
@@ -51,7 +51,7 @@ describe('inline in inline', () => {
 
 	test('link with bold text', () => {
 		const md = link('https://x.com', bold('click'));
-		expect(md).toBe('[__click__](https://x.com)');
+		expect(String(md)).toBe('[**click**](https://x.com)');
 		const html = render(md);
 		expect(html).toContain('<a href="https://x.com">');
 		expect(html).toContain('<strong>click</strong>');
@@ -59,7 +59,7 @@ describe('inline in inline', () => {
 
 	test('strikethrough(link())', () => {
 		const md = strikethrough(link('https://x.com', 'old'));
-		expect(md).toBe('~~[old](https://x.com)~~');
+		expect(String(md)).toBe('~~[old](https://x.com)~~');
 		const html = render(md);
 		expect(html).toContain('<del>');
 		expect(html).toContain('<a');
@@ -67,7 +67,7 @@ describe('inline in inline', () => {
 
 	test('bold(strikethrough())', () => {
 		const md = bold(strikethrough('removed'));
-		expect(md).toBe('__~~removed~~__');
+		expect(String(md)).toBe('**~~removed~~**');
 		const html = render(md);
 		expect(html).toContain('<strong>');
 		expect(html).toContain('<del>');
@@ -75,7 +75,7 @@ describe('inline in inline', () => {
 
 	test('italic(code())', () => {
 		const md = italic(code('fn'));
-		expect(md).toBe('*`fn`*');
+		expect(String(md)).toBe('*`fn`*');
 		const html = render(md);
 		expect(html).toContain('<em>');
 		expect(html).toContain('<code>');
@@ -83,12 +83,12 @@ describe('inline in inline', () => {
 
 	test('link with kbd text', () => {
 		const md = link('https://x.com', kbd('Enter'));
-		expect(md).toBe('[<kbd>Enter</kbd>](https://x.com)');
+		expect(String(md)).toBe('[<kbd>Enter</kbd>](https://x.com)');
 	});
 
 	test('strikethrough(bold(italic()))', () => {
 		const md = strikethrough(bold(italic('all')));
-		expect(md).toBe('~~__*all*__~~');
+		expect(String(md)).toBe('~~***all***~~');
 		const html = render(md);
 		expect(html).toContain('<del>');
 		expect(html).toContain('<strong>');
@@ -98,22 +98,22 @@ describe('inline in inline', () => {
 
 describe('inline in block', () => {
 	test('bold in blockquote', () => {
-		const md = blockquote(bold('important'));
-		expect(md).toBe('> __important__');
+		const md = blockquote(String(bold('important')));
+		expect(String(md)).toBe('> **important**');
 		const html = render(md);
 		expect(html).toContain('<blockquote>');
 		expect(html).toContain('<strong>important</strong>');
 	});
 
 	test('link in blockquote', () => {
-		const md = blockquote(link('https://x.com', 'click'));
+		const md = blockquote(String(link('https://x.com', 'click')));
 		const html = render(md);
 		expect(html).toContain('<blockquote>');
 		expect(html).toContain('<a href="https://x.com">');
 	});
 
 	test('bold in list item', () => {
-		const md = ul([bold('item 1'), 'item 2']);
+		const md = ul([String(bold('item 1')), 'item 2']);
 		const html = render(md);
 		expect(html).toContain('<strong>item 1</strong>');
 		expect(html).toContain('<li>');
@@ -121,8 +121,8 @@ describe('inline in block', () => {
 
 	test('link in list item', () => {
 		const md = ul([
-			link('https://a.com', 'A'),
-			link('https://b.com', 'B'),
+			String(link('https://a.com', 'A')),
+			String(link('https://b.com', 'B')),
 		]);
 		const html = render(md);
 		expect(html).toContain('<a href="https://a.com">A</a>');
@@ -130,13 +130,13 @@ describe('inline in block', () => {
 	});
 
 	test('code in list item', () => {
-		const md = ul([code('npm install'), 'then run']);
+		const md = ul([String(code('npm install')), 'then run']);
 		const html = render(md);
 		expect(html).toContain('<code>npm install</code>');
 	});
 
 	test('bold in ordered list', () => {
-		const md = ol([bold('first'), 'second']);
+		const md = ol([String(bold('first')), 'second']);
 		const html = render(md);
 		expect(html).toContain('<strong>first</strong>');
 		expect(html).toContain('<ol>');
@@ -145,7 +145,7 @@ describe('inline in block', () => {
 	test('link in table cell', () => {
 		const md = table([
 			['Name', 'URL'],
-			['Site', link('https://x.com', 'link')],
+			['Site', String(link('https://x.com', 'link'))],
 		]);
 		const html = render(md);
 		expect(html).toContain('<table>');
@@ -155,7 +155,7 @@ describe('inline in block', () => {
 	test('bold in table cell', () => {
 		const md = table([
 			['Key', 'Value'],
-			[bold('name'), 'Alice'],
+			[String(bold('name')), 'Alice'],
 		]);
 		const html = render(md);
 		expect(html).toContain('<strong>name</strong>');
@@ -164,35 +164,35 @@ describe('inline in block', () => {
 	test('code in table cell', () => {
 		const md = table([
 			['Command', 'Description'],
-			[code('ls'), 'list files'],
+			[String(code('ls')), 'list files'],
 		]);
 		const html = render(md);
 		expect(html).toContain('<code>ls</code>');
 	});
 
 	test('inline in heading', () => {
-		const md = heading(bold('Title'), 2);
+		const md = heading(String(bold('Title')), 2);
 		const html = render(md);
 		expect(html).toContain('<h2>');
 		expect(html).toContain('<strong>Title</strong>');
 	});
 
 	test('link in heading', () => {
-		const md = heading(link('https://x.com', 'Title'), 1);
+		const md = heading(String(link('https://x.com', 'Title')), 1);
 		const html = render(md);
 		expect(html).toContain('<h1>');
 		expect(html).toContain('<a href="https://x.com">');
 	});
 
 	test('bold in alert', () => {
-		const md = alert('note', bold('important'));
+		const md = alert('note', String(bold('important')));
 		const html = render(md);
 		expect(html).toContain('alert');
 		expect(html).toContain('<strong>important</strong>');
 	});
 
 	test('markdown in details content', () => {
-		const md = details('Expand', bold('hidden'));
+		const md = details('Expand', String(bold('hidden')));
 		const html = render(md);
 		expect(html).toContain('<details>');
 		expect(html).toContain('<strong>hidden</strong>');
@@ -202,7 +202,7 @@ describe('inline in block', () => {
 describe('block in block', () => {
 	test('nested blockquotes', () => {
 		const md = blockquote(blockquote('nested'));
-		expect(md).toBe('> > nested');
+		expect(String(md)).toBe('> > nested');
 		const html = render(md);
 		expect(html).toContain('<blockquote>');
 		expect(html).toContain('nested');

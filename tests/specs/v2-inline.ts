@@ -9,7 +9,7 @@ import { render } from '../../src/node.ts';
 describe('typed inline helpers', () => {
 	test('renders text as literal and preserves nested nodes', () => {
 		assert.equal(String(bold('a*b')), String.raw`**a\*b**`);
-		assert.equal(String(bold(italic('x'))), '**<!-- -->*x*<!-- -->**');
+		assert.equal(String(bold(italic('x'))), '***x***');
 		assert.equal(String(bold(bold('x'))), '**x**');
 		assert.equal(String(italic(' x ')), ' *x* ');
 	});

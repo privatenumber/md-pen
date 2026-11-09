@@ -131,7 +131,7 @@ describe('taskList', () => {
 
 describe('list composition', () => {
 	test('list items containing markdown', () => {
-		expect(ul([bold('item'), 'plain'])).toBe('- __item__\n- plain');
+		expect(ul([String(bold('item')), 'plain'])).toBe('- **item**\n- plain');
 	});
 });
 

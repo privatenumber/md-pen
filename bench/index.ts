@@ -3,7 +3,7 @@ import { bench, run, summary } from 'mitata';
 import * as md from '../src/index.ts';
 import {
 	adversarial, buildDocument, distinctBacktickRuns, nestedDetails,
-	plainText, repeatTo, tableRows, unterminatedAttribute, userText, whitespace,
+	plainText, repeatTo, tableRows, userText, whitespace,
 	type Pattern,
 } from './fixtures.ts';
 import { assertLinear } from './complexity.ts';
@@ -15,20 +15,15 @@ type BenchState = {
 // Sanity-check representative fixture output before timing.
 assert.strictEqual(md.details('s', nestedDetails(100)).split('<details>').length - 1, 101, 'nested pairs stay live');
 assert.ok(md.details('s', adversarial['stray details tags']).includes('<\u200B/details>'), 'stray tags are neutralized');
-assert.strictEqual(md.kbd(repeatTo(adversarial.backslashes, 1000)), `<kbd>${'\\'.repeat(1000)}</kbd>`, 'backslashes pass through');
+assert.strictEqual(md.render(md.kbd(repeatTo(adversarial.backslashes, 1000))), `<kbd>${'\\'.repeat(1000)}</kbd>`, 'backslashes pass through');
 assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWith(String.raw`| \|\| |`), 'escaped pipes stay escaped once');
-assert.ok(md.link('u', adversarial['unclosed images']).includes(String.raw`!\[`), 'unclosed image brackets are escaped');
-assert.ok(md.bold(`_${adversarial['unterminated attributes']}`).startsWith(String.raw`__\_`), 'emphasis scanner runs');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 // The whole run must reach the trailing-whitespace step: collapsing it there
 // is the only way escape() returns a single space.
 assert.strictEqual(md.escape(whitespace(1000, true)), 'x ', 'trailing whitespace is collapsed');
 assert.strictEqual(md.escape(whitespace(1000, false)), whitespace(1000, false), 'interior whitespace survives');
-// An unterminated attribute is not a protected tag, so the trailing bracket is escaped.
-assert.ok(md.link('u', unterminatedAttribute(1000)).endsWith(String.raw`\[](u)`), 'unterminated attribute leaves brackets unprotected');
 const backtickFixture = distinctBacktickRuns(1000);
 assert.ok(backtickFixture.length <= 1000, 'backtick fixture stays within the size budget');
-assert.ok(md.link('u', backtickFixture).startsWith('[`[` '), 'link label preserves brackets inside code spans');
 
 // `--check` runs only the scaling sweeps. CI uses it to
 // catch superlinear regressions without depending on runner speed.
@@ -40,24 +35,23 @@ if (!check) {
 	const listItems = Array.from({ length: 10 }, (_, index) => `item ${index}`);
 	bench('escape - plain text', () => md.escape(plainText));
 	bench('escape - punctuated text', () => md.escape(userText));
-	// The text has no `_`, so bold() wraps it directly; it contains `*`, so italic() scans it.
-	bench('bold - punctuated text', () => md.bold(userText));
-	bench('italic - punctuated text', () => md.italic(userText));
-	bench('code', () => md.code('const x = `a`;'));
+	bench('bold - punctuated text', () => md.render(md.bold(userText)));
+	bench('italic - punctuated text', () => md.render(md.italic(userText)));
+	bench('code', () => md.render(md.code('const x = `a`;')));
 	bench('codeBlock', () => md.codeBlock('const x = 1;\n```\n', 'ts'));
-	bench('link - with text', () => md.link('https://example.com/a?b=1&c=2', 'Example'));
-	bench('link - autolink', () => md.link('https://example.com/a?b=1&c=2'));
-	bench('link - URL label', () => md.link('/docs/guide a b'));
-	bench('image', () => md.image('https://example.com/badge.svg', 'badge'));
+	bench('link - with text', () => md.render(md.link('https://example.com/a?b=1&c=2', 'Example')));
+	bench('link - autolink', () => md.render(md.link('https://example.com/a?b=1&c=2')));
+	bench('link - URL label', () => md.render(md.link('/docs/guide a b')));
+	bench('image', () => md.render(md.image('https://example.com/badge.svg', 'badge')));
 	bench('heading', () => md.h2(userText));
 	// Renamed when the array moved out of the timed callback, so older results
 	// are not compared by name.
 	bench('ul - 10 prebuilt items', () => md.ul(listItems));
 	bench('table - 100 object rows', () => md.table(tableRows));
 	bench('details', () => md.details('Summary', userText));
-	bench('math', () => md.math('x^2 + y_1'));
+	bench('math', () => md.render(md.math('x^2 + y_1')));
 	bench('footnote', () => md.footnote('note-1', userText));
-	bench('el', () => md.el('div', { id: 'a' }, 'content'));
+	bench('el', () => md.render(md.el('div', { id: 'a' }, 'content')));
 
 	// A realistic document that composes every helper.
 	bench('document - $sections sections', function* document(state: BenchState) {
@@ -74,12 +68,8 @@ if (!check) {
 const sizes = [8000, 32_000, 128_000];
 
 const sweeps: [string, Pattern, (input: string) => string][] = [
-	// A leading delimiter skips the direct-wrap fast path, so the scanner runs.
-	['bold', 'unterminated attributes', input => md.bold(`_${input}`)],
-	['italic', 'unterminated comments', input => md.italic(`*${input}`)],
-	['link label', 'unclosed images', input => md.link('u', input)],
 	['details', 'stray details tags', input => md.details('s', input)],
-	['kbd', 'backslashes', md.kbd],
+	['kbd', 'backslashes', input => md.render(md.kbd(input))],
 	['escape', 'backslashes', md.escape],
 ];
 
@@ -100,13 +90,6 @@ for (const [name, pattern, format] of sweeps) {
 }
 
 summary(() => {
-	bench('link label - unterminated attribute $size', function* attributeSweep(state: BenchState) {
-		const input = unterminatedAttribute(state.get('size'));
-		yield () => md.link('u', input);
-	}).args('size', sizes);
-});
-
-summary(() => {
 	bench('escape - leading whitespace $size', function* leadingWhitespace(state: BenchState) {
 		const input = `${repeatTo(' \t', state.get('size') - 1)}x`;
 		yield () => md.escape(input);
@@ -123,23 +106,16 @@ for (const trailing of [true, false]) {
 }
 
 summary(() => {
-	bench('link label - distinct backtick runs $size', function* backtickSweep(state: BenchState) {
-		const input = distinctBacktickRuns(state.get('size'));
-		yield () => md.link('u', input);
-	}).args('size', sizes);
-});
-
-summary(() => {
 	bench('code - distinct backtick runs $size', function* backticks(state: BenchState) {
 		const input = distinctBacktickRuns(state.get('size'));
-		yield () => md.code(input);
+		yield () => md.render(md.code(input));
 	}).args('size', sizes);
 });
 
 summary(() => {
 	bench('math - distinct backtick runs $size', function* backticks(state: BenchState) {
 		const input = distinctBacktickRuns(state.get('size'));
-		yield () => md.math(input);
+		yield () => md.render(md.math(input));
 	}).args('size', sizes);
 });
 

@@ -53,6 +53,7 @@ export const image = (url: string, alt?: string, options?: Record<string, string
 			...context,
 			singleLine: true,
 			indent: undefined,
+			literalGuards: false,
 		});
 		if (options && Object.keys(options).length) {
 			if (hasOnlyTitle(options)) { return `![${text}](${escapeUrl(url)} "${escapeTitle(String(options.title))}")`; }

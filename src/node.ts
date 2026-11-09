@@ -10,6 +10,7 @@ export type Context = {
 	htmlElement: boolean;
 	// Backslash escapes can stay visible inside raw HTML, so text uses character references.
 	html: boolean;
+	literalGuards: boolean;
 };
 
 const inlineBrand: unique symbol = Symbol('inline');
@@ -43,6 +44,7 @@ const context = (): Context => ({
 	indent: 0,
 	htmlElement: false,
 	html: false,
+	literalGuards: true,
 });
 
 export const inlineNode = (format: (context: Context) => string, marker = '', parts?: readonly Inline[]): InlineNode => ({
@@ -93,8 +95,8 @@ const separatorNeeded = (
 	const closing = previousMarker && previous.endsWith(previousMarker) ? previousMarker[0] : '';
 	const opening = nextMarker && next.startsWith(nextMarker) ? nextMarker[0] : '';
 	if (closing && closing === opening) { return true; }
-	// GitHub does not close emphasis after punctuation when another emphasis run follows,
-	// so touching emphasis nodes are always separated.
+	// GitHub may not close a `*` run after punctuation when another emphasis run follows.
+	// Separate all touching emphasis nodes conservatively.
 	if ((closing === '*' || closing === '~') && (opening === '*' || opening === '~')) { return true; }
 	if (left === ']' && ':(['.includes(right) && right) { return true; }
 	if (left === '!' && right === '[' && !/(?<!\\)(?:\\\\)*\\!$/.test(previous)) { return true; }
@@ -141,6 +143,7 @@ export const renderInline = (input: Inline, current: Context): string => {
 	let previousMarker = '';
 	let literals = '';
 	let { indent } = current;
+	let bufferedIndent = indent;
 	const appendPart = (part: string, marker: string) => {
 		if (!part) { return; }
 		if (previous && separatorNeeded(previous, previousMarker, part, marker)) {
@@ -155,9 +158,12 @@ export const renderInline = (input: Inline, current: Context): string => {
 	const flush = () => {
 		if (!literals) { return; }
 		const text = current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals;
-		const escaped = current.html ? escapeHtmlText(text) : escapeText(text, indent);
+		const escaped = current.html
+			? escapeHtmlText(text)
+			: escapeText(text, indent, current.literalGuards);
 		appendPart(current.htmlElement && !current.html ? escapeInlineHtml(escaped) : escaped, '');
 		literals = '';
+		bufferedIndent = indent;
 	};
 	const append = (item: Inline) => {
 		if (Array.isArray(item)) {
@@ -176,10 +182,11 @@ export const renderInline = (input: Inline, current: Context): string => {
 		}
 		if (typeof item === 'string') {
 			literals += item;
+			bufferedIndent = advanceIndent(bufferedIndent, current.singleLine ? item.replaceAll(/\r\n|\r|\n/g, ' ') : item);
 			return;
 		}
 		const node = item as InlineNode;
-		const childIndent = literals ? advanceIndent(indent, current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals) : indent;
+		const childIndent = literals ? bufferedIndent : indent;
 		const childContext = childIndent === current.indent
 			? current
 			: {
@@ -192,6 +199,7 @@ export const renderInline = (input: Inline, current: Context): string => {
 		}
 		flush();
 		appendPart(part, node.marker);
+		bufferedIndent = indent;
 	};
 	append(input);
 	flush();
@@ -208,15 +216,17 @@ export const render = (content: Block | Inline): string => {
 	if (typeof content !== 'string' && !Array.isArray(content) && blockBrand in content) { return content.render(context()); }
 	return renderInline(content as Inline, context());
 };
+
+/** Emits trusted Markdown verbatim without escaping it relative to neighboring content. */
 export const raw = (markdown: string): InlineNode => inlineNode(() => markdown);
 export const md = (strings: TemplateStringsArray, ...values: Inline[]): InlineNode => {
 	const parts: Inline[] = [];
 	for (const [index, value] of values.entries()) {
-		if (strings[index]) { parts.push(raw(strings[index])); }
+		if (strings[index]) { parts.push(strings[index]); }
 		parts.push(value);
 	}
 	const final = strings.at(-1)!;
-	if (final) { parts.push(raw(final)); }
+	if (final) { parts.push(final); }
 	return inlineNode(current => renderInline(parts, current), '', parts);
 };
 export const join = (items: readonly Inline[], separator: Inline): Inline => {

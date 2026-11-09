@@ -13,9 +13,16 @@ expectTypeOf<BlockNode>().not.toExtend<Inline>();
 
 describe('typed Markdown core', () => {
 	test('escapes interpolated strings and preserves trusted Markdown', () => {
-		assert.equal(render(md`**${'a*b'}** ${raw('<br>')}`), String.raw`**a\*b** <br>`);
+		assert.equal(render(md`${bold('a*b')} ${raw('<br>')}`), String.raw`**a\*b** <br>`);
 		assert.equal(render(md`${'www'}${'.example.com'}`), String.raw`www\.example.com`);
 		assert.equal(render([raw('@user'), ' ', raw(':smile:')]), '@user :smile:');
+	});
+	test('treats template statics and interpolations as one literal sequence', () => {
+		assert.equal(render(md`1${'. item'}`), render(['1', '. item']));
+		assert.equal(render(md`www${'.example.com'}`), render(['www', '.example.com']));
+		assert.equal(render(md`see ${link('/p', 'x')} now`), render(['see ', link('/p', 'x'), ' now']));
+		const html = renderHtml(render(md`<span title="${'" onmouseover="x'}">`));
+		assert.doesNotMatch(html, /<span/);
 	});
 	test('joins inline parts and blocks at their own boundaries', () => {
 		assert.equal(render(join(['a*b', 'c'], ', ')), String.raw`a\*b, c`);
@@ -33,6 +40,7 @@ describe('typed Markdown core', () => {
 			indent: 0,
 			htmlElement: false,
 			html: false,
+			literalGuards: true,
 		});
 		assert.equal(renderInline(['a', inlineNode(current => (current.indent === 0 ? 'x' : 'y'))], context), 'ay');
 	});

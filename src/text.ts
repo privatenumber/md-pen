@@ -8,19 +8,22 @@ import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
 const escapable = /[\r\n\t:#@$\\*`[\]<>~&_|]|gh-|(?:https?|ftp):|www\.| {2}$|^ *[\d+=-]/i;
 
 // Escape literal text, not Markdown that has already been serialized.
-export const escapeText = (input: string, indent: number | undefined): string => {
+export const escapeText = (input: string, indent: number | undefined, guards = true): string => {
 	if (!escapable.test(input) && (indent === undefined || !input.startsWith(' '))) { return input; }
-	let text = normalizeLineEndings(input)
-		.replaceAll(/(^|[ \t\n(]):[\w:+-]+/g, match => match.replaceAll(/:([\w+-]+)(?=:)/g, (shortcode, name: string) => (
-			/^\d+$/.test(name) && name !== '100' && name !== '1234' ? shortcode : `:\u200B${name}`
-		)))
-		.replaceAll(/\B#(?=\d)|(?<=[\w.-]\/[\w.-]{1,100})#(?=\d)/g, '#\u200B')
-		.replaceAll(/\bGH-(?=\d)/gi, '$&\u200B')
-		.replaceAll(/@(?:[\w-]+(?:\.[\w-]+)+)?/g, (match, offset: number, source: string) => (
-			!/\w/.test(source[offset - 1] ?? '') || match.length > 1 ? `@\u200B${match.slice(1)}` : match
-		))
-		.replaceAll('$', '\u200B$')
-		.replaceAll(/(?<![ \t])[ \t]+(?=\n|$)/g, ' ');
+	let text = normalizeLineEndings(input);
+	if (guards) {
+		text = text
+			.replaceAll(/(^|[ \t\n(]):[\w:+-]+/g, match => match.replaceAll(/:([\w+-]+)(?=:)/g, (shortcode, name: string) => (
+				/^\d+$/.test(name) && name !== '100' && name !== '1234' ? shortcode : `:\u200B${name}`
+			)))
+			.replaceAll(/\B#(?=\d)|(?<=[\w.-]\/[\w.-]{1,100})#(?=\d)/g, '#\u200B')
+			.replaceAll(/\bGH-(?=\d)/gi, '$&\u200B')
+			.replaceAll(/@(?:[\w-]+(?:\.[\w-]+)+)?/g, (match, offset: number, source: string) => (
+				!/\w/.test(source[offset - 1] ?? '') || match.length > 1 || source[offset + 1] === '.' ? `@\u200B${match.slice(1)}` : match
+			))
+			.replaceAll('$', '\u200B$');
+	}
+	text = text.replaceAll(/(?<![ \t])[ \t]+(?=\n|$)/g, ' ');
 	text = text.replaceAll(/[\\*`[\]<>~$|]|&(?=(?:#\d+|#x[\da-f]+|[a-z][a-z\d]{1,31});)|(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/giu, String.raw`\$&`);
 	text = text.replaceAll(/(?:https?|ftp):\/\/|www\./gi, match => match.replace(/[:.]/, String.raw`\$&`));
 	text = text.replaceAll(/(^|\n)( {0,3})(?=(?:-{3,}|=+)[ \t]*(?:\n|$))([-=])/g, (match, prefix: string, spaces: string, marker: string, offset: number) => (

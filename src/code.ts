@@ -1,5 +1,6 @@
 import { backtickDelimiter } from './utils/backtick-delimiter.ts';
 import { inlineNode } from './node.ts';
+import { escapeHtml } from './escape.ts';
 
 const formatCode = (text: string) => {
 	if (text.length === 0) {
@@ -30,7 +31,9 @@ const formatCode = (text: string) => {
 	return `${delimiter} ${normalized} ${delimiter}`;
 };
 
-export const code = (text: string) => inlineNode(() => formatCode(text), '`');
+export const code = (text: string) => inlineNode(context => (
+	context.html ? `<code>${escapeHtml(text.replaceAll(/\r\n|\r|\n/g, ' '))}</code>` : formatCode(text)
+), '`');
 
 export const codeBlock = (content: string, language?: string) => {
 	// Sanitize: info string cannot contain backticks or newlines per CommonMark

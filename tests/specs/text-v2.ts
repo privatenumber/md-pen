@@ -4,6 +4,9 @@ import { escape } from '../../src/text.ts';
 import { render } from '../utils/render.ts';
 
 describe('literal text escaping', () => {
+	test('guards email-like text with a dot immediately after @', () => {
+		assert.equal(escape('a@.com'), 'a@\u200B.com');
+	});
 	test('leaves ordinary punctuation and intraword underscores unchanged', () => {
 		assert.equal(escape('a.b x_y'), 'a.b x_y');
 		assert.equal(escape('a*b'), String.raw`a\*b`);

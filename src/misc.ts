@@ -27,7 +27,7 @@ const selfClosingElements = new Set([
 export const el = (
 	tag: string,
 	attributes?: HtmlOptions,
-	content?: string,
+	content?: Inline,
 ) => {
 	if (!/^[a-z][a-z0-9-]*$/i.test(tag)) {
 		throw new TypeError(`Invalid HTML tag name: ${tag}`);
@@ -36,5 +36,9 @@ export const el = (
 	if (content === undefined && selfClosingElements.has(tag.toLowerCase())) {
 		return inlineNode(() => `<${tag}${htmlAttributes(attributes)} />`);
 	}
-	return inlineNode(() => `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`);
+	return inlineNode(context => `<${tag}${htmlAttributes(attributes)}>${renderInline(content ?? '', {
+		...context,
+		html: true,
+		indent: undefined,
+	})}</${tag}>`);
 };

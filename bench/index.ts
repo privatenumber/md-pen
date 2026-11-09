@@ -15,7 +15,7 @@ type BenchState = {
 // Sanity-check representative fixture output before timing.
 assert.strictEqual(md.details('s', nestedDetails(100)).split('<details>').length - 1, 101, 'nested pairs stay live');
 assert.ok(md.details('s', adversarial['stray details tags']).includes('<\u200B/details>'), 'stray tags are neutralized');
-assert.strictEqual(md.render(md.kbd(repeatTo(adversarial.backslashes, 1000))), `<kbd>${'\\'.repeat(1000)}</kbd>`, 'backslashes pass through');
+assert.strictEqual(md.render(md.kbd(repeatTo(adversarial.backslashes, 1000))), `<kbd>${'\\'.repeat(2000)}</kbd>`, 'backslashes are escaped');
 assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWith(String.raw`| \|\| |`), 'escaped pipes stay escaped once');
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 // The whole run must reach the trailing-whitespace step: collapsing it there
@@ -66,6 +66,14 @@ if (!check) {
 // grow superlinearly even for built-in string methods, which hides the code's own
 // complexity.
 const sizes = [8000, 32_000, 128_000];
+
+summary(() => {
+	bench('inline - empty nodes $pairs', function* emptyNodes(state: BenchState) {
+		const empty = md.math('');
+		const input = Array.from({ length: state.get('pairs') }, () => ['a', empty]);
+		yield () => md.render(input);
+	}).args('pairs', [4000, 16_000, 64_000]);
+});
 
 const sweeps: [string, Pattern, (input: string) => string][] = [
 	['details', 'stray details tags', input => md.details('s', input)],

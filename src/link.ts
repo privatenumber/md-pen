@@ -30,14 +30,17 @@ export const link = (url: string, label?: Inline, options?: Record<string, strin
 			singleLine: true,
 			lineStart: false,
 		};
-		const text = renderInline(label ?? url, labelContext);
 		if (options && Object.keys(options).length) {
-			if (hasOnlyTitle(options)) { return `[${text}](${escapeUrl(href)} "${escapeTitle(options.title)}")`; }
+			if (hasOnlyTitle(options)) { return `[${renderInline(label ?? url, labelContext)}](${escapeUrl(href)} "${escapeTitle(options.title)}")`; }
 			return `<a${htmlAttributes({
 				...options,
 				href: htmlDestination(href),
-			})}>${text}</a>`;
+			})}>${renderInline(label ?? url, {
+				...labelContext,
+				html: true,
+			})}</a>`;
 		}
+		const text = renderInline(label ?? url, labelContext);
 		// eslint-disable-next-line no-control-regex
 		if (label === undefined && /^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) { return `<${url}>`; }
 		return `[${text}](${escapeUrl(href)})`;

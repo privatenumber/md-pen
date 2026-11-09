@@ -1,10 +1,12 @@
-import { escapeText } from './text.ts';
+import { escapeHtmlText, escapeText } from './text.ts';
 
 export type Context = {
 	emphasis: number;
 	inLink: boolean;
 	singleLine: boolean;
 	lineStart: boolean;
+	// Inside raw HTML, Markdown backslash escapes may stay visible, so text uses character references.
+	html: boolean;
 };
 
 const inlineBrand: unique symbol = Symbol('inline');
@@ -30,6 +32,7 @@ const context = (): Context => ({
 	inLink: false,
 	singleLine: false,
 	lineStart: true,
+	html: false,
 });
 
 export const inlineNode = (format: (context: Context) => string, marker = '', parts?: readonly Inline[]): InlineNode => ({
@@ -112,7 +115,7 @@ export const renderInline = (input: Inline, current: Context): string => {
 	const flush = () => {
 		if (!literals) { return; }
 		const text = current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals;
-		appendPart(escapeText(text, lineStart), '');
+		appendPart(current.html ? escapeHtmlText(text) : escapeText(text, lineStart), '');
 		literals = '';
 	};
 	const append = (item: Inline) => {

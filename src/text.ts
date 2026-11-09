@@ -25,3 +25,10 @@ export const escapeText = (input: string, lineStart = true): string => {
 		!lineStart && offset === 0 ? match : `${prefix}&#32;${indent.slice(1)}`
 	));
 };
+
+// Literal text inside raw HTML: character references render in both Markdown flow and HTML blocks.
+export const escapeHtmlText = (text: string): string => text
+	.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `&#${character.codePointAt(0)};`)
+	// GitHub still resolves math and mentions after decoding references.
+	.replaceAll('&#36;', '\u200B&#36;')
+	.replaceAll('&#64;', '&#64;\u200B');

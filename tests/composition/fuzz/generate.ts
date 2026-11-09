@@ -100,8 +100,8 @@ export const generator = (seed: number) => {
 			default: {
 				return {
 					kind,
-					child: kind === 'link' && random(2) === 0
-						? sequence(depth - 1, true)
+					child: random(2) === 0
+						? sequence(depth - 1, inLink || kind === 'link')
 						: inline(depth - 1, inLink || kind === 'link'),
 				};
 			}

@@ -43,9 +43,9 @@ export const link = (url: string, label?: Inline, options?: Record<string, strin
 				href: htmlDestination(href),
 			})}>${label === undefined ? escapeHtmlText(url.replaceAll(/\r\n|\r|\n/g, ' ')) : renderInline(label, labelContext)}</a>`;
 		}
-		const text = renderInline(label ?? url, labelContext);
 		// eslint-disable-next-line no-control-regex
 		if (label === undefined && /^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) { return `<${url}>`; }
+		const text = renderInline(label ?? url, labelContext);
 		return `[${text}](${escapeUrl(href)})`;
 	})
 );

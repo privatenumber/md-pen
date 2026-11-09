@@ -55,11 +55,23 @@ describe('emphasis', () => {
 		expect(renderHtml(bold([code('a'), ' b']))).toBe('<p><strong><code>a</code> b</strong></p>');
 		expect(renderHtml(strikethrough(bold('x')))).toBe('<p><del><strong>x</strong></del></p>');
 		expect(renderHtml(italic(md`a ${code('b')} c`))).toBe('<p><em>a <code>b</code> c</em></p>');
-		// Shared `*` runs need no separator; GitHub parses these as nested emphasis.
-		expect(String(italic(bold('a')))).toBe('***a***');
-		expect(String(italic(['a', bold('b')]))).toBe('*a**b***');
-		expect(renderHtml(italic(['a', bold('b')]))).toBe('<p><em>a<strong>b</strong></em></p>');
+		expect(String(italic(bold('a')))).toBe('*<!-- -->**a**<!-- -->*');
+		expect(String(italic(['a', bold('b')]))).toBe('*a**b**<!-- -->*');
+		expect(renderHtml(italic(['a', bold('b')]))).toBe('<p><em>a<strong>b</strong><!-- --></em></p>');
 		expect(String(italic('*x*'))).toBe(String.raw`*\*x\**`);
+	});
+
+	test('guards delimiter boundaries without changing escaped trailing markers', () => {
+		const nested = italic([bold('a'), 'x', bold('b')]);
+		expect(String(nested)).toBe('*<!-- -->**a**x**b**<!-- -->*');
+		expect(renderHtml(nested)).toBe('<p><em><!-- --><strong>a</strong>x<strong>b</strong><!-- --></em></p>');
+		expect(String(italic([bold('a'), 'x']))).toBe('*<!-- -->**a**x*');
+		expect(String(italic(['x', bold('a')]))).toBe('*x**a**<!-- -->*');
+		for (const count of [0, 1, 2, 3, 4]) {
+			const body = `x${'\\'.repeat(count)}*`;
+			const guard = count % 2 === 0 ? '<!-- -->' : '';
+			expect(String(italic(raw(body)))).toBe(`*${body}${guard}*`);
+		}
 	});
 
 	test('flattens same-type nesting', () => {

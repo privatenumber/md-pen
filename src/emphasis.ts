@@ -35,7 +35,11 @@ const emphasize = (content: Inline, marker: string, flag: number): InlineNode =>
 		const prefix = normalizeBoundary(leading);
 		const body = text.slice(leading.length, end);
 		if (!body) { return `${prefix}${normalizeBoundary(suffix)}`; }
-		return `${prefix}${marker}${body}${marker}${normalizeBoundary(suffix)}`;
+		let backslashes = 0;
+		while (body[body.length - backslashes - 2] === '\\') { backslashes += 1; }
+		const opening = body.startsWith(marker[0]) ? '<!-- -->' : '';
+		const closing = body.endsWith(marker[0]) && backslashes % 2 === 0 ? '<!-- -->' : '';
+		return `${prefix}${marker}${opening}${body}${closing}${marker}${normalizeBoundary(suffix)}`;
 	};
 	return {
 		...inlineNode(format, marker),

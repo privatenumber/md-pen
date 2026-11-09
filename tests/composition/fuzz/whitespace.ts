@@ -2,7 +2,6 @@ import type { Structure } from './tree.ts';
 
 const blockTags = new Set(['p', 'blockquote', 'alert', 'details', 'summary', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'li', 'th', 'td', 'ul', 'ol', 'pre', 'table', 'thead', 'tbody', 'tr', 'hr']);
 const atomicTags = new Set(['img', 'br', 'ref', 'checkbox', 'code']);
-const emphasisTags = new Set(['strong', 'em', 'del']);
 const trimTrailingInlineSpace = (entries: Structure[]): boolean => {
 	for (let index = entries.length - 1; index >= 0; index -= 1) {
 		const entry = entries[index];
@@ -81,25 +80,5 @@ export const compact = (
 		}
 		trimTrailingInlineSpace(result);
 	}
-	return result.filter(item => item !== '').map((item) => {
-		if (typeof item === 'string' || !emphasisTags.has(item.tag)) { return item; }
-		const chain = [item];
-		let inner = item;
-		while (inner.children.length === 1 && typeof inner.children[0] !== 'string'
-			&& emphasisTags.has(inner.children[0].tag)) {
-			inner = inner.children[0];
-			chain.push(inner);
-		}
-		if (chain.length === 1) { return item; }
-		const content = inner.children;
-		chain.sort((a, b) => a.tag.localeCompare(b.tag));
-		let children = content;
-		for (const entry of chain.toReversed()) {
-			children = [{
-				...entry,
-				children,
-			}];
-		}
-		return children[0];
-	});
+	return result.filter(item => item !== '');
 };

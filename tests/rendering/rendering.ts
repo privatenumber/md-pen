@@ -15,9 +15,8 @@ import {
 
 describe('rendering: non-trivial output', () => {
 	test('bold(italic()) renders as bold+italic', () => {
-		// `***text***` parses as em(strong); a full-span pair looks the same in either order.
-		expect(String(bold(italic('text')))).toBe('***text***');
-		expect(render(bold(italic('text')))).toBe('<p><em><strong>text</strong></em></p>');
+		expect(String(bold(italic('text')))).toBe('**<!-- -->*text*<!-- -->**');
+		expect(render(bold(italic('text')))).toBe('<p><strong><!-- --><em>text</em><!-- --></strong></p>');
 	});
 
 	test('code with backticks renders correctly', () => {

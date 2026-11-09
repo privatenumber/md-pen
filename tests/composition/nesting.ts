@@ -19,7 +19,7 @@ import {
 describe('inline in inline', () => {
 	test('bold(italic()) composes naturally', () => {
 		const md = bold(italic('text'));
-		expect(String(md)).toBe('***text***');
+		expect(String(md)).toBe('**<!-- -->*text*<!-- -->**');
 		const html = render(md);
 		expect(html).toContain('<strong>');
 		expect(html).toContain('<em>');
@@ -27,7 +27,7 @@ describe('inline in inline', () => {
 
 	test('italic(bold()) composes naturally', () => {
 		const md = italic(bold('text'));
-		expect(String(md)).toBe('***text***');
+		expect(String(md)).toBe('*<!-- -->**text**<!-- -->*');
 		const html = render(md);
 		expect(html).toContain('<em>');
 		expect(html).toContain('<strong>');
@@ -88,7 +88,7 @@ describe('inline in inline', () => {
 
 	test('strikethrough(bold(italic()))', () => {
 		const md = strikethrough(bold(italic('all')));
-		expect(String(md)).toBe('~~***all***~~');
+		expect(String(md)).toBe('~~**<!-- -->*all*<!-- -->**~~');
 		const html = render(md);
 		expect(html).toContain('<del>');
 		expect(html).toContain('<strong>');

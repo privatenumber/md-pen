@@ -106,10 +106,10 @@ describe('seeded composition', () => {
 		const actual = compact(normalize(parseFragment(render(markdown(tree[0], new Set())))));
 		assert.deepStrictEqual(actual, wanted);
 	});
-	test('canonicalizes only full-span emphasis chains', () => {
+	test('preserves full-span emphasis order', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));
-		assert.deepStrictEqual(structure('<strong><em>x</em></strong>'), structure('<em><strong>x</strong></em>'));
-		assert.deepStrictEqual(structure('<del><strong><em>x</em></strong></del>'), structure('<em><del><strong>x</strong></del></em>'));
+		assert.notDeepStrictEqual(structure('<strong><em>x</em></strong>'), structure('<em><strong>x</strong></em>'));
+		assert.notDeepStrictEqual(structure('<del><strong><em>x</em></strong></del>'), structure('<em><del><strong>x</strong></del></em>'));
 		assert.notDeepStrictEqual(structure('<strong>a<em>x</em></strong>'), structure('<em><strong>ax</strong></em>'));
 	});
 	test('escapes adjacent literal leaves as one run across nested sequences', () => {

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'manten';
 import { expectTypeOf } from 'expect-type';
 import {
-	blockNode, inlineNode, join, md, raw, render, type BlockNode, type Inline,
+	blockNode, inlineNode, join, md, raw, render, renderInline, type BlockNode, type Inline,
 } from '../../src/node.ts';
 import { render as renderHtml } from '../utils/render.ts';
 
@@ -19,6 +19,16 @@ describe('typed Markdown core', () => {
 		assert.equal(render(['1', '. item']), String.raw`1\. item`);
 		assert.equal(render(['www', '.example.com']), String.raw`www\.example.com`);
 		assert.equal(render(['www', inlineNode(() => ''), '.example.com']), String.raw`www\.example.com`);
+		assert.equal(render(['www', raw(''), '.example.com']), String.raw`www\.example.com`);
+	});
+	test('does not mutate the caller context', () => {
+		const context = Object.freeze({
+			emphasis: 0,
+			inLink: false,
+			singleLine: false,
+			lineStart: true,
+		});
+		assert.equal(renderInline(['a', inlineNode(current => (current.lineStart ? 'x' : 'y'))], context), 'ay');
 	});
 	test('separates delimiter collisions and flanking failures', () => {
 		const bold = (text: string) => inlineNode(() => `**${text}**`, '**');

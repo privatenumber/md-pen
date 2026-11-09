@@ -100,18 +100,19 @@ export const renderInline = (input: Inline, current: Context): string => {
 	let previous = '';
 	let previousMarker = '';
 	let literals = '';
+	let { lineStart } = current;
 	const appendPart = (part: string, marker: string) => {
 		if (!part) { return; }
 		if (previous && separatorNeeded(previous, previousMarker, part, marker)) { output += '<!-- -->'; }
 		output += part;
 		previous = part;
 		previousMarker = marker;
-		current.lineStart = part.endsWith('\n');
+		lineStart = part.endsWith('\n');
 	};
 	const flush = () => {
 		if (!literals) { return; }
 		const text = current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals;
-		appendPart(escapeText(text, current.lineStart), '');
+		appendPart(escapeText(text, lineStart), '');
 		literals = '';
 	};
 	const append = (item: Inline) => {
@@ -128,12 +129,14 @@ export const renderInline = (input: Inline, current: Context): string => {
 			return;
 		}
 		const node = item as InlineNode;
-		const { lineStart } = current;
-		if (literals) {
-			current.lineStart = !current.singleLine && /[\r\n]$/u.test(literals);
-		}
-		const part = node.render(current);
-		current.lineStart = lineStart;
+		const childLineStart = literals ? !current.singleLine && /[\r\n]$/u.test(literals) : lineStart;
+		const childContext = childLineStart === current.lineStart
+			? current
+			: {
+				...current,
+				lineStart: childLineStart,
+			};
+		const part = node.render(childContext);
 		if (!part) {
 			return;
 		}
@@ -155,7 +158,7 @@ export const render = (content: Block | Inline): string => {
 	if (typeof content !== 'string' && !Array.isArray(content) && blockBrand in content) { return content.render(context()); }
 	return renderInline(content as Inline, context());
 };
-export const raw = (markdown: string): InlineNode => inlineNode(() => markdown, '', markdown ? undefined : []);
+export const raw = (markdown: string): InlineNode => inlineNode(() => markdown);
 export const md = (strings: TemplateStringsArray, ...values: Inline[]): InlineNode => {
 	const parts: Inline[] = [];
 	for (const [index, value] of values.entries()) {

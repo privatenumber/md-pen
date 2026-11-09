@@ -2,8 +2,9 @@ import { describe, test, expect } from 'manten';
 import { markdownToHTML } from 'comrak';
 import { render } from '../utils/render.ts';
 import {
-	escape, escapeHtml, escapeTableCell, escapeUrl, htmlAttributes,
+	escapeHtml, escapeTableCell, escapeUrl, htmlAttributes,
 } from '../../src/escape.ts';
+import { escapeText as escape } from '../../src/text.ts';
 
 describe('escape', () => {
 	test('escapes backslashes', () => {

@@ -2,7 +2,7 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
 import { el, kbd, sub } from '../../src/misc.ts';
-import { escape } from '../../src/escape.ts';
+import { escapeText as escape } from '../../src/text.ts';
 import { code } from '../../src/code.ts';
 import { math } from '../../src/math.ts';
 

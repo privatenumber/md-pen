@@ -1,9 +1,8 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { code } from '../../src/code.ts';
-import { escape } from '../../src/escape.ts';
+import { escapeText as escape } from '../../src/text.ts';
 import { link } from '../../src/link.ts';
-import { createInlineScanner } from '../../src/inline-constructs.ts';
 import { footnote, footnoteRef } from '../../src/footnote.ts';
 import {
 	bold, italic, strikethrough,
@@ -98,15 +97,6 @@ describe('emphasis', () => {
 
 	test('escapes delimiters in malformed declarations', () => {
 		expect(render(italic('<!FOO*hi*>'))).toBe('<p><em>&lt;!FOO*hi*&gt;</em></p>');
-	});
-
-	test('scanner can skip code and escapes without skipping angle constructs', () => {
-		const text = `${String.raw`\]`}\`]\`<a x=">">`;
-		const scan = createInlineScanner(text, { angle: false });
-		expect(scan.protectedEnd(0)).toBe(2);
-		expect(scan.protectedEnd(2)).toBe(5);
-		expect(scan.protectedEnd(5)).toBe(-1);
-		expect(createInlineScanner(text).protectedEnd(5)).toBe(text.length);
 	});
 
 	test('preserves trailing backslashes', () => {

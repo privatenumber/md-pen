@@ -2,7 +2,7 @@ import { describe, test, expect } from 'manten';
 import { parse, type DefaultTreeAdapterMap } from 'parse5';
 import { render } from '../utils/render.ts';
 import { hr, details } from '../../src/block.ts';
-import { escape } from '../../src/escape.ts';
+import { escapeText as escape } from '../../src/text.ts';
 import { codeBlock } from '../../src/code.ts';
 import { alert, blockquote } from '../../src/blockquote.ts';
 import { ol, taskList, ul } from '../../src/list.ts';

@@ -9,11 +9,11 @@ import {
 
 describe('kbd', () => {
 	test('basic key', () => {
-		expect(kbd('Enter')).toBe('<kbd>Enter</kbd>');
+		expect(String(kbd('Enter'))).toBe('<kbd>Enter</kbd>');
 	});
 
 	test('escapes HTML in key', () => {
-		expect(kbd('<script>')).toBe('<kbd>&lt;script&gt;</kbd>');
+		expect(String(kbd('<script>'))).toBe('<kbd>&lt;script&gt;</kbd>');
 	});
 
 	test('line endings cannot create Markdown blocks', () => {
@@ -22,35 +22,35 @@ describe('kbd', () => {
 			expect(html.match(/<p>/g)?.length).toBe(1);
 			expect(html).not.toContain('<h1');
 			expect(html).toContain('a  # heading');
-			expect(helper('\n a \r\n')).toContain('>  a  </');
+			expect(String(helper('\n a \r\n'))).toContain('>  a  </');
 		}
 	});
 
 	test('normalizes line endings in Markdown and table cells', () => {
-		expect(kbd('a\r\nb')).toBe('<kbd>a b</kbd>');
-		expect(kbd('a\r\n \t\r\nb')).toBe('<kbd>a  \t b</kbd>');
-		expect(kbd(' a  b ')).toBe('<kbd> a  b </kbd>');
+		expect(String(kbd('a\r\nb'))).toBe('<kbd>a b</kbd>');
+		expect(String(kbd('a\r\n \t\r\nb'))).toBe('<kbd>a  \t b</kbd>');
+		expect(String(kbd(' a  b '))).toBe('<kbd> a  b </kbd>');
 		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
 		expect(render(kbd('`a  \n  b`'))).toBe('<p><kbd><code>a     b</code></kbd></p>');
-		expect(render(table([['K'], [kbd('a\nb')]]))).toContain('<kbd>a b</kbd>');
+		expect(render(table([['K'], [String(kbd('a\nb'))]]))).toContain('<kbd>a b</kbd>');
 	});
 
 	test('composes escaped HTML punctuation without double escaping', () => {
 		for (const helper of [kbd, sub, sup]) {
 			expect(render(helper(escape('A & B <x>')))).toContain('A &amp; B &lt;x&gt;');
-			expect(render(el('div', undefined, helper(escape('A & B <x>'))))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(el('div', undefined, String(helper(escape('A & B <x>')))))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
 		}
 	});
 
 	test('preserves backslash runs around HTML punctuation', () => {
-		expect(kbd(String.raw`\< \\< \\\<`)).toBe(String.raw`<kbd>&lt; \\&lt; \\&lt;</kbd>`);
+		expect(String(kbd(String.raw`\< \\< \\\<`))).toBe(String.raw`<kbd>&lt; \\&lt; \\&lt;</kbd>`);
 	});
 
 	test('escaped HTML cannot become a tag inside an HTML block', () => {
 		for (const helper of [kbd, sub, sup]) {
-			const html = render(el('div', undefined, helper(escape('<img src=x onerror=alert(1) >'))));
+			const html = render(el('div', undefined, String(helper(escape('<img src=x onerror=alert(1) >')))));
 			expect(html).not.toContain('<img');
 			expect(html).toContain('&lt;img src');
 		}
@@ -74,82 +74,82 @@ describe('kbd', () => {
 
 describe('sub', () => {
 	test('basic subscript', () => {
-		expect(sub('2')).toBe('<sub>2</sub>');
+		expect(String(sub('2'))).toBe('<sub>2</sub>');
 	});
 
 	test('escapes HTML in text', () => {
-		expect(sub('a&b')).toBe('<sub>a&amp;b</sub>');
+		expect(String(sub('a&b'))).toBe('<sub>a&amp;b</sub>');
 	});
 });
 
 describe('sup', () => {
 	test('basic superscript', () => {
-		expect(sup('2')).toBe('<sup>2</sup>');
+		expect(String(sup('2'))).toBe('<sup>2</sup>');
 	});
 
 	test('escapes HTML in text', () => {
-		expect(sup('a<b')).toBe('<sup>a&lt;b</sup>');
+		expect(String(sup('a<b'))).toBe('<sup>a&lt;b</sup>');
 	});
 });
 
 describe('kbd with attributes', () => {
 	test('adds HTML attributes', () => {
-		expect(kbd('Enter', { title: 'Press Enter' })).toBe('<kbd title="Press Enter">Enter</kbd>');
+		expect(String(kbd('Enter', { title: 'Press Enter' }))).toBe('<kbd title="Press Enter">Enter</kbd>');
 	});
 
 	test('adds multiple attributes', () => {
-		expect(kbd('Ctrl', {
+		expect(String(kbd('Ctrl', {
 			id: 'key-ctrl',
 			class: 'shortcut',
-		})).toBe(
+		}))).toBe(
 			'<kbd id="key-ctrl" class="shortcut">Ctrl</kbd>',
 		);
 	});
 
 	test('empty options treated as no options', () => {
-		expect(kbd('Enter', {})).toBe('<kbd>Enter</kbd>');
+		expect(String(kbd('Enter', {}))).toBe('<kbd>Enter</kbd>');
 	});
 
 	test('escapes HTML in attribute values', () => {
-		expect(kbd('Enter', { title: 'a"b' })).toBe('<kbd title="a&quot;b">Enter</kbd>');
+		expect(String(kbd('Enter', { title: 'a"b' }))).toBe('<kbd title="a&quot;b">Enter</kbd>');
 	});
 });
 
 describe('sub with attributes', () => {
 	test('adds HTML attributes', () => {
-		expect(sub('2', { title: 'subscript' })).toBe('<sub title="subscript">2</sub>');
+		expect(String(sub('2', { title: 'subscript' }))).toBe('<sub title="subscript">2</sub>');
 	});
 
 	test('adds multiple attributes', () => {
-		expect(sub('2', {
+		expect(String(sub('2', {
 			id: 'sub-2',
 			class: 'math',
-		})).toBe(
+		}))).toBe(
 			'<sub id="sub-2" class="math">2</sub>',
 		);
 	});
 
 	test('empty options treated as no options', () => {
-		expect(sub('2', {})).toBe('<sub>2</sub>');
+		expect(String(sub('2', {}))).toBe('<sub>2</sub>');
 	});
 });
 
 describe('sup with attributes', () => {
 	test('adds HTML attributes', () => {
-		expect(sup('n', { title: 'exponent' })).toBe('<sup title="exponent">n</sup>');
+		expect(String(sup('n', { title: 'exponent' }))).toBe('<sup title="exponent">n</sup>');
 	});
 
 	test('adds multiple attributes', () => {
-		expect(sup('n', {
+		expect(String(sup('n', {
 			id: 'sup-n',
 			class: 'math',
-		})).toBe(
+		}))).toBe(
 			'<sup id="sup-n" class="math">n</sup>',
 		);
 	});
 
 	test('empty options treated as no options', () => {
-		expect(sup('n', {})).toBe('<sup>n</sup>');
+		expect(String(sup('n', {}))).toBe('<sup>n</sup>');
 	});
 });
 
@@ -161,47 +161,47 @@ describe('el', () => {
 	});
 
 	test('accepts CommonMark tag names', () => {
-		expect(el('X-custom-1', undefined, 'text')).toBe('<X-custom-1>text</X-custom-1>');
+		expect(String(el('X-custom-1', undefined, 'text'))).toBe('<X-custom-1>text</X-custom-1>');
 	});
 
 	test('self-closes HTML void elements and foreign roots without content', () => {
 		for (const tag of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']) {
-			expect(el(tag)).toBe(`<${tag} />`);
-			expect(el(tag.toUpperCase())).toBe(`<${tag.toUpperCase()} />`);
+			expect(String(el(tag))).toBe(`<${tag} />`);
+			expect(String(el(tag.toUpperCase()))).toBe(`<${tag.toUpperCase()} />`);
 		}
 		for (const tag of ['svg', 'math', 'SVG', 'MATH']) {
-			expect(el(tag)).toBe(`<${tag} />`);
-			expect(el(tag, undefined, 'content')).toBe(`<${tag}>content</${tag}>`);
+			expect(String(el(tag))).toBe(`<${tag} />`);
+			expect(String(el(tag, undefined, 'content'))).toBe(`<${tag}>content</${tag}>`);
 		}
 		expect(render(`${el('svg')}\n\nafter`)).toBe('<svg />\n<p>after</p>');
 		expect(render(`${el('math')}\n\nafter`)).toBe('<math />\n<p>after</p>');
-		expect(el('div')).toBe('<div></div>');
-		expect(el('DIV', { id: 'a' })).toBe('<DIV id="a"></DIV>');
-		expect(el('custom-element')).toBe('<custom-element></custom-element>');
+		expect(String(el('div'))).toBe('<div></div>');
+		expect(String(el('DIV', { id: 'a' }))).toBe('<DIV id="a"></DIV>');
+		expect(String(el('custom-element'))).toBe('<custom-element></custom-element>');
 		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
 	});
 
 	test('void element with attributes', () => {
-		expect(el('img', {
+		expect(String(el('img', {
 			src: 'cat.png',
 			alt: 'Cat',
-		})).toBe('<img src="cat.png" alt="Cat" />');
+		}))).toBe('<img src="cat.png" alt="Cat" />');
 	});
 
 	test('element with content', () => {
-		expect(el('div', undefined, '# Title')).toBe('<div># Title</div>');
+		expect(String(el('div', undefined, '# Title'))).toBe('<div># Title</div>');
 	});
 
 	test('element with attributes and content', () => {
-		expect(el('div', { align: 'center' }, '# Title')).toBe('<div align="center"># Title</div>');
+		expect(String(el('div', { align: 'center' }, '# Title'))).toBe('<div align="center"># Title</div>');
 	});
 
 	test('content is raw (not escaped)', () => {
-		expect(el('div', undefined, '**bold** & <em>italic</em>')).toBe('<div>**bold** & <em>italic</em></div>');
+		expect(String(el('div', undefined, '**bold** & <em>italic</em>'))).toBe('<div>**bold** & <em>italic</em></div>');
 	});
 
 	test('escapes HTML in attribute values', () => {
-		expect(el('div', { title: 'a"b' }, 'text')).toBe('<div title="a&quot;b">text</div>');
+		expect(String(el('div', { title: 'a"b' }, 'text'))).toBe('<div title="a&quot;b">text</div>');
 	});
 
 	test('blank lines in HTML attributes cannot inject Markdown', () => {
@@ -230,11 +230,11 @@ describe('el', () => {
 	});
 
 	test('empty attributes treated as no attributes', () => {
-		expect(el('div', {}, 'text')).toBe('<div>text</div>');
+		expect(String(el('div', {}, 'text'))).toBe('<div>text</div>');
 	});
 
 	test('empty string content produces closing tag', () => {
-		expect(el('div', undefined, '')).toBe('<div></div>');
+		expect(String(el('div', undefined, ''))).toBe('<div></div>');
 	});
 });
 

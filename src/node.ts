@@ -16,6 +16,12 @@ export type InlineNode = {
 	readonly [inlineBrand]: true;
 	readonly marker: string;
 	readonly parts?: readonly Inline[];
+	// Emphasis inside the same kind of emphasis is spliced into the enclosing sequence,
+	// so boundary checks see its real children instead of the delimiter it no longer emits.
+	readonly emphasis?: {
+		readonly flag: number;
+		readonly content: Inline;
+	};
 	render: (context: Context) => string;
 	toString: () => string;
 };
@@ -130,6 +136,12 @@ export const renderInline = (input: Inline, current: Context): string => {
 		}
 		if (typeof item !== 'string' && (item as InlineNode).parts) {
 			for (const child of (item as InlineNode).parts!) { append(child); }
+			return;
+		}
+		const emphasis = typeof item === 'string' ? undefined : (item as InlineNode).emphasis;
+		// eslint-disable-next-line no-bitwise -- Each emphasis kind uses one bit.
+		if (emphasis && (current.emphasis & emphasis.flag)) {
+			append(emphasis.content);
 			return;
 		}
 		if (typeof item === 'string') {

@@ -2,6 +2,8 @@ import { describe } from 'manten';
 
 describe('md-pen', () => {
 	import('./specs/escape.ts');
+	import('./specs/text-v2.ts');
+	import('./specs/node.ts');
 	import('./specs/code.ts');
 	import('./specs/emphasis.ts');
 	import('./specs/heading.ts');

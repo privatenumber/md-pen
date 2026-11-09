@@ -33,9 +33,7 @@ const emphasize = (content: Inline, marker: string, flag: number) => inlineNode(
 	const prefix = normalizeBoundary(leading);
 	const body = text.slice(leading.length, end);
 	if (!body) { return `${prefix}${normalizeBoundary(suffix)}`; }
-	const opening = body.startsWith(marker[0]) ? '<!-- -->' : '';
-	const closing = body.endsWith(marker[0]) ? '<!-- -->' : '';
-	return `${prefix}${marker}${opening}${body}${closing}${marker}${normalizeBoundary(suffix)}`;
+	return `${prefix}${marker}${body}${marker}${normalizeBoundary(suffix)}`;
 }, marker);
 /* eslint-enable no-bitwise */
 

@@ -6,7 +6,7 @@ import { render } from '../../utils/render.ts';
 import { element, type Block, type Structure } from './tree.ts';
 import { generator } from './generate.ts';
 import { markdown } from './markdown.ts';
-import { expectedDocument } from './expected.ts';
+import { expectedDocument, literalText } from './expected.ts';
 import { normalize } from './normalize.ts';
 import { compact } from './whitespace.ts';
 
@@ -47,6 +47,10 @@ describe('seeded composition', () => {
 		for (const [difference, details] of differences) {
 			console.log(`Mismatch ${difference}: ${details.count}\n${details.example}`);
 		}
+	});
+	test('detects literal text corruption in the serializer', () => {
+		assert.throws(() => literalText('alpha', text => m.render(text).replace('a', 'z')), /Literal text changed/);
+		assert.doesNotThrow(() => literalText('a\r\n  b @someone'));
 	});
 	test('collapses whitespace across inline element boundaries', () => {
 		const structure = (html: string) => compact(normalize(parseFragment(html)));

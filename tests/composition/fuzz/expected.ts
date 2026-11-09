@@ -1,3 +1,4 @@
+import assert from 'node:assert/strict';
 import { parseFragment, type DefaultTreeAdapterMap } from 'parse5';
 import * as m from '../../../src/index.ts';
 import { render } from '../../utils/render.ts';
@@ -8,14 +9,20 @@ import {
 type HtmlNode = DefaultTreeAdapterMap['node'];
 
 const cleanText = (value: string) => value.replaceAll(/[\t\n\f\r ]+/gu, ' ').replaceAll(/^ | $/gu, '');
-const literalText = (text: string): string => {
+export const literalText = (
+	text: string,
+	serialize: (text: string) => string = m.render,
+): string => {
 	const collect = (node: HtmlNode): string => {
 		if ('value' in node) {
 			return node.value;
 		}
 		return 'childNodes' in node ? node.childNodes.map(collect).join('') : '';
 	};
-	return collect(parseFragment(render(m.render(text))));
+	const visible = collect(parseFragment(render(serialize(text))));
+	const normalized = (value: string) => cleanText(value.replaceAll('\u200B', ''));
+	assert.equal(normalized(visible), normalized(text), `Literal text changed: ${JSON.stringify(text)}`);
+	return visible;
 };
 const inlineKinds = new Set(['sequence', 'word', 'literal', 'code', 'kbd', 'math', 'image', 'ref', 'bold', 'italic', 'strike', 'link']);
 const blockContent = (child: Tree): Structure[] => {

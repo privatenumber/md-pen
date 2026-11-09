@@ -83,6 +83,11 @@ const separatorNeeded = (
 	const closing = previousMarker && previous.endsWith(previousMarker) ? previousMarker[0] : '';
 	const opening = nextMarker && next.startsWith(nextMarker) ? nextMarker[0] : '';
 	if (closing && closing === opening) { return true; }
+	// GitHub does not close emphasis after punctuation when another emphasis run follows,
+	// so touching emphasis nodes are always separated.
+	if ((closing === '*' || closing === '~') && (opening === '*' || opening === '~')) { return true; }
+	// `]` followed by `:` can turn a footnote reference into a definition at a line start.
+	if (left === ']' && right === ':') { return true; }
 	if (opening === '*' || opening === '~') {
 		const after = firstCharacter(next.slice(nextMarker.length));
 		if (whitespace(after) || (punctuation(after) && !whitespace(left) && !punctuation(left))) {

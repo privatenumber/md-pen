@@ -69,11 +69,13 @@ describe('emphasis', () => {
 		expect(renderHtml(italic(['x ', italic('y')]))).toBe('<p><em>x y</em></p>');
 	});
 
-	test('separates touching marker runs but not different markers', () => {
+	test('separates touching emphasis nodes', () => {
 		expect(render([bold('a'), bold('b')])).toBe('**a**<!-- -->**b**');
 		expect(renderHtml(render([bold('a'), bold('b')]))).toBe('<p><strong>a</strong><!-- --><strong>b</strong></p>');
-		expect(render([bold('a'), strikethrough('b')])).toBe('**a**~~b~~');
-		expect(renderHtml(render([bold('a'), strikethrough('b')]))).toBe('<p><strong>a</strong><del>b</del></p>');
+		// GitHub leaves `**(a)**~~b~~` literal, so every touching emphasis pair gets a separator.
+		expect(render([bold('(a)'), strikethrough('b')])).toBe('**(a)**<!-- -->~~b~~');
+		expect(renderHtml(render([bold('(a)'), strikethrough('b')]))).toBe('<p><strong>(a)</strong><!-- --><del>b</del></p>');
+		expect(render([bold('(a)'), '.'])).toBe('**(a)**.');
 	});
 
 	test('separates delimiters when punctuation prevents flanking', () => {

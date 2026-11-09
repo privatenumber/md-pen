@@ -2,7 +2,6 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { image, link } from '../../src/link.ts';
 import { code } from '../../src/code.ts';
-import { raw } from '../../src/node.ts';
 import { table } from '../../src/table.ts';
 import {
 	kbd, sub, sup, el,
@@ -39,8 +38,6 @@ describe('kbd', () => {
 	test('composes escaped HTML punctuation without double escaping', () => {
 		for (const helper of [kbd, sub, sup]) {
 			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
-			expect(render(el('div', undefined, helper('A & B <x>')))).toContain('A &#38; B &#60;x&#62;');
-			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
 		}
 	});
@@ -50,11 +47,9 @@ describe('kbd', () => {
 	});
 
 	test('escaped HTML cannot become a tag inside an HTML block', () => {
-		for (const helper of [kbd, sub, sup]) {
-			const html = render(el('div', undefined, helper('<img src=x onerror=alert(1) >')));
-			expect(html).not.toContain('<img');
-			expect(html).toContain('&#60;img src');
-		}
+		const html = render(el('div', undefined, '<img src=x onerror=alert(1) >'));
+		expect(html).not.toContain('<img');
+		expect(html).toContain('&lt;img src');
 	});
 
 	test('escape protects literal multiline content from Markdown', () => {
@@ -200,17 +195,16 @@ describe('el', () => {
 	});
 
 	test('element with content', () => {
-		expect(String(el('div', undefined, '# Title'))).toBe('<div>&#35; Title</div>');
+		expect(String(el('div', undefined, '# Title'))).toBe('<div># Title</div>');
 	});
 
 	test('element with attributes and content', () => {
-		expect(String(el('div', { align: 'center' }, '# Title'))).toBe('<div align="center">&#35; Title</div>');
+		expect(String(el('div', { align: 'center' }, '# Title'))).toBe('<div align="center"># Title</div>');
 	});
 
 	test('content is literal unless explicitly raw', () => {
-		expect(String(el('div', undefined, '<img>'))).toBe('<div>&#60;img&#62;</div>');
-		expect(String(el('div', undefined, raw('<em>italic</em>')))).toBe('<div><em>italic</em></div>');
-		expect(String(el('div', undefined, code('<img>')))).toBe('<div><code>&lt;img&gt;</code></div>');
+		expect(String(el('div', undefined, '<img>'))).toBe('<div>&lt;img&gt;</div>');
+		expect(String(el('span', undefined, ':smile: #123 GH-1 @user $x$'))).toBe('<span>:\u200Bsmile: #\u200B123 GH-\u200B1 @\u200Buser \u200B$x\u200B$</span>');
 	});
 
 	test('escapes HTML in attribute values', () => {

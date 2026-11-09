@@ -39,7 +39,6 @@ describe('typed Markdown core', () => {
 			singleLine: false,
 			indent: 0,
 			htmlElement: false,
-			html: false,
 			literalGuards: true,
 		});
 		assert.equal(renderInline(['a', inlineNode(current => (current.indent === 0 ? 'x' : 'y'))], context), 'ay');
@@ -71,7 +70,19 @@ describe('typed Markdown core', () => {
 		for (const suffix of [':x', '(more)']) {
 			assert.equal(render([footnoteRef('1'), suffix]), `[^1]<!-- -->${suffix}`);
 		}
-		assert.equal(render([footnoteRef('1'), raw('[more]')]), '[^1]<!-- -->[more]');
+		assert.equal(render([footnoteRef('1'), inlineNode(() => '[more]')]), '[^1]<!-- -->[more]');
 		assert.equal(render([raw(String.raw`\!`), link('/p', 'x')]), String.raw`\![x](/p)`);
+	});
+	test('normalizes boundary whitespace from non-raw nodes', () => {
+		const value = render(['a ', bold(' \nb')]);
+		assert.equal(value, 'a \n**b**');
+		assert.doesNotMatch(renderHtml(value), /<br/);
+		assert.doesNotMatch(renderHtml(render([bold('  '), bold('  '), 'text'])), /<pre/);
+	});
+	test('keeps raw boundaries verbatim', () => {
+		assert.equal(render([raw('[x]'), raw('(/u)')]), '[x](/u)');
+		assert.equal(renderHtml(render([raw('[x]'), raw('(/u)')])), '<p><a href="/u">x</a></p>');
+		assert.equal(render([raw('!'), link('/u', 'x')]), '![x](/u)');
+		assert.equal(render([footnoteRef('1'), raw('(x)')]), '[^1](x)');
 	});
 });

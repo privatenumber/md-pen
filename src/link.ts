@@ -2,6 +2,7 @@ import {
 	encodeUrlWhitespace, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
 import { inlineNode, renderInline, type Inline } from './node.ts';
+import { escapeHtmlText } from './text.ts';
 
 const hasOnlyTitle = (options: Record<string, string | number>) => {
 	const keys = Object.keys(options);
@@ -35,10 +36,7 @@ export const link = (url: string, label?: Inline, options?: Record<string, strin
 			return `<a${htmlAttributes({
 				...options,
 				href: htmlDestination(href),
-			})}>${renderInline(label ?? url, {
-				...labelContext,
-				html: true,
-			})}</a>`;
+			})}>${label === undefined ? escapeHtmlText(url.replaceAll(/\r\n|\r|\n/g, ' ')) : renderInline(label, labelContext)}</a>`;
 		}
 		const text = renderInline(label ?? url, labelContext);
 		// eslint-disable-next-line no-control-regex

@@ -8,11 +8,18 @@ import { bold } from '../../src/emphasis.ts';
 import { footnoteRef } from '../../src/footnote.ts';
 
 describe('link', () => {
-	test('HTML fallback escapes code node content inside an HTML block', () => {
-		const result = el('div', undefined, link('/safe', code('<img src=x onerror=alert(1)>'), { target: '_blank' }));
+	test('HTML fallback renders code node content in paragraph flow', () => {
+		const result = link('/safe', code('<img src=x onerror=alert(1)>'), { target: '_blank' });
 		const html = render(result);
 		expect(html).toContain('<code>&lt;img src=x onerror=alert(1)&gt;</code>');
 		expect(html).not.toContain('<img');
+	});
+	test('HTML fallback renders formatted labels and rejects nested HTML anchors', () => {
+		expect(render(link('/safe', bold('text'), { target: '_blank' }))).toBe('<p><a target="_blank" href="/safe"><strong>text</strong></a></p>');
+		expect(render(link('/safe', image('/x.png', '@alice :smile: $x$'), { target: '_blank' })))
+			.toContain('alt="@alice :smile: $x$"');
+		expect(() => String(link('/safe', el('A', { href: '/other' }, 'text')))).toThrow(TypeError);
+		expect(() => String(link('/safe', el('a', {}, 'text'), { target: '_blank' }))).toThrow(TypeError);
 	});
 	test('autolinks http URL without text', () => {
 		expect(String(link('https://x.com'))).toBe('<https://x.com>');
@@ -102,14 +109,14 @@ describe('link', () => {
 	test('HTML fallback display text works inside a raw HTML block', () => {
 		const result = link('https://example.com/a_b', undefined, { target: '_blank' });
 		expect(render(result)).toContain('>https://example.com/a_b</a>');
-		expect(render(el('div', undefined, result))).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
+		expect(render(`<div>${result}</div>`)).toContain('>https&#58;&#47;&#47;example&#46;com&#47;a&#95;b</a>');
 	});
 
 	test('HTML fallback displays literal URL punctuation in both contexts', () => {
 		for (const url of ['http://example.com/a_b?x=1&y=2', 'www.example.com/@user', 'https://example.com/$5$/`code`', 'foo@example.com', 'https://example.com/&#35;<x>"']) {
 			const expected = url.replaceAll('$', '\u200B$').replaceAll('@', '@\u200B');
 			const result = link(url, undefined, { target: '_blank' });
-			for (const markdown of [result, el('div', undefined, result)]) {
+			for (const markdown of [result, `<div>${result}</div>`]) {
 				const html = render(markdown);
 				const content = html.match(/>([^<]*)<\/a>/)?.[1];
 				const entities: Record<string, string> = {
@@ -131,7 +138,7 @@ describe('link', () => {
 		const optionsList: Record<string, string>[] = [{ title: 'T' }, { target: '_blank' }];
 		for (const options of optionsList) {
 			const result = link('https://x.test/$5$', undefined, options);
-			for (const markdown of [result, el('div', undefined, result)]) {
+			for (const markdown of options.target ? [result, `<div>${result}</div>`] : [result]) {
 				const html = render(markdown);
 				expect(html).not.toContain('<math');
 				if (markdown === result) {

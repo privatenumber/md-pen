@@ -1,5 +1,6 @@
-import { htmlAttributes } from './escape.ts';
+import { escapeHtml, htmlAttributes } from './escape.ts';
 import { inlineNode, renderInline, type Inline } from './node.ts';
+import { guardText } from './text.ts';
 
 type HtmlOptions = Record<string, string | number>;
 
@@ -27,7 +28,7 @@ const selfClosingElements = new Set([
 export const el = (
 	tag: string,
 	attributes?: HtmlOptions,
-	content?: Inline,
+	content?: string,
 ) => {
 	if (!/^[a-z][a-z0-9-]*$/i.test(tag)) {
 		throw new TypeError(`Invalid HTML tag name: ${tag}`);
@@ -36,9 +37,8 @@ export const el = (
 	if (content === undefined && selfClosingElements.has(tag.toLowerCase())) {
 		return inlineNode(() => `<${tag}${htmlAttributes(attributes)} />`);
 	}
-	return inlineNode(context => `<${tag}${htmlAttributes(attributes)}>${renderInline(content ?? '', {
-		...context,
-		html: true,
-		indent: undefined,
-	})}</${tag}>`);
+	return inlineNode((context) => {
+		if (tag.toLowerCase() === 'a' && context.inLink) { throw new TypeError('Links cannot appear inside link labels'); }
+		return `<${tag}${htmlAttributes(attributes)}>${escapeHtml(guardText(content ?? ''))}</${tag}>`;
+	});
 };

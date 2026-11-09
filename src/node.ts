@@ -1,4 +1,4 @@
-import { escapeHtmlText, escapeText } from './text.ts';
+import { escapeText } from './text.ts';
 import { escapeHtml } from './escape.ts';
 
 export type Context = {
@@ -8,8 +8,6 @@ export type Context = {
 	indent: number | undefined;
 	// Inside an inline HTML element, literal `<>&"` must also be HTML-escaped.
 	htmlElement: boolean;
-	// Backslash escapes can stay visible inside raw HTML, so text uses character references.
-	html: boolean;
 	literalGuards: boolean;
 };
 
@@ -19,6 +17,7 @@ const blockBrand: unique symbol = Symbol('block');
 export type InlineNode = {
 	readonly [inlineBrand]: true;
 	readonly marker: string;
+	readonly raw?: boolean;
 	readonly parts?: readonly Inline[];
 	// Emphasis inside the same kind of emphasis is spliced into the enclosing sequence,
 	// so boundary checks see its real children instead of the delimiter it no longer emits.
@@ -43,7 +42,6 @@ const context = (): Context => ({
 	singleLine: false,
 	indent: 0,
 	htmlElement: false,
-	html: false,
 	literalGuards: true,
 });
 
@@ -137,31 +135,40 @@ const escapeInlineHtml = (input: string) => input.replaceAll(/\\+[<>&"]?|[<>&"]/
 	return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
 });
 
+// Whitespace that emphasis moves outside its delimiters (the same set emphasis.ts trims).
+const nonAsciiBoundaryWhitespace = /[\u0085\u2028\u2029\p{Zs}]/u;
+const isBoundaryWhitespace = (code: number) => (
+	code < 128
+		? (code >= 9 && code <= 13) || code === 32
+		: nonAsciiBoundaryWhitespace.test(String.fromCodePoint(code))
+);
+
 export const renderInline = (input: Inline, current: Context): string => {
 	let output = '';
 	let previous = '';
 	let previousMarker = '';
+	let previousRaw = false;
 	let literals = '';
 	let { indent } = current;
 	let bufferedIndent = indent;
-	const appendPart = (part: string, marker: string) => {
+	const appendPart = (part: string, marker: string, isRaw = false) => {
 		if (!part) { return; }
-		if (previous && separatorNeeded(previous, previousMarker, part, marker)) {
+		if (previous && !previousRaw && !isRaw
+			&& separatorNeeded(previous, previousMarker, part, marker)) {
 			output += '<!-- -->';
 			indent = undefined;
 		}
 		output += part;
 		previous = part;
 		previousMarker = marker;
+		previousRaw = isRaw;
 		indent = advanceIndent(indent, part);
 	};
 	const flush = () => {
 		if (!literals) { return; }
 		const text = current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals;
-		const escaped = current.html
-			? escapeHtmlText(text)
-			: escapeText(text, indent, current.literalGuards);
-		appendPart(current.htmlElement && !current.html ? escapeInlineHtml(escaped) : escaped, '');
+		const escaped = escapeText(text, indent, current.literalGuards);
+		appendPart(current.htmlElement ? escapeInlineHtml(escaped) : escaped, '');
 		literals = '';
 		bufferedIndent = indent;
 	};
@@ -197,9 +204,25 @@ export const renderInline = (input: Inline, current: Context): string => {
 		if (!part) {
 			return;
 		}
-		flush();
-		appendPart(part, node.marker);
-		bufferedIndent = indent;
+		if (node.raw) {
+			flush();
+			appendPart(part, node.marker, true);
+			bufferedIndent = indent;
+			return;
+		}
+		let start = 0;
+		while (start < part.length && isBoundaryWhitespace(part.codePointAt(start)!)) { start += 1; }
+		let end = part.length;
+		while (end > start && isBoundaryWhitespace(part.codePointAt(end - 1)!)) { end -= 1; }
+		append(part.slice(0, start));
+		const core = part.slice(start, end);
+		const trailing = part.slice(end);
+		if (core) {
+			flush();
+			appendPart(core, node.marker);
+			bufferedIndent = indent;
+		}
+		append(trailing);
 	};
 	append(input);
 	flush();
@@ -218,7 +241,10 @@ export const render = (content: Block | Inline): string => {
 };
 
 /** Emits trusted Markdown verbatim without escaping it relative to neighboring content. */
-export const raw = (markdown: string): InlineNode => inlineNode(() => markdown);
+export const raw = (markdown: string): InlineNode => ({
+	...inlineNode(() => markdown),
+	raw: true,
+});
 export const md = (strings: TemplateStringsArray, ...values: Inline[]): InlineNode => {
 	const parts: Inline[] = [];
 	for (const [index, value] of values.entries()) {

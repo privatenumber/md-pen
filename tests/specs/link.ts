@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { link, image } from '../../src/link.ts';
-import { el, kbd, sub } from '../../src/misc.ts';
+import { kbd, sub } from '../../src/misc.ts';
 import { code } from '../../src/code.ts';
 import { math } from '../../src/math.ts';
 import { bold } from '../../src/emphasis.ts';
@@ -14,12 +14,15 @@ describe('link', () => {
 		expect(html).toContain('<code>&lt;img src=x onerror=alert(1)&gt;</code>');
 		expect(html).not.toContain('<img');
 	});
-	test('HTML fallback renders formatted labels and rejects nested HTML anchors', () => {
+	test('keeps character-reference-shaped titles literal', () => {
+		expect(render(link('/x', 'x', { title: '&#65; a&b' }))).toBe('<p><a href="/x" title="&amp;#65; a&amp;b">x</a></p>');
+		expect(render(image('/x.png', 'x', { title: '&amp;' }))).toContain('title="&amp;amp;"');
+	});
+
+	test('HTML fallback renders formatted labels', () => {
 		expect(render(link('/safe', bold('text'), { target: '_blank' }))).toBe('<p><a target="_blank" href="/safe"><strong>text</strong></a></p>');
 		expect(render(link('/safe', image('/x.png', '@alice :smile: $x$'), { target: '_blank' })))
 			.toContain('alt="@alice :smile: $x$"');
-		expect(() => String(link('/safe', el('A', { href: '/other' }, 'text')))).toThrow(TypeError);
-		expect(() => String(link('/safe', el('a', {}, 'text'), { target: '_blank' }))).toThrow(TypeError);
 	});
 	test('autolinks http URL without text', () => {
 		expect(String(link('https://x.com'))).toBe('<https://x.com>');

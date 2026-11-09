@@ -51,7 +51,6 @@ if (!check) {
 	bench('details', () => md.details('Summary', userText));
 	bench('math', () => md.render(md.math('x^2 + y_1')));
 	bench('footnote', () => md.footnote('note-1', userText));
-	bench('el', () => md.render(md.el('div', { id: 'a' }, 'content')));
 
 	// A realistic document that composes every helper.
 	bench('document - $sections sections', function* document(state: BenchState) {

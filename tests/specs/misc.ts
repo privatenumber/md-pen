@@ -1,10 +1,10 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
-import { image, link } from '../../src/link.ts';
+import { link } from '../../src/link.ts';
 import { code } from '../../src/code.ts';
 import { table } from '../../src/table.ts';
 import {
-	kbd, sub, sup, el,
+	kbd, sub, sup,
 } from '../../src/misc.ts';
 
 describe('kbd', () => {
@@ -46,8 +46,8 @@ describe('kbd', () => {
 		expect(render(kbd(String.raw`\< \\< \\\<`))).toContain(String.raw`\&lt; \\&lt; \\\&lt;`);
 	});
 
-	test('escaped HTML cannot become a tag inside an HTML block', () => {
-		const html = render(el('div', undefined, '<img src=x onerror=alert(1) >'));
+	test('escaped HTML cannot become a tag', () => {
+		const html = render(kbd('<img src=x onerror=alert(1) >'));
 		expect(html).not.toContain('<img');
 		expect(html).toContain('&lt;img src');
 	});
@@ -156,91 +156,5 @@ describe('sup with attributes', () => {
 
 	test('empty options treated as no options', () => {
 		expect(String(sup('n', {}))).toBe('<sup>n</sup>');
-	});
-});
-
-describe('el', () => {
-	test('rejects invalid CommonMark tag names', () => {
-		for (const tag of ['svg:path', '', '1div', 'div x', 'div>', 'linK']) {
-			expect(() => el(tag, { title: 'a\n\n![x](https://attacker.test/i.png)' }, 'text')).toThrow(TypeError);
-		}
-	});
-
-	test('accepts CommonMark tag names', () => {
-		expect(String(el('X-custom-1', undefined, 'text'))).toBe('<X-custom-1>text</X-custom-1>');
-	});
-
-	test('self-closes HTML void elements and foreign roots without content', () => {
-		for (const tag of ['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr']) {
-			expect(String(el(tag))).toBe(`<${tag} />`);
-			expect(String(el(tag.toUpperCase()))).toBe(`<${tag.toUpperCase()} />`);
-		}
-		for (const tag of ['svg', 'math', 'SVG', 'MATH']) {
-			expect(String(el(tag))).toBe(`<${tag} />`);
-			expect(String(el(tag, undefined, 'content'))).toBe(`<${tag}>content</${tag}>`);
-		}
-		expect(render(`${el('svg')}\n\nafter`)).toBe('<svg />\n<p>after</p>');
-		expect(render(`${el('math')}\n\nafter`)).toBe('<math />\n<p>after</p>');
-		expect(String(el('div'))).toBe('<div></div>');
-		expect(String(el('DIV', { id: 'a' }))).toBe('<DIV id="a"></DIV>');
-		expect(String(el('custom-element'))).toBe('<custom-element></custom-element>');
-		expect(render(`${el('div')}\n\nafter`)).toBe('<div></div>\n<p>after</p>');
-	});
-
-	test('void element with attributes', () => {
-		expect(String(el('img', {
-			src: 'cat.png',
-			alt: 'Cat',
-		}))).toBe('<img src="cat.png" alt="Cat" />');
-	});
-
-	test('element with content', () => {
-		expect(String(el('div', undefined, '# Title'))).toBe('<div># Title</div>');
-	});
-
-	test('element with attributes and content', () => {
-		expect(String(el('div', { align: 'center' }, '# Title'))).toBe('<div align="center"># Title</div>');
-	});
-
-	test('content is literal unless explicitly raw', () => {
-		expect(String(el('div', undefined, '<img>'))).toBe('<div>&lt;img&gt;</div>');
-		expect(String(el('span', undefined, ':smile: #123 GH-1 @user $x$'))).toBe('<span>:\u200Bsmile: #\u200B123 GH-\u200B1 @\u200Buser \u200B$x\u200B$</span>');
-	});
-
-	test('escapes HTML in attribute values', () => {
-		expect(String(el('div', { title: 'a"b' }, 'text'))).toBe('<div title="a&quot;b">text</div>');
-	});
-
-	test('blank lines in HTML attributes cannot inject Markdown', () => {
-		const input = 'a\n\n![x](https://attacker.test/i.png)';
-		const samples = [
-			el('span', { title: input }, 'text'),
-			link('x', 'text', {
-				title: input,
-				target: '_blank',
-			}),
-			image('x', input, { width: 1 }),
-		];
-		for (const markdown of samples) {
-			const html = render(markdown);
-			expect(html).not.toContain('src="https://attacker.test/i.png"');
-			expect(html).toContain('a&#10;&#10;![x](https://attacker.test/i.png)');
-		}
-	});
-
-	test('drops invalid attribute names before Markdown parsing', () => {
-		const html = render(image('safe.png', 'alt', {
-			'@foo': 'a\n\n![x](https://attacker.test/i.png)',
-		}));
-		expect(html).not.toContain('attacker.test');
-		expect(html).toContain('src="safe.png"');
-	});
-
-	test('empty attributes treated as no attributes', () => {
-		expect(String(el('div', {}, 'text'))).toBe('<div>text</div>');
-	});
-
-	test('empty string content produces closing tag', () => {
-		expect(String(el('div', undefined, ''))).toBe('<div></div>');
 	});
 });

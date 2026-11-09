@@ -8,7 +8,12 @@ const hasOnlyTitle = (options: Record<string, string | number>) => {
 	const keys = Object.keys(options);
 	return keys.length === 1 && keys[0] === 'title';
 };
-const escapeTitle = (title: string) => title.replaceAll(/[\r\n]+/g, ' ').replaceAll('\\', String.raw`\\`).replaceAll('"', String.raw`\"`);
+// Titles are literal: escape backslashes, quotes, and `&` before character-reference-shaped text.
+const escapeTitle = (title: string) => title
+	.replaceAll(/[\r\n]+/g, ' ')
+	.replaceAll('\\', String.raw`\\`)
+	.replaceAll('"', String.raw`\"`)
+	.replaceAll(/&(?=(?:#\d+|#x[\da-f]+|[a-z][a-z\d]{1,31});)/gi, '&amp;');
 const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url) && !/\.\.|[_-]$/.test(url);
 const isGfmWww = (url: string) => {
 	const match = url.match(/^www\.([\w.-]+)/i);

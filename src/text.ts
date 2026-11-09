@@ -8,7 +8,7 @@ import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
 const escapable = /[\r\n\t:#@$\\*`[\]<>~&_|]|gh-|(?:https?|ftp):|www\.| {2}$|^ *[\d+=-]/i;
 
 // Escape literal text, not Markdown that has already been serialized.
-export const guardText = (text: string): string => text
+const guardText = (text: string): string => text
 	.replaceAll(/(^|[ \t\n(]):[\w:+-]+/g, match => match.replaceAll(/:([\w+-]+)(?=:)/g, (shortcode, name: string) => (
 		/^\d+$/.test(name) && name !== '100' && name !== '1234' ? shortcode : `:\u200B${name}`
 	)))

@@ -18,11 +18,13 @@ export const escapeText = (input: string, lineStart = true): string => {
 	text = text.replaceAll(/(^|\n)( {0,3})(?=(?:-{3,}|=+)[ \t]*(?:\n|$))([-=])/g, (match, prefix: string, indent: string, marker: string, offset: number) => (
 		!lineStart && offset === 0 ? match : `${prefix}${indent}\\${marker}`
 	));
-	return text.replaceAll(/(^|\n)([ \t]*)(?:(#{1,6})(?=[ \t]|$)|(>)(?=.)|([-+=])(?=[ \t]|$)|(\d{1,9})([.)])(?=[ \t]|$))/g, (match, prefix: string, indent: string, heading: string, quote: string, marker: string, digits: string, punctuation: string, offset: number) => {
+	// Escape block markers at line starts. Indentation that could start an indented code block
+	// (four columns; tabs expand to the next multiple of four) starts with a space reference.
+	return text.replaceAll(/(^|\n)([ \t]*)(?:(#{1,6})(?=[ \t\n]|$)|(>)(?=.)|([-+=])(?=[ \t\n]|$)|(\d{1,9})([.)])(?=[ \t\n]|$))/g, (match, prefix: string, indent: string, heading: string, quote: string, marker: string, digits: string, punctuation: string, offset: number) => {
 		if (!lineStart && offset === 0) { return match; }
 		return `${prefix}${indent}${digits ?? ''}\\${heading ?? quote ?? marker ?? punctuation}`;
-	}).replaceAll(/(^|\n)( {4}|\t)/g, (match, prefix: string, indent: string, offset: number) => (
-		!lineStart && offset === 0 ? match : `${prefix}&#32;${indent.slice(1)}`
+	}).replaceAll(/(^|\n)([ \t]+)/g, (match, prefix: string, indent: string, offset: number) => (
+		(!lineStart && offset === 0) || (!indent.includes('\t') && indent.length < 4) ? match : `${prefix}&#32;${indent.slice(1)}`
 	));
 };
 

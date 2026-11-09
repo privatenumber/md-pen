@@ -1,4 +1,4 @@
-export { escapeText as escape } from './text.ts';
+export { escape } from './text.ts';
 export {
 	render, raw, md, join, type InlineNode, type BlockNode, type Inline, type Block,
 } from './node.ts';
@@ -19,5 +19,5 @@ export { hr, details } from './block.ts';
 export { math, mathBlock } from './math.ts';
 export { footnoteRef, footnote } from './footnote.ts';
 export {
-	kbd, sub, sup, mention, emoji, el,
+	kbd, sub, sup, el,
 } from './misc.ts';

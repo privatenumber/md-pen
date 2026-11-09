@@ -20,7 +20,7 @@ const emphasize = (content: Inline, marker: string, flag: number): InlineNode =>
 		const text = renderInline(content, {
 			...context,
 			emphasis: context.emphasis | flag,
-			lineStart: false,
+			indent: undefined,
 		});
 		if (!text) { return ''; }
 		const leading = text.match(/^[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]*/u)![0];

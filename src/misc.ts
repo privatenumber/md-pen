@@ -1,31 +1,24 @@
-import { escapeHtml, htmlAttributes } from './escape.ts';
-import { inlineNode } from './node.ts';
+import { htmlAttributes } from './escape.ts';
+import { inlineNode, renderInline, type Inline } from './node.ts';
 
 type HtmlOptions = Record<string, string | number>;
 
-const escapeInlineHtml = (input: string) => input
-	.replaceAll(/\r\n?|\n/g, ' ')
-	.replaceAll(/\\+[<>&"]?|[<>&"]/g, (match) => {
-		const character = match.at(-1)!;
-		if (character === '\\') {
-			return match;
-		}
-		const backslashes = match.length - 1;
-		// Keep paired backslashes; an unpaired backslash escapes the character.
-		return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
-	});
-
 const htmlTag = (
 	tag: string,
-	content: string,
+	content: Inline,
 	options?: HtmlOptions,
-) => `<${tag}${htmlAttributes(options)}>${escapeInlineHtml(content)}</${tag}>`;
+) => inlineNode(context => `<${tag}${htmlAttributes(options)}>${renderInline(content, {
+	...context,
+	singleLine: true,
+	indent: undefined,
+	htmlElement: true,
+})}</${tag}>`);
 
-export const kbd = (key: string, options?: HtmlOptions) => inlineNode(() => htmlTag('kbd', key, options));
+export const kbd = (key: Inline, options?: HtmlOptions) => htmlTag('kbd', key, options);
 
-export const sub = (text: string, options?: HtmlOptions) => inlineNode(() => htmlTag('sub', text, options));
+export const sub = (text: Inline, options?: HtmlOptions) => htmlTag('sub', text, options);
 
-export const sup = (text: string, options?: HtmlOptions) => inlineNode(() => htmlTag('sup', text, options));
+export const sup = (text: Inline, options?: HtmlOptions) => htmlTag('sup', text, options);
 
 const selfClosingElements = new Set([
 	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr', 'svg', 'math',
@@ -45,7 +38,3 @@ export const el = (
 	}
 	return inlineNode(() => `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`);
 };
-
-export const mention = (username: string) => `@${username}`;
-
-export const emoji = (name: string) => `:${name}:`;

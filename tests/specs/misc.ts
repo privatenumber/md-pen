@@ -1,10 +1,10 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
-import { escapeText as escape } from '../../src/text.ts';
 import { image, link } from '../../src/link.ts';
+import { code } from '../../src/code.ts';
 import { table } from '../../src/table.ts';
 import {
-	kbd, sub, sup, mention, emoji, el,
+	kbd, sub, sup, el,
 } from '../../src/misc.ts';
 
 describe('kbd', () => {
@@ -22,7 +22,7 @@ describe('kbd', () => {
 			expect(html.match(/<p>/g)?.length).toBe(1);
 			expect(html).not.toContain('<h1');
 			expect(html).toContain('a  # heading');
-			expect(String(helper('\n a \r\n'))).toContain('>  a  </');
+			expect(String(helper('\n a \r\n'))).toContain('>  a </');
 		}
 	});
 
@@ -30,34 +30,34 @@ describe('kbd', () => {
 		expect(String(kbd('a\r\nb'))).toBe('<kbd>a b</kbd>');
 		expect(String(kbd('a\r\n \t\r\nb'))).toBe('<kbd>a  \t b</kbd>');
 		expect(String(kbd(' a  b '))).toBe('<kbd> a  b </kbd>');
-		expect(render(kbd('`a\nb`'))).toBe('<p><kbd><code>a b</code></kbd></p>');
-		expect(render(kbd('`a  \n  b`'))).toBe('<p><kbd><code>a     b</code></kbd></p>');
+		expect(render(kbd(code('a\nb')))).toBe('<p><kbd><code>a b</code></kbd></p>');
+		expect(render(kbd(code('a  \n  b')))).toBe('<p><kbd><code>a     b</code></kbd></p>');
 		expect(render(table([['K'], [String(kbd('a\nb'))]]))).toContain('<kbd>a b</kbd>');
 	});
 
 	test('composes escaped HTML punctuation without double escaping', () => {
 		for (const helper of [kbd, sub, sup]) {
-			expect(render(helper(escape('A & B <x>')))).toContain('A &amp; B &lt;x&gt;');
-			expect(render(el('div', undefined, String(helper(escape('A & B <x>')))))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
+			expect(render(el('div', undefined, String(helper('A & B <x>'))))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper('A & B <x>'))).toContain('A &amp; B &lt;x&gt;');
 			expect(render(helper(String.raw`\\<x>`))).toContain(String.raw`\&lt;x&gt;`);
 		}
 	});
 
 	test('preserves backslash runs around HTML punctuation', () => {
-		expect(String(kbd(String.raw`\< \\< \\\<`))).toBe(String.raw`<kbd>&lt; \\&lt; \\&lt;</kbd>`);
+		expect(render(kbd(String.raw`\< \\< \\\<`))).toContain(String.raw`\&lt; \\&lt; \\\&lt;`);
 	});
 
 	test('escaped HTML cannot become a tag inside an HTML block', () => {
 		for (const helper of [kbd, sub, sup]) {
-			const html = render(el('div', undefined, String(helper(escape('<img src=x onerror=alert(1) >')))));
+			const html = render(el('div', undefined, String(helper('<img src=x onerror=alert(1) >'))));
 			expect(html).not.toContain('<img');
 			expect(html).toContain('&lt;img src');
 		}
 	});
 
 	test('escape protects literal multiline content from Markdown', () => {
-		const html = render(kbd(escape('a\n\n![x](https://example.test/i.png)')));
+		const html = render(kbd('a\n\n![x](https://example.test/i.png)'));
 		expect(html).not.toContain('<img');
 		expect(html).not.toContain('<a ');
 		expect(html).toContain('![x](https://example.test/i.png)');
@@ -65,9 +65,19 @@ describe('kbd', () => {
 
 	test('leading newline cannot turn escaped HTML into a raw tag', () => {
 		for (const helper of [kbd, sub, sup]) {
-			const html = render(helper(escape('\n<img src=x onerror=alert(1) >')));
+			const html = render(helper('\n<img src=x onerror=alert(1) >'));
 			expect(html).not.toContain('<img');
 			expect(html).toContain('&lt;img src=x onerror=alert(1) &gt;');
+		}
+	});
+	test('literal text and typed nodes in HTML helpers preserve link safety', () => {
+		for (const helper of [kbd, sub, sup]) {
+			const html = render(link('/safe', helper('[click](https://other.example)')));
+			expect(html.match(/<a /g)?.length).toBe(1);
+			expect(html).toContain('[click](https://other.example)');
+			expect(render(helper([code('x'), ' & <y>']))).toContain('<code>x</code> &amp; &lt;y&gt;');
+			const htmlForm = render(link('/safe', helper('[click]'), { target: '_blank' }));
+			expect(htmlForm).toContain('[click]');
 		}
 	});
 });
@@ -235,21 +245,5 @@ describe('el', () => {
 
 	test('empty string content produces closing tag', () => {
 		expect(String(el('div', undefined, ''))).toBe('<div></div>');
-	});
-});
-
-describe('mention', () => {
-	test('basic username', () => {
-		expect(mention('octocat')).toBe('@octocat');
-	});
-
-	test('org/team format', () => {
-		expect(mention('org/team')).toBe('@org/team');
-	});
-});
-
-describe('emoji', () => {
-	test('basic emoji', () => {
-		expect(emoji('rocket')).toBe(':rocket:');
 	});
 });

@@ -28,7 +28,7 @@ export const link = (url: string, label?: Inline, options?: Record<string, strin
 			...context,
 			inLink: true,
 			singleLine: true,
-			lineStart: false,
+			indent: undefined,
 		};
 		if (options && Object.keys(options).length) {
 			if (hasOnlyTitle(options)) { return `[${renderInline(label ?? url, labelContext)}](${escapeUrl(href)} "${escapeTitle(options.title)}")`; }
@@ -52,7 +52,7 @@ export const image = (url: string, alt?: string, options?: Record<string, string
 		const text = renderInline(alt ?? '', {
 			...context,
 			singleLine: true,
-			lineStart: false,
+			indent: undefined,
 		});
 		if (options && Object.keys(options).length) {
 			if (hasOnlyTitle(options)) { return `![${text}](${escapeUrl(url)} "${escapeTitle(String(options.title))}")`; }

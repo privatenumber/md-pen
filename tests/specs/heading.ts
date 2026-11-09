@@ -1,6 +1,6 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
-import { escapeText as escape } from '../../src/text.ts';
+import { escape } from '../../src/text.ts';
 import {
 	heading, h1, h2, h3, h4, h5, h6,
 } from '../../src/heading.ts';

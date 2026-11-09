@@ -5,6 +5,9 @@ import {
 	blockNode, inlineNode, join, md, raw, render, renderInline, type BlockNode, type Inline,
 } from '../../src/node.ts';
 import { render as renderHtml } from '../utils/render.ts';
+import { bold } from '../../src/emphasis.ts';
+import { link } from '../../src/link.ts';
+import { footnoteRef } from '../../src/footnote.ts';
 
 expectTypeOf<BlockNode>().not.toExtend<Inline>();
 
@@ -12,6 +15,7 @@ describe('typed Markdown core', () => {
 	test('escapes interpolated strings and preserves trusted Markdown', () => {
 		assert.equal(render(md`**${'a*b'}** ${raw('<br>')}`), String.raw`**a\*b** <br>`);
 		assert.equal(render(md`${'www'}${'.example.com'}`), String.raw`www\.example.com`);
+		assert.equal(render([raw('@user'), ' ', raw(':smile:')]), '@user :smile:');
 	});
 	test('joins inline parts and blocks at their own boundaries', () => {
 		assert.equal(render(join(['a*b', 'c'], ', ')), String.raw`a\*b, c`);
@@ -26,17 +30,40 @@ describe('typed Markdown core', () => {
 			emphasis: 0,
 			inLink: false,
 			singleLine: false,
-			lineStart: true,
+			indent: 0,
+			htmlElement: false,
 			html: false,
 		});
-		assert.equal(renderInline(['a', inlineNode(current => (current.lineStart ? 'x' : 'y'))], context), 'ay');
+		assert.equal(renderInline(['a', inlineNode(current => (current.indent === 0 ? 'x' : 'y'))], context), 'ay');
 	});
 	test('separates delimiter collisions and flanking failures', () => {
-		const bold = (text: string) => inlineNode(() => `**${text}**`, '**');
+		const strongNode = (text: string) => inlineNode(() => `**${text}**`, '**');
 		const italic = (text: string) => inlineNode(() => `*${text}*`, '*');
-		assert.equal(render(['a', bold('.b'), 'c']), 'a<!-- -->**.b**c');
+		assert.equal(render(['a', strongNode('.b'), 'c']), 'a<!-- -->**.b**c');
 		assert.equal(render([italic('a.'), 'b']), '*a.*<!-- -->b');
-		assert.equal(render([bold('a'), bold('b'), 'c']), '**a**<!-- -->**b**c');
-		assert.equal(renderHtml(render(['a', bold('.b'), 'c'])), '<p>a<!-- --><strong>.b</strong>c</p>');
+		assert.equal(render([strongNode('a'), strongNode('b'), 'c']), '**a**<!-- -->**b**c');
+		assert.equal(renderHtml(render(['a', strongNode('.b'), 'c'])), '<p>a<!-- --><strong>.b</strong>c</p>');
+	});
+	test('escapes block markers and indentation after a newline in a later part', () => {
+		for (const text of ['\n# injected', '\n---', '\n    code', '\n\tcode']) {
+			const html = renderHtml(render([bold('x'), text]));
+			assert.doesNotMatch(html, /<(?:h[1-6]|hr|pre)/);
+		}
+	});
+	test('does not turn literal pipes into a table', () => {
+		assert.doesNotMatch(renderHtml(render('a | b\n--- | ---\nx | y')), /<table/);
+	});
+	test('tracks indentation across raw and literal parts', () => {
+		for (const value of [md`   ${'# injected'}`, md`   ${' x'}`, md`  ${'\tx'}`]) {
+			assert.doesNotMatch(renderHtml(render(value)), /<(?:h[1-6]|pre)/);
+		}
+	});
+	test('separates image and footnote delimiters across parts', () => {
+		assert.equal(render(['!', link('/p', 'x')]), '!<!-- -->[x](/p)');
+		for (const suffix of [':x', '(more)']) {
+			assert.equal(render([footnoteRef('1'), suffix]), `[^1]<!-- -->${suffix}`);
+		}
+		assert.equal(render([footnoteRef('1'), raw('[more]')]), '[^1]<!-- -->[more]');
+		assert.equal(render([raw(String.raw`\!`), link('/p', 'x')]), String.raw`\![x](/p)`);
 	});
 });

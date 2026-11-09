@@ -1,10 +1,13 @@
 import { escapeHtmlText, escapeText } from './text.ts';
+import { escapeHtml } from './escape.ts';
 
 export type Context = {
 	emphasis: number;
 	inLink: boolean;
 	singleLine: boolean;
-	lineStart: boolean;
+	indent: number | undefined;
+	// Inside an inline HTML element, literal `<>&"` must also be HTML-escaped.
+	htmlElement: boolean;
 	// Backslash escapes can stay visible inside raw HTML, so text uses character references.
 	html: boolean;
 };
@@ -37,7 +40,8 @@ const context = (): Context => ({
 	emphasis: 0,
 	inLink: false,
 	singleLine: false,
-	lineStart: true,
+	indent: 0,
+	htmlElement: false,
 	html: false,
 });
 
@@ -92,8 +96,8 @@ const separatorNeeded = (
 	// GitHub does not close emphasis after punctuation when another emphasis run follows,
 	// so touching emphasis nodes are always separated.
 	if ((closing === '*' || closing === '~') && (opening === '*' || opening === '~')) { return true; }
-	// `]` followed by `:` can turn a footnote reference into a definition at a line start.
-	if (left === ']' && right === ':') { return true; }
+	if (left === ']' && ':(['.includes(right) && right) { return true; }
+	if (left === '!' && right === '[' && !/(?<!\\)(?:\\\\)*\\!$/.test(previous)) { return true; }
 	if (opening === '*' || opening === '~') {
 		const after = firstCharacter(next.slice(nextMarker.length));
 		if (whitespace(after) || (punctuation(after) && !whitespace(left) && !punctuation(left))) {
@@ -109,24 +113,50 @@ const separatorNeeded = (
 	return false;
 };
 
+const advanceIndent = (indent: number | undefined, text: string) => {
+	for (const character of text) {
+		if (character === '\n' || character === '\r') {
+			indent = 0;
+		} else if (indent !== undefined && character === ' ') {
+			indent += 1;
+		} else if (indent !== undefined && character === '\t') {
+			indent += 4 - (indent % 4);
+		} else {
+			indent = undefined;
+		}
+	}
+	return indent;
+};
+
+const escapeInlineHtml = (input: string) => input.replaceAll(/\\+[<>&"]?|[<>&"]/g, (match) => {
+	const character = match.at(-1)!;
+	if (character === '\\') { return match; }
+	const backslashes = match.length - 1;
+	return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
+});
+
 export const renderInline = (input: Inline, current: Context): string => {
 	let output = '';
 	let previous = '';
 	let previousMarker = '';
 	let literals = '';
-	let { lineStart } = current;
+	let { indent } = current;
 	const appendPart = (part: string, marker: string) => {
 		if (!part) { return; }
-		if (previous && separatorNeeded(previous, previousMarker, part, marker)) { output += '<!-- -->'; }
+		if (previous && separatorNeeded(previous, previousMarker, part, marker)) {
+			output += '<!-- -->';
+			indent = undefined;
+		}
 		output += part;
 		previous = part;
 		previousMarker = marker;
-		lineStart = part.endsWith('\n');
+		indent = advanceIndent(indent, part);
 	};
 	const flush = () => {
 		if (!literals) { return; }
 		const text = current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals;
-		appendPart(current.html ? escapeHtmlText(text) : escapeText(text, lineStart), '');
+		const escaped = current.html ? escapeHtmlText(text) : escapeText(text, indent);
+		appendPart(current.htmlElement && !current.html ? escapeInlineHtml(escaped) : escaped, '');
 		literals = '';
 	};
 	const append = (item: Inline) => {
@@ -149,12 +179,12 @@ export const renderInline = (input: Inline, current: Context): string => {
 			return;
 		}
 		const node = item as InlineNode;
-		const childLineStart = literals ? !current.singleLine && /[\r\n]$/u.test(literals) : lineStart;
-		const childContext = childLineStart === current.lineStart
+		const childIndent = literals ? advanceIndent(indent, current.singleLine ? literals.replaceAll(/\r\n|\r|\n/g, ' ') : literals) : indent;
+		const childContext = childIndent === current.indent
 			? current
 			: {
 				...current,
-				lineStart: childLineStart,
+				indent: childIndent,
 			};
 		const part = node.render(childContext);
 		if (!part) {

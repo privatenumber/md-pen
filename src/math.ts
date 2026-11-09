@@ -1,6 +1,7 @@
 import { hasCharacterReference } from './escape.ts';
 import { backtickDelimiter } from './utils/backtick-delimiter.ts';
 import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
+import { inlineNode } from './node.ts';
 
 // These characters can create Markdown syntax or alter math in surrounding Markdown.
 const markdownActive = new Set('*`[]<>~$|@');
@@ -46,7 +47,7 @@ const blockStartPatterns = [
 	thematicBreak,
 ];
 
-export const math = (expression: string) => {
+const formatMath = (expression: string) => {
 	const singleLine = expression.replaceAll(/[\r\n]+/g, ' ').trim();
 	if (singleLine === '') {
 		return '';
@@ -59,6 +60,8 @@ export const math = (expression: string) => {
 	}
 	return `$${singleLine}$`;
 };
+
+export const math = (expression: string) => inlineNode(() => formatMath(expression), '$');
 
 export const mathBlock = (expression: string) => {
 	const normalized = normalizeLineEndings(expression);

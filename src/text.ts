@@ -14,7 +14,7 @@ export const escapeText = (input: string, lineStart = true): string => {
 		.replaceAll('$', '\u200B$')
 		.replaceAll(/(?<![ \t])[ \t]+(?=\n|$)/g, ' ');
 	text = text.replaceAll(/[\\*`[\]<>~$]|&(?=(?:#\d+|#x[\da-f]+|[a-z][a-z\d]{1,31});)|(?<![\p{L}\p{N}])_|_(?![\p{L}\p{N}])/giu, String.raw`\$&`);
-	text = text.replaceAll(/\b(?:https?:\/\/|www\.)/gi, match => match.replace(/[:.]/, String.raw`\$&`));
+	text = text.replaceAll(/\b(?:https?:\/\/|ftp:\/\/|www\.)/gi, match => match.replace(/[:.]/, String.raw`\$&`));
 	text = text.replaceAll(/(^|\n)( {0,3})(?=(?:-{3,}|=+)[ \t]*(?:\n|$))([-=])/g, (match, prefix: string, indent: string, marker: string, offset: number) => (
 		!lineStart && offset === 0 ? match : `${prefix}${indent}\\${marker}`
 	));

@@ -1,4 +1,5 @@
 import { escapeHtml, htmlAttributes } from './escape.ts';
+import { inlineNode } from './node.ts';
 
 type HtmlOptions = Record<string, string | number>;
 
@@ -20,11 +21,11 @@ const htmlTag = (
 	options?: HtmlOptions,
 ) => `<${tag}${htmlAttributes(options)}>${escapeInlineHtml(content)}</${tag}>`;
 
-export const kbd = (key: string, options?: HtmlOptions) => htmlTag('kbd', key, options);
+export const kbd = (key: string, options?: HtmlOptions) => inlineNode(() => htmlTag('kbd', key, options));
 
-export const sub = (text: string, options?: HtmlOptions) => htmlTag('sub', text, options);
+export const sub = (text: string, options?: HtmlOptions) => inlineNode(() => htmlTag('sub', text, options));
 
-export const sup = (text: string, options?: HtmlOptions) => htmlTag('sup', text, options);
+export const sup = (text: string, options?: HtmlOptions) => inlineNode(() => htmlTag('sup', text, options));
 
 const selfClosingElements = new Set([
 	'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link', 'meta', 'source', 'track', 'wbr', 'svg', 'math',
@@ -40,9 +41,9 @@ export const el = (
 	}
 	// The tag name is ASCII here, so toLowerCase() is HTML's ASCII case folding.
 	if (content === undefined && selfClosingElements.has(tag.toLowerCase())) {
-		return `<${tag}${htmlAttributes(attributes)} />`;
+		return inlineNode(() => `<${tag}${htmlAttributes(attributes)} />`);
 	}
-	return `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`;
+	return inlineNode(() => `<${tag}${htmlAttributes(attributes)}>${content ?? ''}</${tag}>`);
 };
 
 export const mention = (username: string) => `@${username}`;

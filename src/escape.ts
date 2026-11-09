@@ -1,24 +1,3 @@
-import { normalizeLineEndings } from './utils/normalize-line-endings.ts';
-
-export const escape = (text: string) => normalizeLineEndings(text)
-	// Backslash escapes cannot prevent indented code blocks.
-	.replaceAll(/^[ \t]+/gm, indentation => (indentation.includes('\t') || indentation.length >= 4 ? '   ' : indentation))
-	// GitHub substitutes shortcodes after processing backslash escapes.
-	.replaceAll(/(^|[ \t\n(]):[\w:+-]+/g, match => match.replaceAll(/:([\w+-]+)(?=:)/g, (shortcode, name: string) => (
-		/^\d+$/.test(name) && name !== '100' && name !== '1234' ? shortcode : `:\u200B${name}`
-	)))
-	// GitHub resolves mentions and issue references after processing escapes.
-	.replaceAll(/\B#(?=\d)|(?<=[\w.-]\/[\w.-]{1,100})#(?=\d)/g, '#\u200B')
-	.replaceAll(/\bGH-(?=\d)/gi, '$&\u200B')
-	.replaceAll(/@(?:[\w-]+(?:\.[\w-]+)+)?/g, (match, offset: number, input: string) => (
-		!/\w/.test(input[offset - 1] ?? '') || match.length > 1 ? `@\u200B${match.slice(1)}` : match
-	))
-	// GitHub and comrak can interpret escaped dollar signs as math.
-	.replaceAll('$', '\u200B$')
-	// Trailing whitespace can create a hard line break, including after composition.
-	.replaceAll(/(?<![ \t])[ \t]+(?=\n|$)/g, ' ')
-	.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, String.raw`\$&`);
-
 const htmlEntityMap: Record<string, string> = {
 	'<': '&lt;',
 	'>': '&gt;',

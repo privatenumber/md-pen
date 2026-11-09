@@ -1,6 +1,7 @@
 import { backtickDelimiter } from './utils/backtick-delimiter.ts';
+import { inlineNode } from './node.ts';
 
-export const code = (text: string) => {
+const formatCode = (text: string) => {
 	if (text.length === 0) {
 		return '` `';
 	}
@@ -28,6 +29,8 @@ export const code = (text: string) => {
 	// No extra padding needed — content's own spaces survive after stripping.
 	return `${delimiter} ${normalized} ${delimiter}`;
 };
+
+export const code = (text: string) => inlineNode(() => formatCode(text), '`');
 
 export const codeBlock = (content: string, language?: string) => {
 	// Sanitize: info string cannot contain backticks or newlines per CommonMark

@@ -1,4 +1,7 @@
-export { escape } from './escape.ts';
+export { escapeText as escape } from './text.ts';
+export {
+	render, raw, md, join, type InlineNode, type BlockNode, type Inline, type Block,
+} from './node.ts';
 export { code, codeBlock, mermaid } from './code.ts';
 export { bold, italic, strikethrough } from './emphasis.ts';
 export { link, image } from './link.ts';

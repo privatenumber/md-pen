@@ -1,6 +1,8 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { footnoteRef, footnote } from '../../src/footnote.ts';
+import { bold } from '../../src/emphasis.ts';
+import { render as renderNode } from '../../src/node.ts';
 
 describe('footnote', () => {
 	test('ASCII normalization table', () => {
@@ -19,19 +21,19 @@ describe('footnote', () => {
 			const expected = outcomes[code] === 'w'
 				? '-'
 				: (outcomes[code] === 'v' ? character : `%${code.toString(16).padStart(2, '0')}`);
-			expect(footnoteRef(`p${character}q`)).toBe(`[^p${expected}q]`);
+			expect(String(footnoteRef(`p${character}q`))).toBe(`[^p${expected}q]`);
 		}
 		for (const [input, expected] of [['é', 'é'], ['文', '文'], ['😀', '😀'], ['\u0085', '%c2%85']]) {
-			expect(footnoteRef(`p${input}q`)).toBe(`[^p${expected}q]`);
+			expect(String(footnoteRef(`p${input}q`))).toBe(`[^p${expected}q]`);
 		}
 	});
 
 	test('footnoteRef', () => {
-		expect(footnoteRef('1')).toBe('[^1]');
+		expect(String(footnoteRef('1'))).toBe('[^1]');
 	});
 
 	test('footnoteRef with named id', () => {
-		expect(footnoteRef('note')).toBe('[^note]');
+		expect(String(footnoteRef('note'))).toBe('[^note]');
 	});
 
 	test('footnote definition', () => {
@@ -44,8 +46,12 @@ describe('footnote', () => {
 	});
 
 	test('footnote with formatted text', () => {
-		const bold = (t: string) => `**${t}**`;
-		expect(footnote('src', bold('important'))).toBe('[^src]: **important**');
+		expect(footnote('src', renderNode(bold('important')))).toBe('[^src]: **important**');
+	});
+
+	test('footnote reference inside emphasis', () => {
+		const markdown = `${renderNode(bold(['text', footnoteRef('1')]))}\n\n${footnote('1', 'note')}`;
+		expect(render(markdown)).toContain('<strong>text<sup');
 	});
 
 	test('footnote pair renders as footnote', () => {
@@ -67,33 +73,33 @@ describe('footnote', () => {
 	});
 
 	test('normalizes entity-shaped IDs and escaped punctuation consistently', () => {
-		expect(footnoteRef('a&copy;b')).toBe('[^a%26copy;b]');
-		expect(footnoteRef('a&foo;b')).toBe('[^a%26foo;b]');
-		expect(footnoteRef(String.raw`a\-b`)).toBe('[^a%5c-b]');
+		expect(String(footnoteRef('a&copy;b'))).toBe('[^a%26copy;b]');
+		expect(String(footnoteRef('a&foo;b'))).toBe('[^a%26foo;b]');
+		expect(String(footnoteRef(String.raw`a\-b`))).toBe('[^a%5c-b]');
 		expect(footnote('a&foo;b', 'note')).toBe('[^a%26foo;b]: note');
-		expect(footnoteRef('a&AMP;b')).toBe('[^a%26AMP;b]');
-		expect(footnoteRef('a&ſfoo;b')).toBe('[^a%26ſfoo;b]');
-		expect(footnoteRef('a&Kfoo;b')).toBe('[^a%26Kfoo;b]');
-		expect(footnoteRef('a\u0085b')).toBe('[^a%c2%85b]');
+		expect(String(footnoteRef('a&AMP;b'))).toBe('[^a%26AMP;b]');
+		expect(String(footnoteRef('a&ſfoo;b'))).toBe('[^a%26ſfoo;b]');
+		expect(String(footnoteRef('a&Kfoo;b'))).toBe('[^a%26Kfoo;b]');
+		expect(String(footnoteRef('a\u0085b'))).toBe('[^a%c2%85b]');
 	});
 
 	test('encodes percent signs and backslashes distinctly', () => {
-		expect(footnoteRef('25%')).toBe('[^25%25]');
-		expect(footnoteRef('%5c')).toBe('[^%255c]');
-		expect(footnoteRef('\\')).toBe('[^%5c]');
+		expect(String(footnoteRef('25%'))).toBe('[^25%25]');
+		expect(String(footnoteRef('%5c'))).toBe('[^%255c]');
+		expect(String(footnoteRef('\\'))).toBe('[^%5c]');
 		expect(render(`text${footnoteRef('25%')}\n\n${footnote('25%', 'note')}`)).toContain('<sup');
 	});
 
 	test('rejects IDs exceeding the UTF-16 or UTF-8 limits after normalization', () => {
 		for (const id of ['x'.repeat(1000), `${'😀'.repeat(250)}a`, '%ab'.repeat(200), '\0'.repeat(334), '\uD800', '\uDC00']) {
-			expect(footnoteRef(id)).toBe('');
+			expect(String(footnoteRef(id))).toBe('');
 			expect(footnote(id, 'note')).toBe('');
 		}
 	});
 
 	test('emits non-ASCII case variants verbatim (renderers decide case folding)', () => {
-		expect(footnoteRef('Ა')).toBe('[^Ა]');
-		expect(footnoteRef('ა')).toBe('[^ა]');
+		expect(String(footnoteRef('Ა'))).toBe('[^Ა]');
+		expect(String(footnoteRef('ა'))).toBe('[^ა]');
 		expect(footnote('Ა', 'note')).toBe('[^Ა]: note');
 		expect(footnote('ა', 'note')).toBe('[^ა]: note');
 	});
@@ -123,31 +129,31 @@ describe('footnote multiline', () => {
 
 describe('footnote ID sanitization', () => {
 	test('encodes ID containing ]', () => {
-		expect(footnoteRef('a]b')).toBe('[^a%5db]');
+		expect(String(footnoteRef('a]b'))).toBe('[^a%5db]');
 	});
 
 	test('encodes ID containing [', () => {
-		expect(footnoteRef('a[b')).toBe('[^a%5bb]');
+		expect(String(footnoteRef('a[b'))).toBe('[^a%5bb]');
 	});
 
 	test('strips spaces from ID', () => {
-		expect(footnoteRef('a b')).toBe('[^a-b]');
+		expect(String(footnoteRef('a b'))).toBe('[^a-b]');
 	});
 
 	test('strips tabs from ID', () => {
-		expect(footnoteRef('a\tb')).toBe('[^a-b]');
+		expect(String(footnoteRef('a\tb'))).toBe('[^a-b]');
 	});
 
 	test('encodes trailing backslash in ID', () => {
-		expect(footnoteRef('a\\')).toBe('[^a%5c]');
+		expect(String(footnoteRef('a\\'))).toBe('[^a%5c]');
 	});
 
 	test('preserves dashes and underscores', () => {
-		expect(footnoteRef('a-b_c')).toBe('[^a-b_c]');
+		expect(String(footnoteRef('a-b_c'))).toBe('[^a-b_c]');
 	});
 
 	test('encodes backslash mid-ID', () => {
-		expect(footnoteRef(String.raw`a\b`)).toBe('[^a%5cb]');
+		expect(String(footnoteRef(String.raw`a\b`))).toBe('[^a%5cb]');
 	});
 
 	test('valid IDs render as footnotes', () => {
@@ -160,7 +166,7 @@ describe('footnote ID sanitization', () => {
 
 describe('empty footnote ID', () => {
 	test('footnoteRef with empty ID returns empty string', () => {
-		expect(footnoteRef('')).toBe('');
+		expect(String(footnoteRef(''))).toBe('');
 	});
 
 	test('footnote with empty ID returns empty string', () => {
@@ -168,7 +174,7 @@ describe('empty footnote ID', () => {
 	});
 
 	test('whitespace-only ID returns empty string', () => {
-		expect(footnoteRef('   ')).toBe('');
+		expect(String(footnoteRef('   '))).toBe('');
 	});
 });
 

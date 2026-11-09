@@ -16,4 +16,6 @@ const comrakOptions = {
 };
 
 // comrak hangs after repeated non-string input, so nodes are stringified first.
-export const render = (markdown: string | { toString: () => string }) => markdownToHTML(String(markdown), comrakOptions).trim();
+export const render = (
+	markdown: string | { toString: () => string },
+) => markdownToHTML(String(markdown), comrakOptions).trim();

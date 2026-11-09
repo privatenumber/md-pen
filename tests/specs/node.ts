@@ -27,6 +27,7 @@ describe('typed Markdown core', () => {
 			inLink: false,
 			singleLine: false,
 			lineStart: true,
+			html: false,
 		});
 		assert.equal(renderInline(['a', inlineNode(current => (current.lineStart ? 'x' : 'y'))], context), 'ay');
 	});

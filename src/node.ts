@@ -5,7 +5,7 @@ export type Context = {
 	inLink: boolean;
 	singleLine: boolean;
 	lineStart: boolean;
-	// Inside raw HTML, Markdown backslash escapes may stay visible, so text uses character references.
+	// Backslash escapes can stay visible inside raw HTML, so text uses character references.
 	html: boolean;
 };
 

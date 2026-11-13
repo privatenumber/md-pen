@@ -1,5 +1,5 @@
 import {
-	inlineNode, renderInline, type Context, type Inline, type InlineNode,
+	inlineNode, renderInline, trimBoundary, type Context, type Inline, type InlineNode,
 } from './node.ts';
 
 const normalizeBoundary = (text: string) => {
@@ -23,10 +23,10 @@ const emphasize = (content: Inline, marker: string, flag: number): InlineNode =>
 			indent: undefined,
 		});
 		if (!text) { return ''; }
-		const leading = text.match(/^[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]*/u)![0];
-		if (leading.length === text.length) { return text; }
-		let end = text.length;
-		while (end > leading.length && /[\t\n\v\f\r\u0085\u2028\u2029\p{Zs}]/u.test(text[end - 1])) { end -= 1; }
+		const [start, trimmedEnd] = trimBoundary(text);
+		if (start === trimmedEnd) { return text; }
+		const leading = text.slice(0, start);
+		let end = trimmedEnd;
 		let suffix = text.slice(end);
 		if (hasTrailingHardBreak(text, end)) {
 			end -= 1;

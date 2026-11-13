@@ -135,13 +135,22 @@ const escapeInlineHtml = (input: string) => input.replaceAll(/\\+[<>&"]?|[<>&"]/
 	return `${'\\'.repeat(backslashes - (backslashes % 2))}${escapeHtml(character)}`;
 });
 
-// Whitespace that emphasis moves outside its delimiters (the same set emphasis.ts trims).
+// Whitespace that emphasis moves outside its delimiters.
 const nonAsciiBoundaryWhitespace = /[\u0085\u2028\u2029\p{Zs}]/u;
 const isBoundaryWhitespace = (code: number) => (
 	code < 128
 		? (code >= 9 && code <= 13) || code === 32
 		: nonAsciiBoundaryWhitespace.test(String.fromCodePoint(code))
 );
+
+// The `[start, end)` span of `text` without leading and trailing boundary whitespace.
+export const trimBoundary = (text: string) => {
+	let start = 0;
+	while (start < text.length && isBoundaryWhitespace(text.codePointAt(start)!)) { start += 1; }
+	let end = text.length;
+	while (end > start && isBoundaryWhitespace(text.codePointAt(end - 1)!)) { end -= 1; }
+	return [start, end] as const;
+};
 
 export const renderInline = (input: Inline, current: Context): string => {
 	let output = '';
@@ -210,10 +219,7 @@ export const renderInline = (input: Inline, current: Context): string => {
 			bufferedIndent = indent;
 			return;
 		}
-		let start = 0;
-		while (start < part.length && isBoundaryWhitespace(part.codePointAt(start)!)) { start += 1; }
-		let end = part.length;
-		while (end > start && isBoundaryWhitespace(part.codePointAt(end - 1)!)) { end -= 1; }
+		const [start, end] = trimBoundary(part);
 		append(part.slice(0, start));
 		const core = part.slice(start, end);
 		const trailing = part.slice(end);

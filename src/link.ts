@@ -1,181 +1,71 @@
 import {
-	encodeUrlWhitespace, escape, escapeUrl, hasCharacterReference, htmlAttributes,
+	encodeUrlWhitespace, escapeUrl, hasCharacterReference, htmlAttributes,
 } from './escape.ts';
-import { createInlineScanner } from './inline-constructs.ts';
+import { inlineNode, renderInline, type Inline } from './node.ts';
+import { escapeHtmlText } from './text.ts';
 
-const hasOnlyTitle = (
-	options: Record<string, string | number>,
-) => {
+const hasOnlyTitle = (options: Record<string, string | number>) => {
 	const keys = Object.keys(options);
 	return keys.length === 1 && keys[0] === 'title';
 };
-
+// Titles are literal: escape backslashes, quotes, and `&` before character-reference-shaped text.
 const escapeTitle = (title: string) => title
 	.replaceAll(/[\r\n]+/g, ' ')
 	.replaceAll('\\', String.raw`\\`)
-	.replaceAll('"', String.raw`\"`);
-
-const imageDestination = /\((?:\\.|[^ \t\r\n()\\])*(?:[ \t]+"(?:\\.|[^"\\])*")?\)/y;
-
-const imageSpans = (text: string, scanner: ReturnType<typeof createInlineScanner>) => {
-	const stack: {
-		index: number;
-		image: boolean;
-	}[] = [];
-	const openings = new Set<number>();
-	const closings = new Map<number, number>();
-	let previousBang = false;
-	for (let index = 0; index < text.length;) {
-		const end = scanner.protectedEnd(index);
-		if (end !== -1) {
-			index = end;
-			previousBang = false;
-			continue;
-		}
-		if (text[index] === '[') {
-			stack.push({
-				index,
-				image: previousBang,
-			});
-		} else if (text[index] === ']') {
-			const open = stack.pop();
-			if (open?.image) {
-				imageDestination.lastIndex = index + 1;
-				if (imageDestination.test(text)) {
-					openings.add(open.index);
-					closings.set(index, imageDestination.lastIndex);
-					index = imageDestination.lastIndex;
-					previousBang = false;
-					continue;
-				}
-			}
-		}
-		previousBang = text[index] === '!';
-		index += 1;
-	}
-	return {
-		openings,
-		closings,
-	};
-};
-
-const escapeLinkText = (input: string) => {
-	const text = input.replaceAll(/[\r\n]+/g, ' ');
-	const scanner = createInlineScanner(text, { angle: true });
-	const images = imageSpans(text, scanner);
-	let result = '';
-	for (let index = 0; index < text.length;) {
-		const end = scanner.protectedEnd(index);
-		if (end !== -1) {
-			result += text.slice(index, end);
-			index = end;
-			continue;
-		}
-		if (text[index] === '!' && images.openings.has(index + 1)) {
-			result += '![';
-			index += 2;
-			continue;
-		}
-		const endOfDestination = images.closings.get(index);
-		if (endOfDestination !== undefined) {
-			result += text.slice(index, endOfDestination);
-			index = endOfDestination;
-			continue;
-		}
-		const character = text[index];
-		if (character === '[' || character === ']') {
-			result += '\\';
-		}
-		result += character;
-		index += 1;
-	}
-	let trailingBackslashes = 0;
-	while (text[text.length - trailingBackslashes - 1] === '\\') {
-		trailingBackslashes += 1;
-	}
-	return trailingBackslashes % 2 ? `${result}\\` : result;
-};
-
-// Boundary whitespace may change shape, but HTML collapses it to the same rendered space.
-const literalLinkText = (text: string) => escape(text.replaceAll(/[\r\n]+/g, ' '));
-
-const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url)
-	&& !/\.\.|[_-]$/.test(url);
-
+	.replaceAll('"', String.raw`\"`)
+	.replaceAll(/&(?=(?:#\d+|#x[\da-f]+|[a-z][a-z\d]{1,31});)/gi, '&amp;');
+const isGfmEmail = (url: string) => /^[\w.+-]+@\w[\w.-]*\.\w+$/.test(url) && !/\.\.|[_-]$/.test(url);
 const isGfmWww = (url: string) => {
 	const match = url.match(/^www\.([\w.-]+)/i);
-	if (!match || !/\.\w+/.test(match[1])) {
-		return false;
-	}
-	const parts = match[0].split('.');
-	return parts.slice(-2).every(segment => !segment.includes('_'));
+	return Boolean(match && /\.\w+/.test(match[1]) && match[0].split('.').slice(-2).every(segment => !segment.includes('_')));
 };
-
 const normalizeHref = (url: string) => {
-	if (url.startsWith('www.')) {
-		return isGfmWww(url) ? `http://${url}` : url;
-	}
-	if (url.includes('@') && isGfmEmail(url)) {
-		return `mailto:${url}`;
-	}
+	if (url.startsWith('www.')) { return isGfmWww(url) ? `http://${url}` : url; }
+	if (url.includes('@') && isGfmEmail(url)) { return `mailto:${url}`; }
 	return url;
 };
-
 const htmlDestination = (url: string) => encodeUrlWhitespace(url.replaceAll('\\', '%5C'));
 
-export const link = (
-	url: string,
-	text?: string,
-	options?: Record<string, string>,
-) => {
-	if (options && Object.keys(options).length > 0) {
+export const link = (url: string, label?: Inline, options?: Record<string, string>) => (
+	inlineNode((context) => {
+		if (context.inLink) { throw new TypeError('Links cannot appear inside link labels'); }
 		const href = normalizeHref(url);
-		if (hasOnlyTitle(options)) {
-			return `[${text === undefined ? literalLinkText(url) : escapeLinkText(text)}](${escapeUrl(href)} "${escapeTitle(String(options.title))}")`;
-		}
-
-		const attributes: Record<string, string> = {
-			...options,
-			href: htmlDestination(href),
+		const labelContext = {
+			...context,
+			inLink: true,
+			singleLine: true,
+			indent: undefined,
 		};
-		// Entities keep URL text literal in Markdown and raw HTML.
-		// GitHub still needs ZWSP guards for math (`$`) and mentions (`@`).
-		const displayText = text ?? url.replaceAll(/[\r\n]+/g, ' ')
-			.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `&#${character.codePointAt(0)};`)
-			.replaceAll('&#36;', '\u200B&#36;')
-			.replaceAll('&#64;', '&#64;\u200B');
-		return `<a${htmlAttributes(attributes)}>${displayText}</a>`;
-	}
-
-	if (text !== undefined) {
-		return `[${escapeLinkText(text)}](${escapeUrl(normalizeHref(url))})`;
-	}
-
-	// eslint-disable-next-line no-control-regex
-	if (/^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) {
-		return `<${url}>`;
-	}
-
-	return `[${literalLinkText(url)}](${escapeUrl(normalizeHref(url))})`;
-};
-
-export const image = (
-	url: string,
-	alt?: string,
-	options?: Record<string, string | number>,
-) => {
-	if (options && Object.keys(options).length > 0) {
-		if (hasOnlyTitle(options)) {
-			return `![${escapeLinkText(alt ?? '')}](${escapeUrl(url)} "${escapeTitle(String(options.title))}")`;
+		if (options && Object.keys(options).length) {
+			if (hasOnlyTitle(options)) { return `[${renderInline(label ?? url, labelContext)}](${escapeUrl(href)} "${escapeTitle(options.title)}")`; }
+			return `<a${htmlAttributes({
+				...options,
+				href: htmlDestination(href),
+			})}>${label === undefined ? escapeHtmlText(url.replaceAll(/\r\n|\r|\n/g, ' ')) : renderInline(label, labelContext)}</a>`;
 		}
+		// eslint-disable-next-line no-control-regex
+		if (label === undefined && /^https?:\/\//.test(url) && !/[ \u0000-\u001F\u007F<>]/.test(url) && !hasCharacterReference(url)) { return `<${url}>`; }
+		const text = renderInline(label ?? url, labelContext);
+		return `[${text}](${escapeUrl(href)})`;
+	})
+);
 
-		const attributes: Record<string, string | number> = {
-			...options,
-			src: htmlDestination(url),
-			...(alt === undefined ? {} : { alt }),
-		};
-		return `<img${htmlAttributes(attributes)} />`;
-	}
-
-	return `![${escapeLinkText(alt ?? '')}](${escapeUrl(url)})`;
-};
+export const image = (url: string, alt?: string, options?: Record<string, string | number>) => (
+	inlineNode((context) => {
+		const text = renderInline(alt ?? '', {
+			...context,
+			singleLine: true,
+			indent: undefined,
+			literalGuards: false,
+		});
+		if (options && Object.keys(options).length) {
+			if (hasOnlyTitle(options)) { return `![${text}](${escapeUrl(url)} "${escapeTitle(String(options.title))}")`; }
+			return `<img${htmlAttributes({
+				...options,
+				src: htmlDestination(url),
+				...(alt === undefined ? {} : { alt }),
+			})} />`;
+		}
+		return `![${text}](${escapeUrl(url)})`;
+	})
+);

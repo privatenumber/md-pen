@@ -17,7 +17,7 @@ describe('blockquote', () => {
 	});
 
 	test('composition: blockquote(bold()) passes through markdown', () => {
-		expect(blockquote(bold('text'))).toBe('> __text__');
+		expect(blockquote(String(bold('text')))).toBe('> **text**');
 	});
 });
 

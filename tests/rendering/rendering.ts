@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import {
-	escape,
+	render as escape,
 	code,
 	codeBlock,
 	bold,
@@ -15,7 +15,8 @@ import {
 
 describe('rendering: non-trivial output', () => {
 	test('bold(italic()) renders as bold+italic', () => {
-		expect(render(bold(italic('text')))).toBe('<p><strong><em>text</em></strong></p>');
+		expect(String(bold(italic('text')))).toBe('**<!-- -->*text*<!-- -->**');
+		expect(render(bold(italic('text')))).toBe('<p><strong><!-- --><em>text</em><!-- --></strong></p>');
 	});
 
 	test('code with backticks renders correctly', () => {

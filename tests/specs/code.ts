@@ -4,19 +4,19 @@ import { code, codeBlock, mermaid } from '../../src/code.ts';
 
 describe('code', () => {
 	test('wraps text in backticks', () => {
-		expect(code('hello')).toBe('`hello`');
+		expect(String(code('hello'))).toBe('`hello`');
 	});
 
 	test('uses double backticks with padding when text contains backticks', () => {
-		expect(code('a `b` c')).toBe('`` a `b` c ``');
+		expect(String(code('a `b` c'))).toBe('`` a `b` c ``');
 	});
 
 	test('uses enough backticks to exceed longest run in text', () => {
-		expect(code('a `` b')).toBe('``` a `` b ```');
+		expect(String(code('a `` b'))).toBe('``` a `` b ```');
 	});
 
 	test('handles empty string', () => {
-		expect(code('')).toBe('` `');
+		expect(String(code(''))).toBe('` `');
 	});
 });
 

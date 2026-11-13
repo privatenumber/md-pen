@@ -48,11 +48,11 @@ export const generator = (seed: number) => {
 		return id;
 	};
 	const choose = <T>(values: readonly T[]): T => values[random(values.length)];
-	const inline = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
+	const inline = (depth: number, inLink = false): Inline => {
 		// Footnote references contain links, which cannot nest inside link text.
 		const options: Exclude<Inline['kind'], 'sequence'>[] = ['word', 'literal', 'code', 'kbd', 'math', 'image', ...(inLink ? [] : ['ref' as const])];
 		if (depth) {
-			options.push(...(['bold', 'italic', 'strike'] as const).filter(kind => !ancestors.includes(kind)));
+			options.push('bold', 'italic', 'strike');
 			if (!inLink) {
 				options.push('link');
 			}
@@ -100,25 +100,18 @@ export const generator = (seed: number) => {
 			default: {
 				return {
 					kind,
-					child: kind === 'link' && random(2) === 0
-						? sequence(depth - 1, true, [...ancestors, kind])
-						: inline(depth - 1, inLink || kind === 'link', [...ancestors, kind]),
+					child: random(2) === 0
+						? sequence(depth - 1, inLink || kind === 'link')
+						: inline(depth - 1, inLink || kind === 'link'),
 				};
 			}
 		}
 	};
-	const sequence = (depth: number, inLink = false, ancestors: Inline['kind'][] = []): Inline => {
+	const sequence = (depth: number, inLink = false): Inline => {
 		const children: Inline[] = [];
 		const count = 2 + random(3);
 		for (let index = 0; index < count; index += 1) {
-			// A separator prevents delimiter collisions and intraword bold at sibling boundaries.
-			if (index > 0) {
-				children.push({
-					kind: 'word',
-					text: ' ',
-				});
-			}
-			children.push(inline(depth, inLink, ancestors));
+			children.push(inline(depth, inLink));
 		}
 		return {
 			kind: 'sequence',

@@ -5,39 +5,39 @@ import { taskList } from '../../src/list.ts';
 
 describe('math', () => {
 	test('inline math', () => {
-		expect(math('x^2')).toBe('$x^2$');
+		expect(String(math('x^2'))).toBe('$x^2$');
 	});
 
 	test('passes through LaTeX special characters', () => {
-		expect(math(String.raw`\frac{a}{b}`)).toBe(String.raw`$\frac{a}{b}$`);
-		expect(math(String.raw`\alpha + \beta`)).toBe(String.raw`$\alpha + \beta$`);
+		expect(String(math(String.raw`\frac{a}{b}`))).toBe(String.raw`$\frac{a}{b}$`);
+		expect(String(math(String.raw`\alpha + \beta`))).toBe(String.raw`$\alpha + \beta$`);
 	});
 
 	test('trims boundary whitespace', () => {
-		expect(math(' \n x \t')).toBe('$x$');
+		expect(String(math(' \n x \t'))).toBe('$x$');
 		expect(render(math(' x '))).toBe('<p><span data-math-style="inline">x</span></p>');
-		expect(math(' \n\t ')).toBe('');
+		expect(String(math(' \n\t '))).toBe('');
 	});
 
 	test('preserves dollars and backslashes verbatim', () => {
-		expect(math(String.raw`\sqrt{\$4}`)).toBe('$`\\sqrt{\\$4}`$');
-		expect(math(String.raw`a\\$b`)).toBe('$`a\\\\$b`$');
-		expect(math(String.raw`a\\\$b`)).toBe('$`a\\\\\\$b`$');
-		expect(math(String.raw`\#`)).toBe('$`\\#`$');
-		expect(math(String.raw`\{`)).toBe('$`\\{`$');
-		expect(math('a\\')).toBe('$`a\\`$');
-		expect(math('a_b')).toBe('$a_b$');
+		expect(String(math(String.raw`\sqrt{\$4}`))).toBe('$`\\sqrt{\\$4}`$');
+		expect(String(math(String.raw`a\\$b`))).toBe('$`a\\\\$b`$');
+		expect(String(math(String.raw`a\\\$b`))).toBe('$`a\\\\\\$b`$');
+		expect(String(math(String.raw`\#`))).toBe('$`\\#`$');
+		expect(String(math(String.raw`\{`))).toBe('$`\\{`$');
+		expect(String(math('a\\'))).toBe('$`a\\`$');
+		expect(String(math('a_b'))).toBe('$a_b$');
 	});
 
 	test('protects Markdown syntax and autolinks in inline expressions', () => {
-		expect(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`)).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
-		expect(math('x www.example.com y')).toBe('$`x www.example.com y`$');
-		expect(math('x https://example.com y')).toBe('$`x https://example.com y`$');
+		expect(String(math(String.raw`\mathbf{x}_{i,j} = \mathbf{y}_{i,j}`))).toBe('$`\\mathbf{x}_{i,j} = \\mathbf{y}_{i,j}`$');
+		expect(String(math('x www.example.com y'))).toBe('$`x www.example.com y`$');
+		expect(String(math('x https://example.com y'))).toBe('$`x https://example.com y`$');
 	});
 
 	test('uses backtick delimiters for LaTeX environments', () => {
-		expect(math(String.raw`\begin{pmatrix}a\end{pmatrix}`)).toBe('$`\\begin{pmatrix}a\\end{pmatrix}`$');
-		expect(math(String.raw`\begin {pmatrix}a\end{pmatrix}`)).toBe('$`\\begin {pmatrix}a\\end{pmatrix}`$');
+		expect(String(math(String.raw`\begin{pmatrix}a\end{pmatrix}`))).toBe('$`\\begin{pmatrix}a\\end{pmatrix}`$');
+		expect(String(math(String.raw`\begin {pmatrix}a\end{pmatrix}`))).toBe('$`\\begin {pmatrix}a\\end{pmatrix}`$');
 	});
 
 	// GitHub /markdown for `$a<c>b$`; protected characters may be active in other contexts.
@@ -80,49 +80,49 @@ describe('math', () => {
 			const expression = `a${character}b`;
 			const delimiter = character === '`' ? '``' : '`';
 			const padding = character === '`' ? ' ' : '';
-			expect(math(expression)).toBe(alternate ? `$${delimiter}${padding}${expression}${padding}${delimiter}$` : `$${expression}$`);
+			expect(String(math(expression))).toBe(alternate ? `$${delimiter}${padding}${expression}${padding}${delimiter}$` : `$${expression}$`);
 			expect(mathBlock(expression)).toBe(alternate ? `\`\`\`math\n${expression}\n\`\`\`` : `$$\n${expression}\n$$`);
 		});
 	}
 
 	test('uses portable delimiters for bare ampersands and factorials', () => {
-		expect(math('a & b')).toBe('$a & b$');
-		expect(math('n!')).toBe('$n!$');
+		expect(String(math('a & b'))).toBe('$a & b$');
+		expect(String(math('n!'))).toBe('$n!$');
 		expect(render(math('a & b'))).toBe('<p><span data-math-style="inline">a &amp; b</span></p>');
 		for (const entity of ['&amp;', '&#38;', '&#x26;']) {
-			expect(math(`a ${entity} b`)).toBe(`$\`a ${entity} b\`$`);
+			expect(String(math(`a ${entity} b`))).toBe(`$\`a ${entity} b\`$`);
 		}
 		const matrix = String.raw`\begin{pmatrix}a & b\\ c & d\end{pmatrix}`;
-		expect(math(matrix)).toBe(`$\`${matrix}\`$`);
+		expect(String(math(matrix))).toBe(`$\`${matrix}\`$`);
 		expect(mathBlock(matrix)).toBe(`\`\`\`math\n${matrix}\n\`\`\``);
 	});
 
 	test('protects overlong numeric references from GitHub math decoding', () => {
-		expect(math('&#00000065;')).toBe('$`&#00000065;`$');
+		expect(String(math('&#00000065;'))).toBe('$`&#00000065;`$');
 	});
 
 	test('keeps intraword underscores in portable math delimiters', () => {
 		for (const expression of ['x_i', 'x_i + y_j', 'a_b_c', 'α_β']) {
-			expect(math(expression)).toBe(`$${expression}$`);
+			expect(String(math(expression))).toBe(`$${expression}$`);
 			expect(render(math(expression))).toBe(`<p><span data-math-style="inline">${expression}</span></p>`);
 		}
 		for (const expression of ['_x', 'x_', 'x_{i}', 'a__b']) {
-			expect(math(expression)).toBe(`$\`${expression}\`$`);
+			expect(String(math(expression))).toBe(`$\`${expression}\`$`);
 		}
 	});
 
 	test('uses longer backtick delimiters when needed', () => {
-		expect(math('a`$b')).toBe('$`` a`$b ``$');
+		expect(String(math('a`$b'))).toBe('$`` a`$b ``$');
 	});
 });
 
 describe('math edge cases', () => {
 	test('empty expression returns empty string', () => {
-		expect(math('')).toBe('');
+		expect(String(math(''))).toBe('');
 	});
 
 	test('expression with dollar sign is verbatim', () => {
-		expect(math('price = $5')).toBe('$`price = $5`$');
+		expect(String(math('price = $5'))).toBe('$`price = $5`$');
 	});
 });
 

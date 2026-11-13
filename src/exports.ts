@@ -1,4 +1,6 @@
-export { escape } from './escape.ts';
+export {
+	render, raw, md, join, type InlineNode, type BlockNode, type Inline, type Block,
+} from './node.ts';
 export { code, codeBlock, mermaid } from './code.ts';
 export { bold, italic, strikethrough } from './emphasis.ts';
 export { link, image } from './link.ts';
@@ -16,5 +18,5 @@ export { hr, details } from './block.ts';
 export { math, mathBlock } from './math.ts';
 export { footnoteRef, footnote } from './footnote.ts';
 export {
-	kbd, sub, sup, mention, emoji, el,
+	kbd, sub, sup,
 } from './misc.ts';

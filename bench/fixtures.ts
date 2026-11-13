@@ -17,15 +17,15 @@ export const buildDocument = (sections: number) => {
 	for (let index = 0; index < sections; index += 1) {
 		parts.push(
 			md.h2(`Section ${index}`),
-			md.escape(userText),
-			`${md.bold('Status:')} ${md.code('ok')} ${md.link(`https://example.com/issues/${index}`, md.escape(`Issue #${index}`))}`,
-			md.ul([md.escape(userText), [md.italic(md.escape(plainText)), md.strikethrough('old')], md.link(`https://example.com/${index}`)]),
-			md.taskList([[true, 'done'], [false, md.escape(userText)]]),
+			md.render(userText),
+			md.render([md.bold('Status:'), ' ', md.code('ok'), ' ', md.link(`https://example.com/issues/${index}`, `Issue #${index}`)]),
+			md.ul([md.render(userText), [md.render(md.italic(plainText)), md.render(md.strikethrough('old'))], md.render(md.link(`https://example.com/${index}`))]),
+			md.taskList([[true, 'done'], [false, md.render(userText)]]),
 			md.table(tableRows.slice(0, 20), { align: ['left', 'right', 'none'] }),
 			md.details(`Details ${index}`, md.codeBlock(`const x = ${index};\n// </details> in code`, 'ts')),
-			md.alert('note', md.escape(userText)),
-			`${md.math('x^2 + y_1')} ${md.kbd('Ctrl')} ${md.image(`https://example.com/badge/${index}.svg`, 'badge')} ${md.footnoteRef(`n${index}`)}`,
-			md.footnote(`n${index}`, md.escape(userText)),
+			md.alert('note', md.render(userText)),
+			md.render([md.math('x^2 + y_1'), ' ', md.kbd('Ctrl'), ' ', md.image(`https://example.com/badge/${index}.svg`, 'badge'), ' ', md.footnoteRef(`n${index}`)]),
+			md.footnote(`n${index}`, md.render(userText)),
 			md.hr(),
 		);
 	}
@@ -35,12 +35,6 @@ export const buildDocument = (sections: number) => {
 // Adversarial inputs for the scanners. Each repeats a pattern that a naive
 // implementation would rescan, so it shows up as superlinear growth.
 export const adversarial = {
-	// Unterminated HTML attribute values make the inline scanner retry tags.
-	'unterminated attributes': '<a b="',
-	// Unterminated comments make the inline scanner search for `-->`.
-	'unterminated comments': '<!--',
-	// Opening image brackets without destinations exercise the label bracket stack.
-	'unclosed images': '![',
 	// Stray details tags that the outer details() call must neutralize.
 	'stray details tags': '</details><details>',
 	// Backslashes without HTML punctuation; a backtracking regex goes quadratic here.
@@ -54,8 +48,6 @@ export type Pattern = keyof typeof adversarial;
 export const repeatTo = (pattern: string, size: number) => (
 	pattern.repeat(Math.ceil(size / pattern.length)).slice(0, size)
 );
-
-export const unterminatedAttribute = (size: number) => `<a b="${repeatTo('<a ', size - 7)}[`;
 
 export const whitespace = (size: number, trailing: boolean) => `x${' '.repeat(size - 2)}${trailing ? ' ' : 'x'}`;
 

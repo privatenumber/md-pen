@@ -2,7 +2,7 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { table } from '../../src/table.ts';
 import { kbd, sub } from '../../src/misc.ts';
-import { escape } from '../../src/escape.ts';
+import { render as escape } from '../../src/node.ts';
 import { code } from '../../src/code.ts';
 
 describe('table', () => {
@@ -353,7 +353,7 @@ describe('zero-column tables', () => {
 
 describe('table backslash-pipe', () => {
 	test('HTML mode preserves backslash before a pipe in a code span', () => {
-		expect(render(table([['H'], [code(String.raw`a\|b`)]], { html: true })))
+		expect(render(table([['H'], [String(code(String.raw`a\|b`))]], { html: true })))
 			.toContain(String.raw`<code>a\|b</code>`);
 	});
 
@@ -420,12 +420,12 @@ describe('table whitespace trimming', () => {
 
 describe('table HTML composition in cells', () => {
 	test('kbd() in cell renders as HTML', () => {
-		const html = render(table([['Key'], [kbd('Enter')]]));
+		const html = render(table([['Key'], [String(kbd('Enter'))]]));
 		expect(html).toContain('<kbd>Enter</kbd>');
 	});
 
 	test('sub() in cell renders as HTML', () => {
-		const html = render(table([['Formula'], [sub('2')]]));
+		const html = render(table([['Formula'], [String(sub('2'))]]));
 		expect(html).toContain('<sub>2</sub>');
 	});
 });

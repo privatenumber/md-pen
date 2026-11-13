@@ -1,5 +1,7 @@
 import * as m from '../../../src/index.ts';
-import { emphasis, type List, type Tree } from './tree.ts';
+import {
+	emphasis, type Inline, type List, type Tree,
+} from './tree.ts';
 
 const listItems = (tree: List, references: Set<string>): m.ListItem[] => (
 	tree.items.flatMap(item => [
@@ -8,22 +10,22 @@ const listItems = (tree: List, references: Set<string>): m.ListItem[] => (
 	])
 );
 
-export const markdown = (tree: Tree, references: Set<string>): string => {
+const inline = (tree: Inline, references: Set<string>): m.Inline => {
 	switch (tree.kind) {
 		case 'sequence': {
-			return tree.children.map(child => markdown(child, references)).join('');
+			return tree.children.map(child => inline(child, references));
 		}
 		case 'word': {
 			return tree.text;
 		}
 		case 'literal': {
-			return m.escape(tree.text);
+			return tree.text;
 		}
 		case 'code': {
 			return m.code(tree.text);
 		}
 		case 'kbd': {
-			return m.kbd(m.escape(tree.text));
+			return m.kbd(tree.text);
 		}
 		case 'math': {
 			return m.math(tree.text);
@@ -35,14 +37,26 @@ export const markdown = (tree: Tree, references: Set<string>): string => {
 			references.add(tree.id);
 			return m.footnoteRef(tree.id);
 		}
-		case 'footnote': {
-			return m.footnote(tree.id, tree.text);
-		}
 		case 'bold': case 'italic': case 'strike': {
-			return emphasis[tree.kind].format(markdown(tree.child, references));
+			return emphasis[tree.kind].format(inline(tree.child, references));
 		}
 		case 'link': {
-			return m.link('/target', markdown(tree.child, references));
+			return m.link('/target', inline(tree.child, references));
+		}
+		default: {
+			throw new Error('Unknown inline node');
+		}
+	}
+};
+
+export const markdown = (tree: Tree, references: Set<string>): string => {
+	switch (tree.kind) {
+		case 'sequence': case 'word': case 'literal': case 'code': case 'kbd': case 'math':
+		case 'image': case 'ref': case 'bold': case 'italic': case 'strike': case 'link': {
+			return m.render(inline(tree, references));
+		}
+		case 'footnote': {
+			return m.footnote(tree.id, tree.text);
 		}
 		case 'heading': {
 			return m.heading(markdown(tree.child, references), tree.level);

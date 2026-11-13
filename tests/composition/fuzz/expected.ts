@@ -1,36 +1,66 @@
+import assert from 'node:assert/strict';
 import { parseFragment, type DefaultTreeAdapterMap } from 'parse5';
 import * as m from '../../../src/index.ts';
 import { render } from '../../utils/render.ts';
 import {
-	element, emphasis, type Tree, type Block, type Element, type Structure,
+	element, emphasis, type Tree, type Block, type Element, type Inline, type Structure,
 } from './tree.ts';
 
 type HtmlNode = DefaultTreeAdapterMap['node'];
 
 const cleanText = (value: string) => value.replaceAll(/[\t\n\f\r ]+/gu, ' ').replaceAll(/^ | $/gu, '');
-const literalText = (text: string): string => {
+export const literalText = (
+	text: string,
+	serialize: (text: string) => string = m.render,
+): string => {
 	const collect = (node: HtmlNode): string => {
 		if ('value' in node) {
 			return node.value;
 		}
 		return 'childNodes' in node ? node.childNodes.map(collect).join('') : '';
 	};
-	return cleanText(collect(parseFragment(render(m.escape(text)))));
+	const visible = collect(parseFragment(render(serialize(text))));
+	const normalized = (value: string) => cleanText(value.replaceAll('\u200B', ''));
+	assert.equal(normalized(visible), normalized(text), `Literal text changed: ${JSON.stringify(text)}`);
+	return visible;
 };
 const inlineKinds = new Set(['sequence', 'word', 'literal', 'code', 'kbd', 'math', 'image', 'ref', 'bold', 'italic', 'strike', 'link']);
 const blockContent = (child: Tree): Structure[] => {
 	const content = expected(child);
 	return inlineKinds.has(child.kind) ? [element('p', content)] : content;
 };
-const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] => {
+const expected = (
+	tree: Tree, inTable = false, joinedList = false, ancestors: readonly string[] = [],
+): Structure[] => {
 	switch (tree.kind) {
 		case 'sequence': {
-			return tree.children.flatMap(child => expected(child, inTable));
+			const flatten = (child: Inline): Inline[] => {
+				if (child.kind === 'sequence') {
+					return child.children.flatMap(flatten);
+				}
+				if ((child.kind === 'bold' || child.kind === 'italic' || child.kind === 'strike')
+					&& ancestors.includes(child.kind)) {
+					return flatten(child.child);
+				}
+				return [child];
+			};
+			const children = tree.children.flatMap(flatten);
+			const runs: typeof children = [];
+			for (const child of children) {
+				const previous = runs.at(-1);
+				if ((child.kind === 'literal' || child.kind === 'word')
+					&& previous && (previous.kind === 'literal' || previous.kind === 'word')) {
+					runs[runs.length - 1] = {
+						kind: 'literal',
+						text: previous.text + child.text,
+					};
+				} else {
+					runs.push(child);
+				}
+			}
+			return runs.flatMap(child => expected(child, inTable, false, ancestors));
 		}
-		case 'word': {
-			return [tree.text === ' ' ? ' ' : cleanText(tree.text)];
-		}
-		case 'literal': {
+		case 'word': case 'literal': {
 			if (inTable && /[\r\n]/u.test(tree.text)) {
 				return tree.text.split(/\r\n|\r|\n/u).flatMap((part, index) => (
 					index === 0 ? [literalText(part)] : [element('br', []), literalText(part)]
@@ -61,11 +91,12 @@ const expected = (tree: Tree, inTable = false, joinedList = false): Structure[] 
 			return [];
 		}
 		case 'bold': case 'italic': case 'strike': {
-			return [element(emphasis[tree.kind].tag, expected(tree.child, inTable))];
+			const content = expected(tree.child, inTable, false, [...ancestors, tree.kind]);
+			return ancestors.includes(tree.kind) ? content : [element(emphasis[tree.kind].tag, content)];
 		}
 		case 'link': {
 			// Link labels normalize line endings before the table sees them.
-			return [element('a', expected(tree.child), { href: '/target' })];
+			return [element('a', expected(tree.child, false, false, ancestors), { href: '/target' })];
 		}
 		case 'heading': {
 			return [element(`h${tree.level}`, expected(tree.child))];

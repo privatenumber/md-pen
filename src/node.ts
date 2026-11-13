@@ -240,7 +240,11 @@ export const render = (content: Block | Inline): string => {
 	return renderInline(content as Inline, context());
 };
 
-/** Emits trusted Markdown verbatim without escaping it relative to neighboring content. */
+/**
+ * Emits trusted Markdown verbatim without escaping it relative to neighboring content.
+ * Markdown is not parsed inside raw HTML blocks, so md-pen output placed between raw HTML
+ * fragments is not escaped for HTML. Never put untrusted text inside raw HTML.
+ */
 export const raw = (markdown: string): InlineNode => ({
 	...inlineNode(() => markdown),
 	raw: true,

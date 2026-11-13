@@ -46,9 +46,6 @@ const indentationUnavailable = (prefix: string, offset: number, indent: number |
 	!prefix && offset === 0 && indent === undefined
 );
 
-// Literal text at the start of a line, for Markdown built outside md-pen.
-export const escape = (text: string) => escapeText(text, 0);
-
 // Literal text inside raw HTML: character references render in both Markdown flow and HTML blocks.
 export const escapeHtmlText = (text: string): string => text
 	.replaceAll(/[!"#$%&'()*+,./:;<=>?@[\\\]^_`{|}~-]/g, character => `&#${character.codePointAt(0)};`)

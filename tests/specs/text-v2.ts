@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'manten';
-import { escape } from '../../src/text.ts';
+import { render as escape } from '../../src/node.ts';
 import { render } from '../utils/render.ts';
 
 describe('literal text escaping', () => {

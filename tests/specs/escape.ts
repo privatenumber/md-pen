@@ -4,7 +4,7 @@ import { render } from '../utils/render.ts';
 import {
 	escapeHtml, escapeTableCell, escapeUrl, htmlAttributes,
 } from '../../src/escape.ts';
-import { escape } from '../../src/text.ts';
+import { render as escape } from '../../src/node.ts';
 
 describe('escape', () => {
 	test('escapes backslashes', () => {

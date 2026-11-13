@@ -2,7 +2,7 @@ import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import { table } from '../../src/table.ts';
 import { kbd, sub } from '../../src/misc.ts';
-import { escape } from '../../src/text.ts';
+import { render as escape } from '../../src/node.ts';
 import { code } from '../../src/code.ts';
 
 describe('table', () => {

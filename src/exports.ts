@@ -1,4 +1,3 @@
-export { escape } from './text.ts';
 export {
 	render, raw, md, join, type InlineNode, type BlockNode, type Inline, type Block,
 } from './node.ts';

@@ -1,7 +1,7 @@
 import { describe, test, expect } from 'manten';
 import { render } from '../utils/render.ts';
 import {
-	escape,
+	render as escape,
 	code,
 	codeBlock,
 	bold,

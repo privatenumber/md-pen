@@ -20,8 +20,8 @@ assert.ok(md.table([['h'], [repeatTo(adversarial['escaped pipes'], 4)]]).endsWit
 assert.ok(buildDocument(1).length > 1000, 'document fixture renders');
 // The whole run must reach the trailing-whitespace step: collapsing it there
 // is the only way escape() returns a single space.
-assert.strictEqual(md.escape(whitespace(1000, true)), 'x ', 'trailing whitespace is collapsed');
-assert.strictEqual(md.escape(whitespace(1000, false)), whitespace(1000, false), 'interior whitespace survives');
+assert.strictEqual(md.render(whitespace(1000, true)), 'x ', 'trailing whitespace is collapsed');
+assert.strictEqual(md.render(whitespace(1000, false)), whitespace(1000, false), 'interior whitespace survives');
 const backtickFixture = distinctBacktickRuns(1000);
 assert.ok(backtickFixture.length <= 1000, 'backtick fixture stays within the size budget');
 
@@ -33,8 +33,8 @@ const check = process.argv.includes('--check');
 // row with its own earlier runs, not with other rows.
 if (!check) {
 	const listItems = Array.from({ length: 10 }, (_, index) => `item ${index}`);
-	bench('escape - plain text', () => md.escape(plainText));
-	bench('escape - punctuated text', () => md.escape(userText));
+	bench('escape - plain text', () => md.render(plainText));
+	bench('escape - punctuated text', () => md.render(userText));
 	bench('bold - punctuated text', () => md.render(md.bold(userText)));
 	bench('italic - punctuated text', () => md.render(md.italic(userText)));
 	bench('code', () => md.render(md.code('const x = `a`;')));
@@ -77,7 +77,7 @@ summary(() => {
 const sweeps: [string, Pattern, (input: string) => string][] = [
 	['details', 'stray details tags', input => md.details('s', input)],
 	['kbd', 'backslashes', input => md.render(md.kbd(input))],
-	['escape', 'backslashes', md.escape],
+	['escape', 'backslashes', (text: string) => md.render(text)],
 ];
 
 summary(() => {
@@ -99,7 +99,7 @@ for (const [name, pattern, format] of sweeps) {
 summary(() => {
 	bench('escape - leading whitespace $size', function* leadingWhitespace(state: BenchState) {
 		const input = `${repeatTo(' \t', state.get('size') - 1)}x`;
-		yield () => md.escape(input);
+		yield () => md.render(input);
 	}).args('size', sizes);
 });
 
@@ -107,7 +107,7 @@ for (const trailing of [true, false]) {
 	summary(() => {
 		bench(`escape - ${trailing ? 'trailing' : 'interior'} whitespace $size`, function* whitespaceSweep(state: BenchState) {
 			const input = whitespace(state.get('size'), trailing);
-			yield () => md.escape(input);
+			yield () => md.render(input);
 		}).args('size', sizes);
 	});
 }

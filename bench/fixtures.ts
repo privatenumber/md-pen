@@ -17,15 +17,15 @@ export const buildDocument = (sections: number) => {
 	for (let index = 0; index < sections; index += 1) {
 		parts.push(
 			md.h2(`Section ${index}`),
-			md.escape(userText),
+			md.render(userText),
 			md.render([md.bold('Status:'), ' ', md.code('ok'), ' ', md.link(`https://example.com/issues/${index}`, `Issue #${index}`)]),
-			md.ul([md.escape(userText), [md.render(md.italic(plainText)), md.render(md.strikethrough('old'))], md.render(md.link(`https://example.com/${index}`))]),
-			md.taskList([[true, 'done'], [false, md.escape(userText)]]),
+			md.ul([md.render(userText), [md.render(md.italic(plainText)), md.render(md.strikethrough('old'))], md.render(md.link(`https://example.com/${index}`))]),
+			md.taskList([[true, 'done'], [false, md.render(userText)]]),
 			md.table(tableRows.slice(0, 20), { align: ['left', 'right', 'none'] }),
 			md.details(`Details ${index}`, md.codeBlock(`const x = ${index};\n// </details> in code`, 'ts')),
-			md.alert('note', md.escape(userText)),
+			md.alert('note', md.render(userText)),
 			md.render([md.math('x^2 + y_1'), ' ', md.kbd('Ctrl'), ' ', md.image(`https://example.com/badge/${index}.svg`, 'badge'), ' ', md.footnoteRef(`n${index}`)]),
-			md.footnote(`n${index}`, md.escape(userText)),
+			md.footnote(`n${index}`, md.render(userText)),
 			md.hr(),
 		);
 	}
